@@ -1,3 +1,5 @@
+using CseForms.Api.BackOffice;
+using CseForms.Api.Cli;
 using CseForms.Api.Endpoints;
 using CseForms.Api.Hosting;
 using CseForms.Application;
@@ -10,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddBackOffice(builder.Configuration);
 builder.Services.AddReverseProxySupport(builder.Configuration);
 builder.Services.AddPublicRateLimiting(builder.Configuration);
 builder.Services.AddHsts(options =>
@@ -23,6 +26,12 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Gestion des comptes en ligne de commande : `dotnet CseForms.Api.dll users ...`.
+if (UserCommands.IsCommand(args))
+{
+    return await UserCommands.RunAsync(app.Services, args, Console.In, Console.Out, interactive: !Console.IsInputRedirected);
+}
+
 app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
@@ -34,24 +43,21 @@ if (!app.Environment.IsDevelopment())
 app.UseExceptionHandler(errorApp => errorApp.Run(context =>
 {
     // Requête mal formée ou trop volumineuse (Kestrel) : on garde son code 4xx.
-    if (context.Features.Get<IExceptionHandlerFeature>()?.Error is BadHttpRequestException badRequest)
-    {
-        return ApiErrors.Error(badRequest.StatusCode, "badRequest", "Requête invalide.").ExecuteAsync(context);
-    }
+    var status = context.Features.Get<IExceptionHandlerFeature>()?.Error is BadHttpRequestException badRequest
+        ? badRequest.StatusCode
+        : StatusCodes.Status500InternalServerError;
 
-    return ApiErrors
-        .Error(StatusCodes.Status500InternalServerError, "serverError", "Une erreur est survenue. Réessayez plus tard.")
-        .ExecuteAsync(context);
+    return ErrorResponses.Write(context, status);
 }));
-app.UseStatusCodePages(context => context.HttpContext.Response.StatusCode == StatusCodes.Status400BadRequest
-    ? ApiErrors.BadRequest().ExecuteAsync(context.HttpContext)
-    : Task.CompletedTask);
+app.UseStatusCodePages(context => ErrorResponses.WriteIfEmpty(context.HttpContext));
 
 app.UseApiSecurityHeaders();
 app.UsePublicAssets();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseRequestSizeGuard();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Vivacité : le processus répond, sans dépendance externe.
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
@@ -61,7 +67,9 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 
 app.MapPublicFormEndpoints();
 app.MapPublicPages(app.Environment);
+app.MapRazorPages();
 
-app.Run();
+await app.RunAsync();
+return 0;
 
 public partial class Program;

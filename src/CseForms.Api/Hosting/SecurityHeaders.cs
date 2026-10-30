@@ -32,6 +32,13 @@ internal static class SecurityHeaders
                 headers.ContentSecurityPolicy = PageContentSecurityPolicy;
             }
 
+            // Pages du back-office : données personnelles, jamais en cache ni indexées.
+            if (context.Request.Path.StartsWithSegments("/admin"))
+            {
+                headers.CacheControl = "no-store";
+                headers["X-Robots-Tag"] = "noindex, nofollow";
+            }
+
             await next();
         });
 }

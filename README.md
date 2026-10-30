@@ -27,7 +27,22 @@ dotnet ef database update -p src/CseForms.Infrastructure -s src/CseForms.Infrast
 dotnet run --project src/CseForms.Api
 ```
 
+Le back-office (`/admin`) exige HTTPS : ses cookies sont `Secure`. En local, lancer l'API avec `ASPNETCORE_URLS=https://127.0.0.1:7214` (certificat de développement : `dotnet dev-certs https`). En production, Traefik termine le TLS et transmet `X-Forwarded-Proto`. Voir [`docs/back-office.md`](docs/back-office.md).
+
 Points de santé : `/health/live` (processus) et `/health/ready` (base joignable). API publique : voir [`docs/api-publique.md`](docs/api-publique.md).
+
+## Comptes du back-office
+
+Aucun compte n'existe par défaut. Les comptes se gèrent en ligne de commande, le mot de passe (12 caractères minimum) étant saisi au terminal :
+
+```bash
+dotnet run --project src/CseForms.Api -- users create --email elu@example.test --name "Prénom Nom" --role admin
+dotnet run --project src/CseForms.Api -- users grant --email elu@example.test --form inscription
+dotnet run --project src/CseForms.Api -- users revoke --email elu@example.test --form inscription
+dotnet run --project src/CseForms.Api -- users list
+```
+
+En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôles : `admin` (tous les formulaires), `editor` et `reader` (formulaires attribués uniquement).
 
 ## Tests
 
