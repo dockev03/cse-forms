@@ -1,0 +1,92 @@
+{
+  "description": "Conditions combinées, sections conditionnelles, champs cachés, choix multiples, formats",
+  "today": "2026-10-30",
+  "sites": ["Riom"],
+  "definition": {
+    "sections": [
+      {
+        "id": "general",
+        "fields": [
+          { "id": "source", "type": "hidden", "options": ["flyer", "affiche"], "prefill": "url" },
+          { "id": "participe", "type": "choice", "label": "Participez-vous ?", "required": true, "options": ["oui", "non"] },
+          { "id": "options", "type": "multichoice", "label": "Activités", "options": ["cinema", "sport", "voyage"], "min": 1, "max": 2,
+            "visibleIf": { "field": "participe", "op": "equals", "value": "oui" } },
+          { "id": "telephone", "type": "phone", "label": "Téléphone" },
+          { "id": "code", "type": "text", "label": "Code interne", "pattern": "^[A-Z]{2}[0-9]{3}$", "transform": "upper" },
+          { "id": "commentaire", "type": "textarea", "label": "Commentaire", "maxLength": 20 }
+        ]
+      },
+      {
+        "id": "voyage",
+        "title": "Voyage",
+        "visibleIf": { "all": [
+          { "field": "participe", "op": "equals", "value": "oui" },
+          { "field": "options", "op": "in", "value": ["voyage"] }
+        ] },
+        "fields": [
+          { "id": "passeport", "type": "consent", "label": "Je dispose d'un passeport valide", "required": true },
+          { "id": "depart", "type": "date", "label": "Départ souhaité", "required": true,
+            "rules": [{ "op": "future" }, { "op": "notAfter", "value": "2027-12-31" }] }
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "Non participant : section voyage et activités masquées, donc ignorées",
+      "input": { "participe": "non", "options": ["inconnu"], "passeport": "n'importe quoi", "depart": "hier" },
+      "errors": [],
+      "data": { "participe": "non" }
+    },
+    {
+      "name": "Participant sans voyage",
+      "input": { "participe": "oui", "options": ["sport"], "source": "flyer", "telephone": "06 12.34-56 78", "code": "ab123", "commentaire": "  bien\r\nmerci  " },
+      "errors": [],
+      "data": { "source": "flyer", "participe": "oui", "options": ["sport"], "telephone": "0612345678", "code": "AB123", "commentaire": "bien\nmerci" }
+    },
+    {
+      "name": "Participant avec voyage : section affichée et validée",
+      "input": { "participe": "oui", "options": ["voyage", "cinema"], "depart": "2026-10-30" },
+      "errors": [
+        { "path": "passeport", "code": "mustBeAccepted" },
+        { "path": "depart", "code": "rule.future" }
+      ]
+    },
+    {
+      "name": "Voyage valide, options rangées dans l'ordre de la définition",
+      "input": { "participe": "oui", "options": ["voyage", "cinema"], "passeport": true, "depart": "2027-06-15" },
+      "errors": [],
+      "data": { "participe": "oui", "options": ["cinema", "voyage"], "passeport": true, "depart": "2027-06-15" }
+    },
+    {
+      "name": "Valeurs hors liste blanche, formats et bornes",
+      "input": { "source": "pirate", "participe": "peut-être", "telephone": "abc", "code": "A1", "commentaire": "un commentaire bien trop long" },
+      "errors": [
+        { "path": "source", "code": "invalidOption" },
+        { "path": "participe", "code": "invalidOption" },
+        { "path": "telephone", "code": "invalidPhone" },
+        { "path": "code", "code": "invalidFormat" },
+        { "path": "commentaire", "code": "tooLong" }
+      ]
+    },
+    {
+      "name": "Choix multiples : trop de cases, la section voyage reste affichée",
+      "input": { "participe": "oui", "options": ["cinema", "sport", "voyage"] },
+      "errors": [
+        { "path": "options", "code": "tooManyItems" },
+        { "path": "passeport", "code": "mustBeAccepted" },
+        { "path": "depart", "code": "required" }
+      ]
+    },
+    {
+      "name": "Choix multiples : doublon",
+      "input": { "participe": "oui", "options": ["sport", "sport"] },
+      "errors": [{ "path": "options", "code": "duplicateOption" }]
+    },
+    {
+      "name": "Choix multiples : minimum non atteint",
+      "input": { "participe": "oui", "options": [] },
+      "errors": [{ "path": "options", "code": "required" }]
+    }
+  ]
+}

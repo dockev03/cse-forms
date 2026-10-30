@@ -1,0 +1,215 @@
+{
+  "description": "Définition proche de la fiche d'inscription (specs.md section 4), données fictives",
+  "today": "2026-10-30",
+  "sites": ["Abrest", "Aulnat", "Riom"],
+  "definition": {
+    "sections": [
+      {
+        "id": "etatCivil",
+        "title": "État civil",
+        "fields": [
+          { "id": "civilite", "type": "choice", "label": "Civilité", "required": true, "options": ["M.", "Mme"], "display": "radio" },
+          { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+          { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 }
+        ]
+      },
+      {
+        "id": "pro",
+        "title": "Informations professionnelles",
+        "fields": [
+          { "id": "contrat", "type": "choice", "label": "Type de contrat", "required": true, "options": ["CDI", "CDD", "Apprentissage", "Stage"] },
+          { "id": "dateEmbauche", "type": "date", "label": "Date d'embauche", "required": true, "rules": [{ "op": "notAfter", "value": "today+6M" }] },
+          {
+            "id": "dateFin",
+            "type": "date",
+            "label": "Date de fin",
+            "required": true,
+            "visibleIf": { "field": "contrat", "op": "notEquals", "value": "CDI" },
+            "rules": [{ "op": "after", "field": "dateEmbauche" }]
+          },
+          { "id": "site", "type": "site", "label": "Lieu de travail", "required": true, "prefill": "url" }
+        ]
+      },
+      {
+        "id": "coordonnees",
+        "title": "Coordonnées",
+        "fields": [
+          { "id": "adresse", "type": "address", "label": "Adresse", "required": true },
+          { "id": "emailPerso", "type": "email", "label": "Email personnel", "required": true },
+          { "id": "emailConfirmation", "type": "email", "label": "Confirmation de l'email", "required": true, "persist": false, "rules": [{ "op": "sameAs", "field": "emailPerso" }] }
+        ]
+      },
+      {
+        "id": "conjoint",
+        "title": "Conjoint",
+        "collapsed": true,
+        "fields": [
+          { "id": "conjointNom", "type": "text", "label": "Nom du conjoint", "transform": "upper" },
+          { "id": "conjointPrenom", "type": "text", "label": "Prénom du conjoint", "transform": "capitalize" }
+        ]
+      },
+      {
+        "id": "enfants",
+        "title": "Enfants",
+        "fields": [
+          {
+            "id": "enfants",
+            "type": "repeat",
+            "label": "Enfants",
+            "max": 10,
+            "addLabel": "Ajouter un enfant",
+            "fields": [
+              { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper" },
+              { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize" },
+              { "id": "naissance", "type": "date", "label": "Date de naissance", "required": true, "rules": [{ "op": "past" }] },
+              { "id": "sexe", "type": "choice", "label": "Sexe", "options": ["F", "M"] }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "validation",
+        "title": "Validation",
+        "fields": [
+          { "id": "rgpdInfo", "type": "info", "text": "Notice d'information sur le traitement des données." },
+          { "id": "rgpdLu", "type": "consent", "label": "J'ai lu la notice d'information", "required": true },
+          { "id": "attestation", "type": "consent", "label": "J'atteste l'exactitude des informations", "required": true }
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "CDI complet, normalisé, dateFin et champs inconnus ignorés",
+      "input": {
+        "civilite": "Mme",
+        "nom": "  dupont  ",
+        "prenom": "camille-ANNE",
+        "contrat": "CDI",
+        "dateEmbauche": "2026-11-02",
+        "dateFin": "2027-01-01",
+        "site": "Riom",
+        "adresse": { "street": " 1  rue de l'Exemple ", "postalCode": "63200", "city": "riom" },
+        "emailPerso": " Camille.Dupont@Example.TEST ",
+        "emailConfirmation": "camille.dupont@example.test",
+        "enfants": [{ "nom": "dupont", "prenom": "léa", "naissance": "2020-05-01", "sexe": "F" }],
+        "rgpdLu": true,
+        "attestation": true,
+        "champInconnu": "ignoré"
+      },
+      "errors": [],
+      "data": {
+        "civilite": "Mme",
+        "nom": "DUPONT",
+        "prenom": "Camille-Anne",
+        "contrat": "CDI",
+        "dateEmbauche": "2026-11-02",
+        "site": "Riom",
+        "adresse": { "street": "1 rue de l'Exemple", "postalCode": "63200", "city": "RIOM" },
+        "emailPerso": "camille.dupont@example.test",
+        "enfants": [{ "nom": "DUPONT", "prenom": "Léa", "naissance": "2020-05-01", "sexe": "F" }],
+        "rgpdLu": true,
+        "attestation": true
+      }
+    },
+    {
+      "name": "CDD sans date de fin",
+      "input": {
+        "civilite": "M.", "nom": "Martin", "prenom": "Alex", "contrat": "CDD", "dateEmbauche": "2026-09-01",
+        "site": "Abrest", "adresse": { "street": "2 place Fictive", "postalCode": "03200", "city": "Abrest" },
+        "emailPerso": "alex@example.test", "emailConfirmation": "alex@example.test", "rgpdLu": true, "attestation": true
+      },
+      "errors": [{ "path": "dateFin", "code": "required" }]
+    },
+    {
+      "name": "CDD avec date de fin antérieure à l'embauche",
+      "input": {
+        "civilite": "M.", "nom": "Martin", "prenom": "Alex", "contrat": "CDD", "dateEmbauche": "2026-09-01", "dateFin": "2026-08-31",
+        "site": "Abrest", "adresse": { "street": "2 place Fictive", "postalCode": "03200", "city": "Abrest" },
+        "emailPerso": "alex@example.test", "emailConfirmation": "alex@example.test", "rgpdLu": true, "attestation": true
+      },
+      "errors": [{ "path": "dateFin", "code": "rule.after" }]
+    },
+    {
+      "name": "CDD valide, sans conjoint ni enfant",
+      "input": {
+        "civilite": "M.", "nom": "Martin", "prenom": "Alex", "contrat": "CDD", "dateEmbauche": "2026-09-01", "dateFin": "2027-03-01",
+        "site": "Abrest", "adresse": { "street": "2 place Fictive", "postalCode": "03200", "city": "Abrest" },
+        "emailPerso": "alex@example.test", "emailConfirmation": "alex@example.test", "rgpdLu": true, "attestation": true,
+        "conjointNom": "   ", "enfants": []
+      },
+      "errors": [],
+      "data": {
+        "civilite": "M.", "nom": "MARTIN", "prenom": "Alex", "contrat": "CDD", "dateEmbauche": "2026-09-01", "dateFin": "2027-03-01",
+        "site": "Abrest", "adresse": { "street": "2 place Fictive", "postalCode": "03200", "city": "ABREST" },
+        "emailPerso": "alex@example.test", "rgpdLu": true, "attestation": true
+      }
+    },
+    {
+      "name": "Embauche à plus de 6 mois, site inconnu, emails différents",
+      "input": {
+        "civilite": "M.", "nom": "Martin", "prenom": "Alex", "contrat": "CDI", "dateEmbauche": "2027-05-01",
+        "site": "Paris", "adresse": { "street": "2 place Fictive", "postalCode": "03200", "city": "Abrest" },
+        "emailPerso": "alex@example.test", "emailConfirmation": "autre@example.test", "rgpdLu": true, "attestation": true
+      },
+      "errors": [
+        { "path": "dateEmbauche", "code": "rule.notAfter" },
+        { "path": "site", "code": "invalidOption" },
+        { "path": "emailConfirmation", "code": "rule.sameAs" }
+      ]
+    },
+    {
+      "name": "Formulaire vide",
+      "input": {},
+      "errors": [
+        { "path": "civilite", "code": "required" },
+        { "path": "nom", "code": "required" },
+        { "path": "prenom", "code": "required" },
+        { "path": "contrat", "code": "required" },
+        { "path": "dateEmbauche", "code": "required" },
+        { "path": "dateFin", "code": "required" },
+        { "path": "site", "code": "required" },
+        { "path": "adresse", "code": "required" },
+        { "path": "emailPerso", "code": "required" },
+        { "path": "emailConfirmation", "code": "required" },
+        { "path": "rgpdLu", "code": "mustBeAccepted" },
+        { "path": "attestation", "code": "mustBeAccepted" }
+      ]
+    },
+    {
+      "name": "Enfant incomplet ou né dans le futur, adresse partielle, attestation non cochée",
+      "input": {
+        "civilite": "Mme", "nom": "Durand", "prenom": "Sam", "contrat": "CDI", "dateEmbauche": "2026-01-05",
+        "site": "Aulnat", "adresse": { "street": "3 allée Test", "postalCode": "6300" },
+        "emailPerso": "sam@example.test", "emailConfirmation": "sam@example.test",
+        "enfants": [{ "nom": "Durand", "naissance": "2027-01-01" }, { "nom": "Durand", "prenom": "Noa", "naissance": "2019-02-30" }],
+        "rgpdLu": true, "attestation": false
+      },
+      "errors": [
+        { "path": "adresse.postalCode", "code": "invalidPostalCode" },
+        { "path": "adresse.city", "code": "required" },
+        { "path": "enfants[0].prenom", "code": "required" },
+        { "path": "enfants[0].naissance", "code": "rule.past" },
+        { "path": "enfants[1].naissance", "code": "invalidDate" },
+        { "path": "attestation", "code": "mustBeAccepted" }
+      ]
+    },
+    {
+      "name": "Types inattendus",
+      "input": {
+        "civilite": ["Mme"], "nom": 42, "prenom": "Sam", "contrat": "CDI", "dateEmbauche": "2026-01-05",
+        "site": "Aulnat", "adresse": "3 allée Test", "emailPerso": "pas-un-email", "emailConfirmation": "pas-un-email",
+        "enfants": { "nom": "Durand" }, "rgpdLu": "oui", "attestation": true
+      },
+      "errors": [
+        { "path": "civilite", "code": "invalidType" },
+        { "path": "nom", "code": "invalidType" },
+        { "path": "adresse", "code": "invalidType" },
+        { "path": "emailPerso", "code": "invalidEmail" },
+        { "path": "emailConfirmation", "code": "invalidEmail" },
+        { "path": "enfants", "code": "invalidType" },
+        { "path": "rgpdLu", "code": "invalidType" }
+      ]
+    }
+  ]
+}

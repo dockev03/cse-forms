@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CseForms.Api.Tests/CseForms.Api.Tests.csproj" />
+    <Project Path="tests/CseForms.Application.Tests/CseForms.Application.Tests.csproj" />
     <Project Path="tests/CseForms.Domain.Tests/CseForms.Domain.Tests.csproj" />
     <Project Path="tests/CseForms.Infrastructure.Tests/CseForms.Infrastructure.Tests.csproj" />
   </Folder>
