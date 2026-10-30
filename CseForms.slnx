@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CseForms.Api/CseForms.Api.csproj" />
+    <Project Path="src/CseForms.Application/CseForms.Application.csproj" />
+    <Project Path="src/CseForms.Domain/CseForms.Domain.csproj" />
+    <Project Path="src/CseForms.Infrastructure/CseForms.Infrastructure.csproj" />
+    <Project Path="src/CseForms.Worker/CseForms.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CseForms.Api.Tests/CseForms.Api.Tests.csproj" />
+    <Project Path="tests/CseForms.Domain.Tests/CseForms.Domain.Tests.csproj" />
+    <Project Path="tests/CseForms.Infrastructure.Tests/CseForms.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
