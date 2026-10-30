@@ -1,4 +1,8 @@
+using CseForms.Application.Common;
+using CseForms.Application.PublicForms;
 using CseForms.Infrastructure.Persistence;
+using CseForms.Infrastructure.PublicForms;
+using CseForms.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +24,8 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<CseFormsDbContext>(options => ConfigureDbContext(options, connectionString));
+        services.AddScoped<IPublicFormStore, PublicFormStore>();
+        services.AddSingleton<IAccessCodeHasher, AccessCodeHasher>();
 
         return services;
     }

@@ -18,6 +18,8 @@ public sealed class CseFormsDbContext(DbContextOptions<CseFormsDbContext> option
 
     public DbSet<Setting> Settings => Set<Setting>();
 
+    internal DbSet<CaseNumberCounter> CaseNumberCounters => Set<CaseNumberCounter>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CseFormsDbContext).Assembly);
 }

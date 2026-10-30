@@ -1,4 +1,5 @@
 using CseForms.Domain.Forms;
+using CseForms.Domain.Submissions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,6 +19,10 @@ internal sealed class FormConfiguration : IEntityTypeConfiguration<Form>
         builder.Property(f => f.Title).HasMaxLength(Form.TitleMaxLength).IsRequired();
         builder.Property(f => f.Status).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(f => f.AccessCodeHash).HasMaxLength(256);
+        builder.Property(f => f.CaseNumberPrefix)
+            .HasMaxLength(CaseNumber.PrefixMaxLength)
+            .HasDefaultValue(Form.DefaultCaseNumberPrefix)
+            .IsRequired();
 
         builder.HasMany(f => f.Versions)
             .WithOne()

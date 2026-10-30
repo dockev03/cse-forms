@@ -7,10 +7,11 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | Projet | Rôle |
 | --- | --- |
 | `src/CseForms.Domain` | Entités et règles métier (formulaire, version, réponse, site, paramètre) |
-| `src/CseForms.Application` | Moteur de formulaires : lecture de la définition JSON, validation et normalisation des réponses ([format](docs/format-definition.md)) |
+| `src/CseForms.Application` | Cas d'usage et moteur de formulaires : lecture de la définition JSON, validation et normalisation des réponses ([format](docs/format-definition.md)) |
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
 | `src/CseForms.Api` | API, formulaire public et back-office |
 | `src/CseForms.Worker` | Tâches de fond : PDF, emails, purge (à venir) |
+| `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
 
 ## Démarrage en local
@@ -26,7 +27,7 @@ dotnet ef database update -p src/CseForms.Infrastructure -s src/CseForms.Infrast
 dotnet run --project src/CseForms.Api
 ```
 
-Points de santé : `/health/live` (processus) et `/health/ready` (base joignable).
+Points de santé : `/health/live` (processus) et `/health/ready` (base joignable). API publique : voir [`docs/api-publique.md`](docs/api-publique.md).
 
 ## Tests
 

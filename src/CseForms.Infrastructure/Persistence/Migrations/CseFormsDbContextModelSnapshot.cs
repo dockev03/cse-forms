@@ -33,6 +33,14 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("access_code_hash");
 
+                    b.Property<string>("CaseNumberPrefix")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)")
+                        .HasDefaultValue("DOS")
+                        .HasColumnName("case_number_prefix");
+
                     b.Property<DateTimeOffset?>("ClosesAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("closes_at");
@@ -224,6 +232,27 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_submission_purge_at");
 
                     b.ToTable("submission", (string)null);
+                });
+
+            modelBuilder.Entity("CseForms.Infrastructure.Persistence.CaseNumberCounter", b =>
+                {
+                    b.Property<string>("Prefix")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)")
+                        .HasColumnName("prefix");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.Property<long>("LastValue")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_value");
+
+                    b.HasKey("Prefix", "Year")
+                        .HasName("pk_case_number_counter");
+
+                    b.ToTable("case_number_counter", (string)null);
                 });
 
             modelBuilder.Entity("CseForms.Domain.Forms.FormVersion", b =>
