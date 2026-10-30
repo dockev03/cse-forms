@@ -1,0 +1,21 @@
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+
+# Build .NET
+bin/
+obj/
+*.user
+TestResults/
+coverage*/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Données locales : jamais de vraie fiche d'inscription dans le dépôt
+storage/
+*.pdf
