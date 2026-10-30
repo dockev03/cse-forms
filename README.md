@@ -7,7 +7,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | Projet | Rôle |
 | --- | --- |
 | `src/CseForms.Domain` | Entités et règles métier (formulaire, version, réponse, site, paramètre) |
-| `src/CseForms.Application` | Cas d'usage (à venir) |
+| `src/CseForms.Application` | Moteur de formulaires : lecture de la définition JSON, validation et normalisation des réponses ([format](docs/format-definition.md)) |
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
 | `src/CseForms.Api` | API, formulaire public et back-office |
 | `src/CseForms.Worker` | Tâches de fond : PDF, emails, purge (à venir) |
