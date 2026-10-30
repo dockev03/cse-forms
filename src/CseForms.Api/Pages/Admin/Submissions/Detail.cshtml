@@ -1,0 +1,51 @@
+@page "/admin/reponses/{id:guid}"
+@model CseForms.Api.Pages.Admin.Submissions.DetailModel
+@{
+    var detail = Model.Detail;
+    ViewData["Title"] = $"Dossier {detail.CaseNumber}";
+}
+
+<p><a href="/admin/formulaires/@detail.FormId/reponses">@detail.FormTitle</a></p>
+<h1>Dossier @detail.CaseNumber</h1>
+
+<dl class="card meta">
+    <div><dt>Reçu le</dt><dd>@Display.DateTime(detail.CreatedAt)</dd></div>
+    <div><dt>Statut</dt><dd>@SubmissionStatuses.Label(detail.Status)</dd></div>
+    <div><dt>Version du formulaire</dt><dd>@detail.VersionNumber</dd></div>
+    @if (detail.PurgeAt is { } purgeAt)
+    {
+        <div><dt>Suppression prévue le</dt><dd>@Display.Date(purgeAt)</dd></div>
+    }
+</dl>
+
+@foreach (var part in detail.Sections)
+{
+    <section class="card">
+        @if (part.Title is not null)
+        {
+            <h2>@part.Title</h2>
+        }
+        @foreach (var item in part.Items)
+        {
+            if (item is PresentedValue value)
+            {
+                <dl class="values"><div><dt>@value.Label</dt><dd>@value.Value</dd></div></dl>
+            }
+            else if (item is PresentedTable table)
+            {
+                <h3>@table.Label</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>@foreach (var header in table.Headers) { <th scope="col">@header</th> }</tr></thead>
+                        <tbody>
+                            @foreach (var row in table.Rows)
+                            {
+                                <tr>@foreach (var cell in row) { <td>@cell</td> }</tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    </section>
+}

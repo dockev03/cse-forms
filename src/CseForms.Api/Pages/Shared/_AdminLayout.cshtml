@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex">
+    <title>@ViewData["Title"] - Back-office CSE</title>
+    <link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/admin">Back-office CSE</a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <nav class="account" aria-label="Compte">
+                <span class="user">@User.Identity.Name</span>
+                <form method="post" asp-page="/Admin/Logout">
+                    <button type="submit" class="link">Se déconnecter</button>
+                </form>
+            </nav>
+        }
+    </header>
+    <main class="page">
+        @RenderBody()
+    </main>
+</body>
+</html>

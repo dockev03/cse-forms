@@ -1,0 +1,87 @@
+@page "/admin/formulaires/{formId:guid}/reponses"
+@model CseForms.Api.Pages.Admin.Forms.SubmissionsModel
+@{
+    ViewData["Title"] = $"Réponses : {Model.Form.Title}";
+}
+
+<p><a href="/admin">Formulaires</a></p>
+<h1>@Model.Form.Title</h1>
+
+<form method="get" class="card filters" aria-label="Filtrer les réponses">
+    <div class="field">
+        <label for="q">Numéro de dossier</label>
+        <input id="q" name="q" value="@Model.Q" maxlength="32" autocomplete="off">
+    </div>
+    <div class="field">
+        <label for="statut">Statut</label>
+        <select id="statut" name="statut">
+            <option value="">Tous</option>
+            @foreach (var status in Model.Result.Statuses)
+            {
+                <option value="@status" selected="@(status == Model.Statut)">@SubmissionStatuses.Label(status)</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label for="site">Site</label>
+        <input id="site" name="site" value="@Model.Site" maxlength="120">
+    </div>
+    <div class="field">
+        <label for="du">Reçues du</label>
+        <input id="du" name="du" type="date" value="@Model.Du?.ToString("yyyy-MM-dd")">
+    </div>
+    <div class="field">
+        <label for="au">au</label>
+        <input id="au" name="au" type="date" value="@Model.Au?.ToString("yyyy-MM-dd")">
+    </div>
+    <div class="field">
+        <label for="tri">Tri</label>
+        <select id="tri" name="tri">
+            <option value="recent" selected="@(!Model.OldestFirst)">Plus récentes d'abord</option>
+            <option value="ancien" selected="@Model.OldestFirst">Plus anciennes d'abord</option>
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="primary">Filtrer</button>
+        <a href="/admin/formulaires/@Model.Form.Id/reponses">Réinitialiser</a>
+    </div>
+</form>
+
+<p role="status">@Model.Result.TotalCount réponse(s)</p>
+
+@if (Model.Result.Items.Count > 0)
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th scope="col">Dossier</th><th scope="col">Reçue le</th><th scope="col">Site</th><th scope="col">Statut</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Result.Items)
+                {
+                    <tr>
+                        <td><a href="/admin/reponses/@item.Id">@item.CaseNumber</a></td>
+                        <td>@Display.DateTime(item.CreatedAt)</td>
+                        <td>@item.Site</td>
+                        <td>@SubmissionStatuses.Label(item.Status)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Result.PageCount > 1)
+    {
+        <nav class="pagination" aria-label="Pages">
+            @if (Model.Result.Page > 1)
+            {
+                <a href="@Model.PageUrl(Model.Result.Page - 1)">Page précédente</a>
+            }
+            <span>Page @Model.Result.Page sur @Model.Result.PageCount</span>
+            @if (Model.Result.Page < Model.Result.PageCount)
+            {
+                <a href="@Model.PageUrl(Model.Result.Page + 1)">Page suivante</a>
+            }
+        </nav>
+    }
+}

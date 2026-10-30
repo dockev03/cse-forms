@@ -11,25 +11,39 @@ internal static class RateLimitingSetup
 {
     public const string PublicReadPolicy = "public-read";
     public const string PublicSubmitPolicy = "public-submit";
+    public const string LoginPolicy = "login";
 
     public static IServiceCollection AddPublicRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         // Valeurs par défaut prévues pour un site dont les salariés partagent la même IP de sortie.
         var read = Read(configuration, "RateLimiting:PublicRead", permitLimit: 120, windowSeconds: 60);
         var submit = Read(configuration, "RateLimiting:PublicSubmit", permitLimit: 30, windowSeconds: 600);
+        var login = Read(configuration, "RateLimiting:Login", permitLimit: 20, windowSeconds: 600);
 
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
-                await ApiErrors
-                    .Error(StatusCodes.Status429TooManyRequests, "tooManyRequests", "Trop de tentatives. Réessayez dans quelques minutes.")
-                    .ExecuteAsync(context.HttpContext);
+                const string message = "Trop de tentatives. Réessayez dans quelques minutes.";
+                if (context.HttpContext.Request.Path.StartsWithSegments("/api"))
+                {
+                    await ApiErrors.Error(StatusCodes.Status429TooManyRequests, "tooManyRequests", message).ExecuteAsync(context.HttpContext);
+                }
+                else
+                {
+                    await Results.Text(message, "text/plain; charset=utf-8", statusCode: StatusCodes.Status429TooManyRequests)
+                        .ExecuteAsync(context.HttpContext);
+                }
             };
 
             options.AddPolicy(PublicReadPolicy, context => Partition(context, read));
             options.AddPolicy(PublicSubmitPolicy, context => Partition(context, submit));
+
+            // Connexion : seules les tentatives (POST) sont comptées ; le verrouillage de compte complète.
+            options.AddPolicy(LoginPolicy, context => HttpMethods.IsPost(context.Request.Method)
+                ? Partition(context, login)
+                : RateLimitPartition.GetNoLimiter("login-page"));
         });
 
         return services;

@@ -16,6 +16,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", Database.ConnectionString);
         builder.UseSetting("RateLimiting:PublicSubmit:PermitLimit", SubmitPermitLimit.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("RateLimiting:PublicRead:PermitLimit", "1000");
+        builder.UseSetting("RateLimiting:Login:PermitLimit", "1000");
     }
 
     public Task InitializeAsync() => Database.InitializeAsync();

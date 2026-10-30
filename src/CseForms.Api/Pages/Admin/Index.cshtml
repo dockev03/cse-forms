@@ -1,0 +1,33 @@
+@page "/admin"
+@model CseForms.Api.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "Formulaires";
+}
+
+<h1>Formulaires</h1>
+
+@if (Model.Forms.Count == 0)
+{
+    <p class="card">Aucun formulaire ne vous est attribué. Contactez un administrateur du CSE.</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th scope="col">Formulaire</th><th scope="col">Adresse publique</th><th scope="col">État</th><th scope="col" class="num">Réponses</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var form in Model.Forms)
+                {
+                    <tr>
+                        <td><a href="/admin/formulaires/@form.Id/reponses">@form.Title</a></td>
+                        <td>/f/@form.Slug</td>
+                        <td>@IndexModel.StatusLabel(form.Status)</td>
+                        <td class="num">@form.ResponseCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

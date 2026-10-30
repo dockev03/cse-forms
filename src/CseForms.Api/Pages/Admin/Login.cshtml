@@ -1,0 +1,27 @@
+@page "/admin/connexion"
+@model CseForms.Api.Pages.Admin.LoginModel
+@{
+    ViewData["Title"] = "Connexion";
+}
+
+<h1>Connexion</h1>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="summary" role="alert">
+        <p>@Model.ErrorMessage</p>
+    </div>
+}
+
+<form method="post" class="card narrow">
+    <input type="hidden" asp-for="ReturnUrl">
+    <div class="field">
+        <label asp-for="Email">Adresse email</label>
+        <input asp-for="Email" type="email" autocomplete="username" required>
+    </div>
+    <div class="field">
+        <label asp-for="Password">Mot de passe</label>
+        <input asp-for="Password" type="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="primary">Se connecter</button>
+</form>

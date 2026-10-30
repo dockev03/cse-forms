@@ -313,16 +313,19 @@ La réponse est enregistrée d'abord ; le PDF et les emails partent en tâche de
 
 | Table | Champs principaux | Rôle |
 | --- | --- | --- |
-| `form` | id, slug, titre, statut, version_courante, ouverture, fermeture, code_acces_hash, max_reponses, conservation_jours | Formulaire |
+| `form` | id, slug, titre, statut, version_courante, ouverture, fermeture, code_acces_hash, max_reponses, conservation_jours, prefixe_dossier | Formulaire |
 | `form_version` | id, form_id, numero, schema_json, ui_json, pdf_template_html, created_at, created_by | Définition figée à chaque publication |
 | `notification_rule` | id, form_id, destinataires, champ_email_accuse, objet, corps, lien_reponse | Envois par formulaire |
 | `submission` | id, numero_dossier, form_version_id, data_jsonb, statut, created_at, purge_at | Réponse |
 | `submission_file` | id, submission_id, type (pdf, upload), chemin, sha256 | PDF généré et pièces |
 | `job` | id, submission_id, type, tentatives, erreur, statut | Suivi PDF et emails |
 | `app_user`, `role`, `user_form_access` | comptes, rôles, droits par formulaire | Back-office |
+| `case_number_counter` | prefixe, annee, dernier_rang | Numérotation des dossiers (`PRÉFIXE-AAAA-NNNN`), atomique, jamais réutilisée même après purge |
 | `audit_log` | id, user_id, action, cible, horodatage | Traçabilité |
 | `site` | id, libelle, actif | Liste réutilisable |
 | `setting` | cle, valeur | Paramètres (bureau, SMTP, identité visuelle) |
+
+Le compteur de dossiers est tenu par préfixe et par année civile (fuseau Europe/Paris), et non par formulaire : deux formulaires partageant un préfixe ne produisent jamais le même numéro.
 
 Une réponse pointe toujours vers la version du formulaire remplie : modifier un formulaire publié crée une nouvelle version et ne casse ni les anciennes réponses ni leur PDF.
 

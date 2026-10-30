@@ -1,4 +1,6 @@
+using CseForms.Application.BackOffice;
 using CseForms.Application.Common;
+using CseForms.Infrastructure.BackOffice;
 using CseForms.Application.PublicForms;
 using CseForms.Infrastructure.Persistence;
 using CseForms.Infrastructure.PublicForms;
@@ -26,6 +28,8 @@ public static class DependencyInjection
         services.AddDbContext<CseFormsDbContext>(options => ConfigureDbContext(options, connectionString));
         services.AddScoped<IPublicFormStore, PublicFormStore>();
         services.AddSingleton<IAccessCodeHasher, AccessCodeHasher>();
+        services.AddScoped<IBackOfficeStore, BackOfficeStore>();
+        services.AddScoped<IAuditLog, AuditLog>();
 
         return services;
     }
