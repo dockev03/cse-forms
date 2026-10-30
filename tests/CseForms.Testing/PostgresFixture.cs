@@ -1,8 +1,10 @@
+using CseForms.Infrastructure;
 using CseForms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Xunit;
 
-namespace CseForms.Infrastructure.Tests;
+namespace CseForms.Testing;
 
 /// <summary>
 /// Crée une base PostgreSQL jetable, applique les migrations, puis la supprime.

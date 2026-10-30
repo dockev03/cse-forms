@@ -8,6 +8,7 @@ public sealed partial class Form
 {
     public const int SlugMaxLength = 64;
     public const int TitleMaxLength = 200;
+    public const string DefaultCaseNumberPrefix = "DOS";
 
     private readonly List<FormVersion> _versions = [];
 
@@ -15,6 +16,7 @@ public sealed partial class Form
     {
         Slug = null!;
         Title = null!;
+        CaseNumberPrefix = null!;
     }
 
     public Form(string slug, string title, DateTimeOffset createdAt)
@@ -23,6 +25,7 @@ public sealed partial class Form
         Slug = NormalizeSlug(slug);
         Title = NormalizeTitle(title);
         Status = FormStatus.Draft;
+        CaseNumberPrefix = DefaultCaseNumberPrefix;
         CreatedAt = Utc.Require(createdAt, nameof(createdAt));
     }
 
@@ -47,6 +50,9 @@ public sealed partial class Form
     public int? MaxResponses { get; private set; }
 
     public int? RetentionDays { get; private set; }
+
+    /// <summary>Préfixe des numéros de dossier, par exemple <c>INS</c> pour <c>INS-2026-0042</c>.</summary>
+    public string CaseNumberPrefix { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -96,6 +102,8 @@ public sealed partial class Form
 
         RetentionDays = retentionDays;
     }
+
+    public void SetCaseNumberPrefix(string prefix) => CaseNumberPrefix = CaseNumber.NormalizePrefix(prefix);
 
     /// <summary>Le hachage est fait par l'appelant (couche Infrastructure) ; null supprime le code.</summary>
     public void SetAccessCodeHash(string? accessCodeHash) =>
@@ -152,13 +160,25 @@ public sealed partial class Form
     /// Crée une réponse rattachée à la version publiée courante. Les données doivent
     /// déjà avoir été validées et normalisées par le moteur de formulaire.
     /// </summary>
-    public Submission CreateSubmission(string caseNumber, string dataJson, DateTimeOffset now, int responseCount)
+    public Submission CreateSubmission(string caseNumber, string dataJson, DateTimeOffset now, int responseCount) =>
+        CreateSubmission(CurrentVersionId ?? Guid.Empty, caseNumber, dataJson, now, responseCount);
+
+    /// <summary>
+    /// Variante qui exige que la version remplie par le répondant soit toujours la version courante :
+    /// une réponse n'est jamais rattachée à une version qu'il n'a pas vue.
+    /// </summary>
+    public Submission CreateSubmission(Guid filledVersionId, string caseNumber, string dataJson, DateTimeOffset now, int responseCount)
     {
         Utc.Require(now, nameof(now));
 
         if (!IsAcceptingResponses(now, responseCount))
         {
             throw new DomainException("Le formulaire n'accepte pas de réponse.");
+        }
+
+        if (filledVersionId != CurrentVersionId)
+        {
+            throw new DomainException("La version remplie n'est plus la version publiée.");
         }
 
         var purgeAt = RetentionDays is { } days ? now.AddDays(days) : (DateTimeOffset?)null;

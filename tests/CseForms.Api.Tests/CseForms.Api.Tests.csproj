@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CseForms.Api\CseForms.Api.csproj" />
+    <ProjectReference Include="..\CseForms.Testing\CseForms.Testing.csproj" />
+    <ProjectReference Include="..\..\src\CseForms.Infrastructure\CseForms.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

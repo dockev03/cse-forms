@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CseForms.Infrastructure\CseForms.Infrastructure.csproj" />
+    <ProjectReference Include="..\CseForms.Testing\CseForms.Testing.csproj" />
   </ItemGroup>
 
 </Project>
