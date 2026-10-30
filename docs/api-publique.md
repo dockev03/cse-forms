@@ -1,5 +1,9 @@
 # API publique du formulaire
 
+La page du formulaire est servie à l'adresse `/f/{slug}` : une page unique pour tous les formulaires, qui charge la définition par l'API ci-dessous. Ses scripts et sa feuille de style sont servis depuis `/assets`. La CSP n'autorise que les ressources du même site, sans script ni style en ligne.
+
+Un paramètre d'URL préremplit un champ déclaré `"prefill": "url"` si sa valeur figure dans la liste blanche du champ (options ou sites actifs) : `/f/inscription?site=Riom`.
+
 Accessible sans authentification. Toutes les erreurs ont la forme `{ "code": "...", "message": "..." }`, avec un code stable et un message en français, sans détail technique ni valeur saisie.
 
 ## Lire un formulaire
@@ -19,11 +23,12 @@ Accessible sans authentification. Toutes les erreurs ont la forme `{ "code": "..
   "accepting": true,
   "requiresAccessCode": true,
   "definition": { "sections": [] },
-  "ui": null
+  "ui": null,
+  "sites": ["Abrest", "Riom"]
 }
 ```
 
-`definition` et `ui` valent `null` quand le formulaire n'accepte pas de réponse (fermé, hors période d'ouverture, nombre maximal atteint). Le haché du code d'accès n'est jamais renvoyé.
+`sites` liste les libellés des sites actifs, pour les champs de type `site`. `definition`, `ui` et `sites` sont vides quand le formulaire n'accepte pas de réponse (fermé, hors période d'ouverture, nombre maximal atteint). Le haché du code d'accès n'est jamais renvoyé.
 
 ## Soumettre une réponse
 

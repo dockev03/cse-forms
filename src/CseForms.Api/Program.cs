@@ -12,6 +12,11 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddReverseProxySupport(builder.Configuration);
 builder.Services.AddPublicRateLimiting(builder.Configuration);
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.MaxDepth = 32);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CseFormsDbContext>("database", tags: ["ready"]);
@@ -19,6 +24,11 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 // Erreur inattendue : réponse générique, le détail ne part que dans les journaux.
 app.UseExceptionHandler(errorApp => errorApp.Run(context =>
@@ -38,6 +48,7 @@ app.UseStatusCodePages(context => context.HttpContext.Response.StatusCode == Sta
     : Task.CompletedTask);
 
 app.UseApiSecurityHeaders();
+app.UsePublicAssets();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseRequestSizeGuard();
@@ -49,6 +60,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => fa
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 app.MapPublicFormEndpoints();
+app.MapPublicPages(app.Environment);
 
 app.Run();
 

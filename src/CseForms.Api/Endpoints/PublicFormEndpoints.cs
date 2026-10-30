@@ -39,7 +39,8 @@ internal static class PublicFormEndpoints
             view.Accepting,
             view.RequiresAccessCode,
             ParseOrNull(view.DefinitionJson),
-            ParseOrNull(view.UiJson)));
+            ParseOrNull(view.UiJson),
+            view.Sites));
     }
 
     private static async Task<IResult> Submit(
@@ -88,7 +89,8 @@ internal static class PublicFormEndpoints
         bool Accepting,
         bool RequiresAccessCode,
         JsonElement? Definition,
-        JsonElement? Ui);
+        JsonElement? Ui,
+        IReadOnlyList<string> Sites);
 
     internal sealed record SubmitRequest(int Version, string? AccessCode, JsonElement Data);
 

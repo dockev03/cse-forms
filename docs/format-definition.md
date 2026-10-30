@@ -79,6 +79,17 @@ Valeurs de date : `AAAA-MM-JJ`, `today`, `today+6M`, `today-18Y`, `today+30D` (j
 
 Chaque erreur a un chemin (`dateFin`, `adresse.postalCode`, `enfants[0].naissance`), un code stable (`required`, `invalidType`, `tooShort`, `tooLong`, `invalidFormat`, `invalidEmail`, `invalidPhone`, `invalidDate`, `invalidPostalCode`, `invalidOption`, `duplicateOption`, `tooFewItems`, `tooManyItems`, `mustBeAccepted`, `rule.<op>`) et un message en français qui ne reprend jamais la valeur saisie.
 
+## Présentation (`ui_json`)
+
+Optionnel, stocké dans `form_version.ui_json`, sans effet sur la validation.
+
+| Propriété | Effet |
+| --- | --- |
+| `multiStep` | `true` : une section visible par étape, avec barre de progression ; « Suivant » vérifie la section courante |
+| `confirmationText` | Texte affiché sur la page de confirmation, sous le numéro de dossier |
+
+Côté client, un choix unique de 4 options ou moins s'affiche en boutons radio, au-delà en liste déroulante, sauf si `display` est précisé. Une section `collapsed` est repliée par défaut.
+
 ## Jeux de tests partagés
 
-`tests/fixtures/form-engine` contient des cas (définition, saisie, erreurs et données attendues) exécutés par le moteur serveur et, à l'étape 4, par le moteur client.
+`tests/fixtures/form-engine` contient des cas (définition, saisie, erreurs et données attendues) exécutés par le moteur serveur (`dotnet test`) et par le moteur client `wwwroot/assets/js/engine.mjs` (`node --test tests/js/*.test.mjs`). Toute évolution d'un moteur doit être reportée dans l'autre, avec un cas partagé.
