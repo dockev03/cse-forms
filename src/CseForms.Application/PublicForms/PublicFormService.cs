@@ -25,6 +25,7 @@ public sealed partial class PublicFormService(
 
         var (form, version, responseCount) = published;
         var accepting = form.IsAcceptingResponses(calendar.UtcNow, responseCount);
+        var sites = accepting ? await store.GetActiveSiteLabelsAsync(cancellationToken) : [];
 
         return new PublicFormView(
             form.Slug,
@@ -33,7 +34,8 @@ public sealed partial class PublicFormService(
             accepting,
             form.AccessCodeHash is not null,
             accepting ? version.SchemaJson : null,
-            accepting ? version.UiJson : null);
+            accepting ? version.UiJson : null,
+            sites.Order(StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("fr-FR"), ignoreCase: true)).ToArray());
     }
 
     public async Task<SubmitOutcome> SubmitAsync(string slug, SubmitCommand command, CancellationToken cancellationToken)
@@ -112,8 +114,8 @@ public sealed partial class PublicFormService(
 }
 
 /// <summary>
-/// Vue publique d'un formulaire. La définition n'est fournie que si le formulaire accepte des réponses ;
-/// le haché du code d'accès n'est jamais exposé.
+/// Vue publique d'un formulaire. La définition et les sites actifs (pour les champs <c>site</c>)
+/// ne sont fournis que si le formulaire accepte des réponses ; le haché du code d'accès n'est jamais exposé.
 /// </summary>
 public sealed record PublicFormView(
     string Slug,
@@ -122,7 +124,8 @@ public sealed record PublicFormView(
     bool Accepting,
     bool RequiresAccessCode,
     string? DefinitionJson,
-    string? UiJson);
+    string? UiJson,
+    IReadOnlyList<string> Sites);
 
 public sealed record SubmitCommand(int VersionNumber, string? AccessCode, JsonElement Data);
 

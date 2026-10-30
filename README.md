@@ -9,7 +9,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | `src/CseForms.Domain` | Entités et règles métier (formulaire, version, réponse, site, paramètre) |
 | `src/CseForms.Application` | Cas d'usage et moteur de formulaires : lecture de la définition JSON, validation et normalisation des réponses ([format](docs/format-definition.md)) |
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
-| `src/CseForms.Api` | API, formulaire public et back-office |
+| `src/CseForms.Api` | API, formulaire public (`/f/{slug}`, fichiers dans `wwwroot`) et back-office |
 | `src/CseForms.Worker` | Tâches de fond : PDF, emails, purge (à venir) |
 | `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
@@ -34,6 +34,12 @@ Points de santé : `/health/live` (processus) et `/health/ready` (base joignable
 ```bash
 set -a; . ./.env; set +a
 dotnet test
+```
+
+Tests du moteur client (Node 22 ou plus, sans dépendance npm) :
+
+```bash
+node --test tests/js/*.test.mjs
 ```
 
 Les tests d'intégration créent une base PostgreSQL jetable par classe de test à partir de `CSEFORMS_TEST_POSTGRES`, puis la suppriment. Uniquement des données fictives.

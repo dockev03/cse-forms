@@ -1,0 +1,152 @@
+/* Formulaire public : mobile d'abord, contrastes AA, focus toujours visible. Aucune ressource externe. */
+:root {
+  --primary: #1d4f91;
+  --primary-dark: #163d70;
+  --text: #1a1a1a;
+  --muted: #4a4a4a;
+  --border: #767676;
+  --error: #b00020;
+  --error-bg: #fdecee;
+  --success-bg: #e8f3ec;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --radius: 6px;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.page {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1 { font-size: 1.5rem; line-height: 1.25; margin: 0.5rem 0 1rem; }
+h2 { font-size: 1.2rem; margin: 0 0 0.75rem; }
+
+.status, .note { color: var(--muted); }
+
+.card, .section {
+  background: var(--card);
+  border: 1px solid #d0d4da;
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+details.section > summary {
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 600;
+  min-height: 44px;
+  display: list-item;
+}
+
+details.section[open] > summary { margin-bottom: 0.75rem; }
+
+.field { margin-bottom: 1.25rem; }
+.field:last-child { margin-bottom: 0; }
+
+label, legend { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.required-mark { color: var(--error); }
+
+.hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.35rem; }
+.info { white-space: pre-line; margin: 0 0 1rem; }
+
+input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="password"],
+select, textarea {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+textarea { min-height: 7rem; resize: vertical; }
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  font-weight: 400;
+  min-height: 44px;
+}
+
+.choice input { width: 1.25rem; height: 1.25rem; margin: 0.15rem 0 0; flex: none; accent-color: var(--primary); }
+
+.address-part { margin-top: 0.5rem; }
+.address-part label { font-weight: 400; }
+
+.repeat-row {
+  border: 1px solid #d0d4da;
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.repeat-row > legend { font-weight: 600; padding: 0 0.25rem; }
+
+button {
+  font: inherit;
+  min-height: 44px;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+button.primary { background: var(--primary); color: #fff; }
+button.primary:hover { background: var(--primary-dark); }
+button.link { border: 0; padding: 0.25rem 0; min-height: 0; text-decoration: underline; }
+button:disabled { opacity: 0.6; cursor: wait; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; margin-top: 1rem; }
+.actions .primary { margin-left: auto; }
+
+:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+
+.error-message { color: var(--error); font-weight: 600; margin: 0.25rem 0 0; }
+.has-error input, .has-error select, .has-error textarea { border-color: var(--error); border-width: 2px; }
+
+.summary {
+  background: var(--error-bg);
+  border: 2px solid var(--error);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary h2 { font-size: 1.05rem; color: var(--error); }
+.summary ul { margin: 0; padding-left: 1.2rem; }
+.summary a { color: var(--error); }
+
+.confirmation { background: var(--success-bg); border-color: #3c7a52; }
+.case-number { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.03em; }
+
+.progress { margin-bottom: 1rem; }
+.progress progress { width: 100%; height: 0.6rem; accent-color: var(--primary); }
+
+[hidden] { display: none !important; }
+
+@media (min-width: 40rem) {
+  .page { padding: 2rem 1rem; }
+  h1 { font-size: 1.85rem; }
+}
