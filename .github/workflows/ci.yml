@@ -1,4 +1,4 @@
-# Intégration continue : compilation, tests xUnit et JS, analyse Trivy.
+# Intégration continue : compilation, tests xUnit et JS, tests de bout en bout, analyse Trivy.
 # Aucun secret réel : PostgreSQL est un conteneur jetable propre au job.
 name: CI
 
@@ -106,3 +106,75 @@ jobs:
 
       - name: Lancer les tests du moteur
         run: node --test tests/js/*.test.mjs
+
+  e2e:
+    name: Bout en bout (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: cseforms_ci
+          # Mot de passe jetable : la base n'existe que le temps du job et n'écoute que sur le runner.
+          POSTGRES_PASSWORD: cseforms_ci
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cseforms_ci -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      CSEFORMS_E2E: "1"
+      CSEFORMS_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=postgres;Username=cseforms_ci;Password=cseforms_ci
+      CSEFORMS_TEST_GOTENBERG: http://127.0.0.1:3000
+      CSEFORMS_E2E_ARTIFACTS: ${{ github.workspace }}/TestResults/playwright
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Mêmes options que docker-compose.dev.yml : aucune ressource externe pendant la conversion.
+      - name: Démarrer Gotenberg
+        run: >-
+          docker run -d --name gotenberg -p 127.0.0.1:3000:3000
+          gotenberg/gotenberg:8.38.1
+          gotenberg '--chromium-deny-list=^(?!file:///tmp/).*' --api-timeout=60s
+
+      - name: Installer le SDK .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Compiler l'API, le Worker et les tests de bout en bout
+        run: dotnet build tests/CseForms.E2E.Tests --configuration Release
+
+      - name: Installer Chromium pour Playwright
+        run: pwsh tests/CseForms.E2E.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Attendre Gotenberg
+        run: curl --silent --show-error --fail --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:3000/health
+
+      - name: Lancer les tests de bout en bout
+        run: >-
+          dotnet test tests/CseForms.E2E.Tests --no-build --configuration Release
+          --logger "trx;LogFilePrefix=e2e"
+          --results-directory TestResults
+
+      # Données exclusivement fictives : traces, captures et journaux serveur des scénarios en échec.
+      - name: Conserver les traces des échecs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: traces-e2e
+          path: |
+            TestResults/playwright/
+            TestResults/*.trx
+          retention-days: 7
+          if-no-files-found: ignore
