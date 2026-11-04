@@ -14,6 +14,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | `src/CseForms.Worker` | Tâches de fond (Hangfire) : génération des PDF ; emails et purge à venir |
 | `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
+| `tests/CseForms.E2E.Tests` | Tests de bout en bout Playwright (navigateur réel) |
 
 ## Démarrage en local
 
@@ -83,12 +84,41 @@ node --test tests/js/*.test.mjs
 
 Les tests d'intégration créent une base PostgreSQL jetable par classe de test à partir de `CSEFORMS_TEST_POSTGRES`, puis la suppriment. Uniquement des données fictives.
 
+### Tests de bout en bout (Playwright)
+
+`tests/CseForms.E2E.Tests` pilote un vrai navigateur : formulaire public sur smartphone, back-office (connexion, droits, liste, fiche) et PDF de bout en bout. Ils sont ignorés par `dotnet test` tant que `CSEFORMS_E2E=1` n'est pas défini.
+
+L'environnement de test crée une base jetable, la remplit par la ligne de commande d'administration (sites, formulaire d'inscription, comptes fictifs aux mots de passe tirés au hasard), puis lance l'API en HTTPS avec un certificat auto-signé jetable et le Worker en processus séparés. Gotenberg doit tourner (`docker-compose.dev.yml`).
+
+```bash
+dotnet build tests/CseForms.E2E.Tests
+```
+
+```bash
+pwsh tests/CseForms.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
+```
+
+```bash
+set -a; . ./.env; set +a
+CSEFORMS_E2E=1 dotnet test tests/CseForms.E2E.Tests --no-build
+```
+
+| Variable | Rôle |
+| --- | --- |
+| `CSEFORMS_E2E` | `1` pour lancer les tests de bout en bout |
+| `CSEFORMS_TEST_GOTENBERG` | Adresse de Gotenberg (par défaut `http://127.0.0.1:3000`) |
+| `CSEFORMS_E2E_CHROMIUM` | Chemin d'un Chromium déjà installé, à la place de celui de Playwright (facultatif) |
+| `CSEFORMS_E2E_ARTIFACTS` | Dossier des traces d'échec (par défaut `TestResults/playwright`) |
+
+Un scénario en échec laisse une trace Playwright (à ouvrir avec `pwsh tests/CseForms.E2E.Tests/bin/Debug/net10.0/playwright.ps1 show-trace <fichier.zip>`), une capture et les journaux de l'API et du Worker.
+
 ## Intégration continue
 
 Chaque push sur GitHub lance `.github/workflows/ci.yml` ; le résultat s'affiche sur le commit et sur la PR qui le porte :
 
 - compilation et tests xUnit, avec un PostgreSQL jetable propre au job (aucun secret réel) ;
 - tests du moteur client sous Node 22 ;
+- tests de bout en bout Playwright (Chromium), avec PostgreSQL et Gotenberg jetables ; traces des échecs conservées 7 jours ;
 - analyse Trivy des dépendances NuGet (directes et transitives) et des secrets : la CI échoue sur une vulnérabilité `HIGH` ou `CRITICAL` corrigeable.
 
 Les actions sont épinglées sur un SHA de commit et le workflow n'a que le droit de lecture sur le dépôt.

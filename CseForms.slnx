@@ -10,6 +10,7 @@
     <Project Path="tests/CseForms.Api.Tests/CseForms.Api.Tests.csproj" />
     <Project Path="tests/CseForms.Application.Tests/CseForms.Application.Tests.csproj" />
     <Project Path="tests/CseForms.Domain.Tests/CseForms.Domain.Tests.csproj" />
+    <Project Path="tests/CseForms.E2E.Tests/CseForms.E2E.Tests.csproj" />
     <Project Path="tests/CseForms.Infrastructure.Tests/CseForms.Infrastructure.Tests.csproj" />
     <Project Path="tests/CseForms.Testing/CseForms.Testing.csproj" />
   </Folder>
