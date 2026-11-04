@@ -10,6 +10,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | `src/CseForms.Application` | Cas d'usage et moteur de formulaires : lecture de la définition JSON, validation et normalisation des réponses ([format](docs/format-definition.md)) |
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
 | `src/CseForms.Api` | API, formulaire public (`/f/{slug}`, fichiers dans `wwwroot`) et back-office |
+| `forms` | Fichiers de définition des formulaires, publiés avec `forms import` |
 | `src/CseForms.Worker` | Tâches de fond : PDF, emails, purge (à venir) |
 | `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
@@ -43,6 +44,26 @@ dotnet run --project src/CseForms.Api -- users list
 ```
 
 En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôles : `admin` (tous les formulaires), `editor` et `reader` (formulaires attribués uniquement).
+
+## Formulaires, sites et paramètres
+
+En attendant l'éditeur visuel (lot 5), un formulaire se publie depuis son fichier JSON ([format](docs/format-definition.md#fichier-de-formulaire)). Les chemins de fichier sont à donner en absolu.
+
+```bash
+for s in Abrest Aulnat Taverny Riom Brive Varennes Nizerolles Soyons; do
+  dotnet run --project src/CseForms.Api -- sites add --label "$s"
+done
+dotnet run --project src/CseForms.Api -- forms import --file "$PWD/forms/inscription.json"
+dotnet run --project src/CseForms.Api -- forms access-code --form inscription
+dotnet run --project src/CseForms.Api -- forms list
+dotnet run --project src/CseForms.Api -- settings set --key cse.name --value "CSE NSE"
+dotnet run --project src/CseForms.Api -- settings set --key cse.office < bureau.txt
+dotnet run --project src/CseForms.Api -- settings list
+```
+
+- `forms import` crée le formulaire ou publie une nouvelle version si la définition a changé ; les réponses déjà reçues restent rattachées à leur version. Le code d'accès est demandé au terminal au premier import d'un formulaire en mode `pin`, jamais passé en argument.
+- `sites disable --label <libellé>` retire un site des listes sans toucher aux réponses existantes ; `sites enable` le réactive.
+- `settings` n'accepte que les clés connues (`settings list` les affiche) : coordonnées et bureau du CSE, adresse publique du site. Aucun secret n'y est stocké.
 
 ## Tests
 

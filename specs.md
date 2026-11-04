@@ -103,7 +103,7 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
 - URL publique courte par formulaire (ex. `/f/inscription`).
 - Génération du QR code (PNG et SVG haute définition) et d'un flyer PDF à imprimer : titre, QR code, URL lisible, code d'accès, contact CSE.
 - Statuts : brouillon, publié, fermé ; dates d'ouverture et de fermeture ; nombre maximal de réponses.
-- Contrôle d'accès au choix : public, code d'accès (PIN), lien à usage unique (V2).
+- Contrôle d'accès au choix : public, code d'accès (PIN, 4 à 12 chiffres, stocké haché), lien à usage unique (V2). Un formulaire en mode code d'accès n'est jamais publié sans code.
 - Quotas par critère avec liste d'attente (V2).
 - Personnalisation : logo CSE, couleur principale, image de fond, texte de confirmation.
 - Intégration sur le site du CSE par iframe (V2).
@@ -212,16 +212,11 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
       ]
     }
   ],
-  "notifications": [
-    {
-      "to": ["<adresse boîte CSE>"],
-      "subject": "Nouvelle inscription n° {numero}, site {site}",
-      "includeLink": true
-    }
-  ],
   "receipt": { "emailField": "emailPerso", "includeData": false }
 }
 ```
+
+Les destinataires des notifications ne figurent pas dans la définition : ils sont réglés en base par formulaire (table `notification_rule`), pour changer une adresse sans publier de nouvelle version et ne jamais versionner d'adresse dans le dépôt.
 
 ## 5. RGPD, sécurité et points à faire valider
 

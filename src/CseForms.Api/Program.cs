@@ -26,10 +26,10 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Gestion des comptes en ligne de commande : `dotnet CseForms.Api.dll users ...`.
-if (UserCommands.IsCommand(args))
+// Administration en ligne de commande : `dotnet CseForms.Api.dll users|forms|sites|settings ...`.
+if (CliSupport.IsCommand(args))
 {
-    return await UserCommands.RunAsync(app.Services, args, Console.In, Console.Out, interactive: !Console.IsInputRedirected);
+    return await CliSupport.RunAsync(app.Services, args, Console.In, Console.Out, interactive: !Console.IsInputRedirected);
 }
 
 app.UseForwardedHeaders();

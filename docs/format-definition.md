@@ -90,6 +90,22 @@ Optionnel, stocké dans `form_version.ui_json`, sans effet sur la validation.
 
 Côté client, un choix unique de 4 options ou moins s'affiche en boutons radio, au-delà en liste déroulante, sauf si `display` est précisé. Une section `collapsed` est repliée par défaut.
 
+## Fichier de formulaire
+
+Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.json`](../forms/inscription.json)) avec `forms import` (voir le README). Le fichier réunit les réglages du formulaire, la présentation et la définition :
+
+| Propriété | Rôle | Versionnée |
+| --- | --- | --- |
+| `slug` | URL publique `/f/{slug}` (obligatoire) | non |
+| `title` | Titre affiché (obligatoire) | oui |
+| `caseNumberPrefix` | Préfixe des numéros de dossier, 2 à 6 lettres (`DOS` par défaut) | non |
+| `retentionDays` | Conservation des réponses en jours ; absente : non définie | non |
+| `access` | `{ "mode": "public" }` ou `{ "mode": "pin" }` (obligatoire) | non |
+| `ui` | Présentation, stockée dans `ui_json` | oui |
+| `sections`, `receipt` | Définition, stockée dans `schema_json` | oui |
+
+Toute autre propriété est refusée, y compris `notifications` : les destinataires se règlent en base. Réimporter un fichier dont la définition et la présentation n'ont pas changé ne crée pas de version ; sinon une nouvelle version est publiée, sans rouvrir un formulaire fermé. En mode `pin`, le formulaire n'est jamais publié sans code d'accès (4 à 12 chiffres, stocké haché) : il est demandé au premier import.
+
 ## Jeux de tests partagés
 
 `tests/fixtures/form-engine` contient des cas (définition, saisie, erreurs et données attendues) exécutés par le moteur serveur (`dotnet test`) et par le moteur client `wwwroot/assets/js/engine.mjs` (`node --test tests/js/*.test.mjs`). Toute évolution d'un moteur doit être reportée dans l'autre, avec un cas partagé.
