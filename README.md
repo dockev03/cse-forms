@@ -83,6 +83,16 @@ node --test tests/js/*.test.mjs
 
 Les tests d'intégration créent une base PostgreSQL jetable par classe de test à partir de `CSEFORMS_TEST_POSTGRES`, puis la suppriment. Uniquement des données fictives.
 
+## Intégration continue
+
+Chaque push sur GitHub lance `.github/workflows/ci.yml` ; le résultat s'affiche sur le commit et sur la PR qui le porte :
+
+- compilation et tests xUnit, avec un PostgreSQL jetable propre au job (aucun secret réel) ;
+- tests du moteur client sous Node 22 ;
+- analyse Trivy des dépendances NuGet (directes et transitives) et des secrets : la CI échoue sur une vulnérabilité `HIGH` ou `CRITICAL` corrigeable.
+
+Les actions sont épinglées sur un SHA de commit et le workflow n'a que le droit de lecture sur le dépôt.
+
 ## Nouvelle migration
 
 ```bash

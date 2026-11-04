@@ -18,7 +18,7 @@ La référence fonctionnelle est `specs.md`. En cas de doute ou de contradiction
 - Email : Mail API existante (MailKit)
 - QR code : QRCoder
 - Anti-robot : ALTCHA auto-hébergé + code d'accès + limitation de débit
-- Déploiement : Docker Compose derrière Traefik ; CI GitLab avec analyse Trivy
+- Déploiement : Docker Compose derrière Traefik ; CI GitHub Actions avec analyse Trivy
 
 ## Règles Git
 
