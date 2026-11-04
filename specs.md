@@ -241,7 +241,7 @@ Le formulaire collecte des données personnelles sur le salarié, son conjoint e
 - PDF stockés hors de la racine web, servis uniquement après authentification et contrôle des droits.
 - Protection CSRF sur le back-office, cookies `Secure`, `HttpOnly`, `SameSite=Strict`.
 - Hachage des mots de passe et du code d'accès (algorithme adapté, pas de stockage en clair).
-- Analyse des dépendances et des images Docker (Trivy) dans la CI.
+- Analyse des dépendances (Trivy) dans la CI GitHub Actions à chaque push ; analyse des images Docker à ajouter avec les Dockerfile.
 
 ### 5.3 Notifications et accès aux PDF
 
@@ -302,7 +302,7 @@ La réponse est enregistrée d'abord ; le PDF et les emails partent en tâche de
 | Email | Mail API existante (MailKit) | SMTP direct |
 | QR code | QRCoder (.NET) | |
 | Anti-robot | ALTCHA (auto-hébergé) + code d'accès | |
-| Déploiement | Docker Compose derrière Traefik, CI GitLab + Trivy | |
+| Déploiement | Docker Compose derrière Traefik, CI GitHub Actions + Trivy | |
 
 ### 6.3 Modèle de données
 

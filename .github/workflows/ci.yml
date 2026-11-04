@@ -1,0 +1,108 @@
+# Intégration continue : compilation, tests xUnit et JS, analyse Trivy.
+# Aucun secret réel : PostgreSQL est un conteneur jetable propre au job.
+name: CI
+
+# Chaque push lance la CI ; le résultat s'affiche aussi sur la PR qui porte le commit.
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  dotnet:
+    name: .NET (build, tests, Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: cseforms_ci
+          # Mot de passe jetable : la base n'existe que le temps du job et n'écoute que sur le runner.
+          POSTGRES_PASSWORD: cseforms_ci
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cseforms_ci -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      CSEFORMS_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=postgres;Username=cseforms_ci;Password=cseforms_ci
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer le SDK .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restaurer les dépendances
+        run: dotnet restore CseForms.slnx
+
+      - name: Compiler
+        run: dotnet build CseForms.slnx --no-restore --configuration Release
+
+      - name: Lancer les tests xUnit
+        run: >-
+          dotnet test CseForms.slnx --no-build --configuration Release
+          --logger "trx;LogFilePrefix=results"
+          --results-directory TestResults
+
+      - name: Conserver les résultats de tests
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: resultats-tests-dotnet
+          path: TestResults/*.trx
+          retention-days: 14
+          if-no-files-found: warn
+
+      # Trivy lit les fichiers *.deps.json produits par la compilation : dépendances NuGet directes et transitives.
+      - name: Analyser les dépendances et les secrets (Trivy)
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}:/src:ro"
+          aquasec/trivy:0.76.1 fs
+          --scanners vuln,secret
+          --severity HIGH,CRITICAL
+          --ignore-unfixed
+          --exit-code 1
+          --skip-dirs /src/.git
+          /src
+
+  js:
+    name: Moteur client (Node)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+
+      - name: Lancer les tests du moteur
+        run: node --test tests/js/*.test.mjs
