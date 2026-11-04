@@ -1,0 +1,110 @@
+{
+  "slug": "inscription",
+  "title": "Fiche d'inscription au CSE",
+  "caseNumberPrefix": "INS",
+  "access": { "mode": "pin" },
+  "ui": {
+    "multiStep": true,
+    "confirmationText": "Votre fiche a bien été transmise au CSE. Si vous avez indiqué votre email, un accusé de réception vous est envoyé. Toute modification d'état civil doit être communiquée au CSE."
+  },
+  "receipt": { "emailField": "emailPerso" },
+  "sections": [
+    {
+      "id": "etatCivil",
+      "title": "État civil",
+      "fields": [
+        { "id": "civilite", "type": "choice", "label": "Civilité", "required": true, "options": ["M.", "Mme"], "display": "radio" },
+        { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+        { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 }
+      ]
+    },
+    {
+      "id": "pro",
+      "title": "Informations professionnelles",
+      "fields": [
+        { "id": "contrat", "type": "choice", "label": "Type de contrat", "required": true, "options": ["CDI", "CDD", "Apprentissage", "Stage"], "display": "radio" },
+        {
+          "id": "dateEmbauche",
+          "type": "date",
+          "label": "Date d'embauche",
+          "required": true,
+          "rules": [{ "op": "notAfter", "value": "today+6M" }]
+        },
+        {
+          "id": "dateFin",
+          "type": "date",
+          "label": "Date de fin de contrat",
+          "required": true,
+          "visibleIf": { "field": "contrat", "op": "notEquals", "value": "CDI" },
+          "rules": [{ "op": "after", "field": "dateEmbauche" }]
+        },
+        { "id": "site", "type": "site", "label": "Lieu de travail", "required": true, "prefill": "url" }
+      ]
+    },
+    {
+      "id": "coordonnees",
+      "title": "Coordonnées",
+      "fields": [
+        { "id": "adresse", "type": "address", "label": "Adresse", "required": true },
+        {
+          "id": "emailPerso",
+          "type": "email",
+          "label": "Email personnel",
+          "help": "Il sert à votre inscription sur le site du CSE et à l'envoi de l'accusé de réception.",
+          "required": true
+        },
+        {
+          "id": "emailConfirmation",
+          "type": "email",
+          "label": "Confirmation de l'email personnel",
+          "required": true,
+          "persist": false,
+          "rules": [{ "op": "sameAs", "field": "emailPerso" }]
+        }
+      ]
+    },
+    {
+      "id": "conjoint",
+      "title": "Conjoint (facultatif)",
+      "collapsed": true,
+      "fields": [
+        { "id": "conjointNom", "type": "text", "label": "Nom du conjoint", "transform": "upper", "maxLength": 80 },
+        { "id": "conjointPrenom", "type": "text", "label": "Prénom du conjoint", "transform": "capitalize", "maxLength": 80 }
+      ]
+    },
+    {
+      "id": "enfants",
+      "title": "Enfants (facultatif)",
+      "fields": [
+        {
+          "id": "enfants",
+          "type": "repeat",
+          "label": "Enfant",
+          "min": 0,
+          "max": 10,
+          "addLabel": "Ajouter un enfant",
+          "fields": [
+            { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+            { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 },
+            { "id": "naissance", "type": "date", "label": "Date de naissance", "required": true, "rules": [{ "op": "past" }] },
+            { "id": "sexe", "type": "choice", "label": "Sexe", "options": ["F", "M"], "display": "radio" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "validation",
+      "title": "Validation",
+      "fields": [
+        {
+          "id": "rgpdNotice",
+          "type": "info",
+          "label": "Information sur vos données personnelles",
+          "text": "Le CSE NSE, responsable du traitement, utilise ces informations pour gérer votre accès aux activités sociales et culturelles. Elles ne sont consultées que par les membres du CSE habilités et ne sont transmises ni à l'employeur ni à des tiers. La fiche est conservée le temps de sa saisie dans le logiciel du CSE, puis supprimée selon la durée fixée par le CSE. Vous pouvez accéder à vos données, les faire rectifier ou effacer en contactant le CSE, et saisir la CNIL si besoin."
+        },
+        { "id": "rgpdLu", "type": "consent", "label": "J'ai lu l'information sur mes données personnelles", "required": true },
+        { "id": "attestation", "type": "consent", "label": "J'atteste l'exactitude des informations", "required": true }
+      ]
+    }
+  ]
+}

@@ -22,13 +22,11 @@ internal static class UserCommands
         Le mot de passe (12 caractères minimum) est demandé au terminal, ou lu sur l'entrée standard.
         """;
 
-    public static bool IsCommand(string[] args) => args.Length > 0 && args[0] == "users";
-
     public static async Task<int> RunAsync(IServiceProvider services, string[] args, TextReader input, TextWriter output, bool interactive)
     {
         await using var scope = services.CreateAsyncScope();
         var provider = scope.ServiceProvider;
-        var options = ParseOptions(args.Skip(2));
+        var options = CliSupport.ParseOptions(args.Skip(2));
 
         try
         {
@@ -38,12 +36,12 @@ internal static class UserCommands
                 "grant" => await GrantAsync(provider, options, output, grant: true),
                 "revoke" => await GrantAsync(provider, options, output, grant: false),
                 "list" => await ListAsync(provider, output),
-                _ => Fail(output, Usage),
+                _ => CliSupport.Fail(output, Usage),
             };
         }
         catch (KeyNotFoundException ex)
         {
-            return Fail(output, ex.Message);
+            return CliSupport.Fail(output, ex.Message);
         }
     }
 
@@ -54,18 +52,18 @@ internal static class UserCommands
         TextWriter output,
         bool interactive)
     {
-        var email = Required(options, "email");
-        var name = Required(options, "name");
-        var role = Required(options, "role");
+        var email = CliSupport.Required(options, Usage, "email");
+        var name = CliSupport.Required(options, Usage, "name");
+        var role = CliSupport.Required(options, Usage, "role");
         if (!AppRoles.All.Contains(role))
         {
-            return Fail(output, "Rôle inconnu : admin, editor ou reader.");
+            return CliSupport.Fail(output, "Rôle inconnu : admin, editor ou reader.");
         }
 
-        var password = ReadPassword(input, output, interactive);
+        var password = CliSupport.ReadSecret(input, output, interactive, "Mot de passe : ");
         if (password is null)
         {
-            return Fail(output, "Les deux saisies du mot de passe diffèrent.");
+            return CliSupport.Fail(output, "Les deux saisies du mot de passe diffèrent.");
         }
 
         var roles = provider.GetRequiredService<RoleManager<AppRole>>();
@@ -90,7 +88,7 @@ internal static class UserCommands
         var created = await users.CreateAsync(user, password);
         if (!created.Succeeded)
         {
-            return Fail(output, string.Join(Environment.NewLine, created.Errors.Select(e => e.Description)));
+            return CliSupport.Fail(output, string.Join(Environment.NewLine, created.Errors.Select(e => e.Description)));
         }
 
         await users.AddToRoleAsync(user, role);
@@ -101,8 +99,8 @@ internal static class UserCommands
     private static async Task<int> GrantAsync(IServiceProvider provider, Dictionary<string, string> options, TextWriter output, bool grant)
     {
         var db = provider.GetRequiredService<CseFormsDbContext>();
-        var email = Required(options, "email").Trim();
-        var slug = Required(options, "form").Trim().ToLowerInvariant();
+        var email = CliSupport.Required(options, Usage, "email").Trim();
+        var slug = CliSupport.Required(options, Usage, "form").Trim().ToLowerInvariant();
 
         var user = await provider.GetRequiredService<UserManager<AppUser>>().FindByEmailAsync(email)
             ?? throw new KeyNotFoundException("Compte introuvable.");
@@ -143,75 +141,5 @@ internal static class UserCommands
         }
 
         return 0;
-    }
-
-    private static string? ReadPassword(TextReader input, TextWriter output, bool interactive)
-    {
-        if (!interactive)
-        {
-            return input.ReadLine() ?? string.Empty;
-        }
-
-        var first = ReadHidden(output, "Mot de passe : ");
-        var second = ReadHidden(output, "Confirmation : ");
-        return first == second ? first : null;
-    }
-
-    private static string ReadHidden(TextWriter output, string prompt)
-    {
-        output.Write(prompt);
-        var buffer = new System.Text.StringBuilder();
-        while (true)
-        {
-            var key = Console.ReadKey(intercept: true);
-            if (key.Key == ConsoleKey.Enter)
-            {
-                output.WriteLine();
-                return buffer.ToString();
-            }
-
-            if (key.Key == ConsoleKey.Backspace)
-            {
-                if (buffer.Length > 0)
-                {
-                    buffer.Length--;
-                }
-            }
-            else if (!char.IsControl(key.KeyChar))
-            {
-                buffer.Append(key.KeyChar);
-            }
-        }
-    }
-
-    private static Dictionary<string, string> ParseOptions(IEnumerable<string> args)
-    {
-        var options = new Dictionary<string, string>(StringComparer.Ordinal);
-        string? pending = null;
-        foreach (var arg in args)
-        {
-            if (arg.StartsWith("--", StringComparison.Ordinal))
-            {
-                pending = arg[2..];
-            }
-            else if (pending is not null)
-            {
-                options[pending] = arg;
-                pending = null;
-            }
-        }
-
-        return options;
-    }
-
-    private static string Required(Dictionary<string, string> options, string name) =>
-        options.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value)
-            ? value
-            : throw new KeyNotFoundException($"Option --{name} manquante.{Environment.NewLine}{Usage}");
-
-    private static int Fail(TextWriter output, string message)
-    {
-        output.WriteLine(message);
-        return 1;
     }
 }
