@@ -29,7 +29,13 @@ public sealed partial class SubmissionPdfService(
             var source = await store.GetSourceAsync(job.SubmissionId, cancellationToken)
                 ?? throw new InvalidOperationException("Réponse introuvable.");
 
-            var pdf = await converter.ConvertAsync(SubmissionPdfRenderer.Render(source), cancellationToken);
+            var html = SubmissionPdfRenderer.Render(source, out var templateRejected);
+            if (templateRejected)
+            {
+                LogTemplateRejected(source.VersionNumber, job.SubmissionId);
+            }
+
+            var pdf = await converter.ConvertAsync(html, cancellationToken);
             var fileId = Guid.CreateVersion7();
             written = await vault.WriteAsync(fileId, source.SubmissionId, pdf, cancellationToken);
 
@@ -85,6 +91,9 @@ public sealed partial class SubmissionPdfService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "PDF généré pour la réponse {SubmissionId} (tâche {JobId})")]
     private partial void LogSucceeded(Guid jobId, Guid submissionId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Modèle PDF de la version {VersionNumber} inapplicable : modèle générique utilisé pour la réponse {SubmissionId}")]
+    private partial void LogTemplateRejected(int versionNumber, Guid submissionId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Échec de la tâche {JobId} (réponse {SubmissionId}), essai {Attempt} : nouvel essai prévu")]
     private partial void LogRetry(Exception exception, Guid jobId, Guid submissionId, int attempt);

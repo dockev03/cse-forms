@@ -10,8 +10,9 @@ using System.Text.Unicode;
 namespace CseForms.Application.Pdf;
 
 /// <summary>
-/// Modèle PDF générique : en-tête du CSE, numéro de dossier, date de soumission, sections de la version
-/// remplie (libellé et valeur, groupes répétables en tableau) et composition du bureau.
+/// Mise en page du PDF. La version remplie peut fournir son propre modèle (<see cref="PdfTemplate"/>) ;
+/// sinon, ou s'il est invalide, le modèle générique s'applique : en-tête du CSE, numéro de dossier,
+/// date de soumission, sections (libellé et valeur, groupes répétables en tableau) et composition du bureau.
 /// Chaque texte est encodé : aucune valeur saisie n'est interprétée comme du HTML.
 /// </summary>
 public static class SubmissionPdfRenderer
@@ -22,7 +23,7 @@ public static class SubmissionPdfRenderer
     // Le document est autonome : ni script, ni ressource externe.
     private const string Head = """
         <meta charset="utf-8">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">
         """;
 
     private const string Style = """
@@ -31,6 +32,7 @@ public static class SubmissionPdfRenderer
           * { box-sizing: border-box; }
           body { margin: 0; font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.4; }
           header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #1f4e8c; padding-bottom: 10px; }
+          .cse-logo { max-height: 18mm; max-width: 45mm; display: block; margin-bottom: 4px; }
           .cse-name { font-size: 14pt; font-weight: bold; color: #1f4e8c; }
           .contact { text-align: right; font-size: 9pt; color: #444; white-space: pre-line; }
           h1 { font-size: 16pt; margin: 18px 0 8px; }
@@ -51,12 +53,27 @@ public static class SubmissionPdfRenderer
         </style>
         """;
 
-    public static PdfHtml Render(PdfSource source)
+    public static PdfHtml Render(PdfSource source) => Render(source, out _);
+
+    /// <param name="templateRejected">Vrai si la version a un modèle propre qui n'a pas pu être appliqué.</param>
+    public static PdfHtml Render(PdfSource source, out bool templateRejected)
     {
+        templateRejected = false;
         var parsed = FormDefinitionParser.Parse(source.SchemaJson);
-        var sections = parsed.IsValid
-            ? SubmissionPresenter.Present(parsed.Definition!, JsonData.ParseObject(source.DataJson))
-            : [];
+        var data = JsonData.ParseObject(source.DataJson);
+
+        if (source.PdfTemplateHtml is not null)
+        {
+            var template = parsed.IsValid ? PdfTemplate.Parse(source.PdfTemplateHtml, parsed.Definition!) : null;
+            if (template?.IsValid == true)
+            {
+                return RenderTemplate(source, template.Template!, parsed.Definition!, data);
+            }
+
+            templateRejected = true;
+        }
+
+        var sections = parsed.IsValid ? SubmissionPresenter.Present(parsed.Definition!, data) : [];
 
         var settings = source.Settings;
         string? Setting(string key) => settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
@@ -66,7 +83,8 @@ public static class SubmissionPdfRenderer
         html.Append("<!doctype html><html lang=\"fr\"><head>").Append(Head)
             .Append("<title>").Append(HtmlEncode(source.CaseNumber)).Append("</title>").Append(Style).Append("</head><body>");
 
-        html.Append("<header><div class=\"cse-name\">").Append(HtmlEncode(Setting(SettingKeys.CseName) ?? "CSE")).Append("</div>");
+        html.Append("<header><div>").Append(CseLogo.ToImageTag(Setting(SettingKeys.CseLogo)) ?? string.Empty)
+            .Append("<div class=\"cse-name\">").Append(HtmlEncode(Setting(SettingKeys.CseName) ?? "CSE")).Append("</div></div>");
         var contact = new[] { Setting(SettingKeys.CseAddress), Setting(SettingKeys.CseEmail), Setting(SettingKeys.CsePhone) }
             .Where(line => line is not null);
         html.Append("<div class=\"contact\">").Append(HtmlEncode(string.Join('\n', contact))).Append("</div></header>");
@@ -91,6 +109,17 @@ public static class SubmissionPdfRenderer
         }
 
         html.Append("</body></html>");
+
+        return new PdfHtml(html.ToString(), Footer(source.CaseNumber));
+    }
+
+    private static PdfHtml RenderTemplate(PdfSource source, PdfTemplate template, FormDefinition definition, System.Text.Json.Nodes.JsonObject data)
+    {
+        var html = new StringBuilder();
+        html.Append("<!doctype html><html lang=\"fr\"><head>").Append(Head)
+            .Append("<title>").Append(HtmlEncode(source.CaseNumber)).Append("</title></head><body>")
+            .Append(template.Render(source, definition, data))
+            .Append("</body></html>");
 
         return new PdfHtml(html.ToString(), Footer(source.CaseNumber));
     }

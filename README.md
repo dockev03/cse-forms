@@ -62,12 +62,14 @@ dotnet run --project src/CseForms.Api -- forms access-code --form inscription
 dotnet run --project src/CseForms.Api -- forms list
 dotnet run --project src/CseForms.Api -- settings set --key cse.name --value "CSE NSE"
 dotnet run --project src/CseForms.Api -- settings set --key cse.office < bureau.txt
+dotnet run --project src/CseForms.Api -- settings logo --file "$PWD/logo-cse.png"
 dotnet run --project src/CseForms.Api -- settings list
 ```
 
-- `forms import` crée le formulaire ou publie une nouvelle version si la définition a changé ; les réponses déjà reçues restent rattachées à leur version. Le code d'accès est demandé au terminal au premier import d'un formulaire en mode `pin`, jamais passé en argument.
+- `forms import` crée le formulaire ou publie une nouvelle version si la définition ou le modèle PDF a changé ; les réponses déjà reçues restent rattachées à leur version. Le modèle PDF (`pdfTemplate`, par exemple `forms/inscription.pdf.html`) est lu dans le même dossier que le fichier JSON et contrôlé à l'import ([syntaxe](docs/format-definition.md#modèle-pdf)). Le code d'accès est demandé au terminal au premier import d'un formulaire en mode `pin`, jamais passé en argument.
 - `sites disable --label <libellé>` retire un site des listes sans toucher aux réponses existantes ; `sites enable` le réactive.
-- `settings` n'accepte que les clés connues (`settings list` les affiche) : coordonnées et bureau du CSE, adresse publique du site. Aucun secret n'y est stocké.
+- `settings` n'accepte que les clés connues (`settings list` les affiche) : coordonnées, bureau et logo du CSE, adresse publique du site. Aucun secret n'y est stocké.
+- `settings logo` n'accepte qu'une image PNG ou JPEG de 256 Ko au plus (pas de SVG, qui peut contenir du script) ; elle est stockée en base et intégrée aux documents, sans lien externe.
 
 ## Tests
 

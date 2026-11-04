@@ -1,17 +1,20 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using CseForms.Application.FormDefinitions;
+using CseForms.Application.Pdf;
 
 namespace CseForms.Application.FormAdministration;
 
 /// <summary>
 /// Lit un fichier de formulaire (par exemple <c>forms/inscription.json</c>) : réglages du formulaire
 /// (slug, titre, préfixe, conservation, accès), présentation (<c>ui</c>) et définition (<c>sections</c>...).
-/// Les réglages du formulaire ne sont pas recopiés dans la définition versionnée.
+/// Les réglages du formulaire ne sont pas recopiés dans la définition versionnée. Le modèle PDF
+/// (<c>pdfTemplate</c>) est un fichier HTML voisin, versionné avec la définition et contrôlé contre elle.
 /// </summary>
-public static class FormPackageReader
+public static partial class FormPackageReader
 {
-    private static readonly HashSet<string> FormSettingKeys = ["slug", "caseNumberPrefix", "retentionDays", "access", "ui"];
+    private static readonly HashSet<string> FormSettingKeys = ["slug", "caseNumberPrefix", "retentionDays", "access", "ui", "pdfTemplate"];
 
     private static readonly HashSet<string> DefinitionKeys = ["title", "sections", "receipt"];
 
@@ -19,7 +22,10 @@ public static class FormPackageReader
 
     private static readonly JsonDocumentOptions DocumentOptions = new() { MaxDepth = 32 };
 
-    public static FormPackageResult Read(string json)
+    /// <param name="readCompanionFile">
+    /// Lit un fichier voisin du fichier de formulaire par son nom (sans chemin) ; null s'il n'existe pas.
+    /// </param>
+    public static FormPackageResult Read(string json, Func<string, string?>? readCompanionFile = null)
     {
         JsonObject? root;
         try
@@ -66,7 +72,10 @@ public static class FormPackageReader
         }
 
         var schemaJson = definition.ToJsonString();
-        errors.AddRange(FormDefinitionParser.Parse(schemaJson).Errors);
+        var parsed = FormDefinitionParser.Parse(schemaJson);
+        errors.AddRange(parsed.Errors);
+
+        var pdfTemplate = ReadPdfTemplate(root, readCompanionFile, parsed.Definition, errors);
 
         if (errors.Count > 0)
         {
@@ -74,8 +83,46 @@ public static class FormPackageReader
         }
 
         return new FormPackageResult(
-            new FormPackage(slug!, title!, prefix, retentionDays, accessMode!.Value, schemaJson, uiJson),
+            new FormPackage(slug!, title!, prefix, retentionDays, accessMode!.Value, schemaJson, uiJson, pdfTemplate),
             []);
+    }
+
+    private static string? ReadPdfTemplate(
+        JsonObject root,
+        Func<string, string?>? readCompanionFile,
+        FormDefinition? definition,
+        List<DefinitionError> errors)
+    {
+        const string TemplatePath = "$.pdfTemplate";
+        var node = root["pdfTemplate"];
+        if (node is null)
+        {
+            return null;
+        }
+
+        // Un simple nom de fichier : jamais de chemin, pour ne rien lire hors du dossier du formulaire.
+        if (node.GetValueKind() != JsonValueKind.String || !TemplateFileNamePattern().IsMatch(node.GetValue<string>()))
+        {
+            errors.Add(new DefinitionError(TemplatePath, "Nom de fichier HTML attendu, sans chemin : inscription.pdf.html."));
+            return null;
+        }
+
+        var content = readCompanionFile?.Invoke(node.GetValue<string>());
+        if (content is null)
+        {
+            errors.Add(new DefinitionError(TemplatePath, "Fichier du modèle PDF introuvable à côté du fichier de formulaire."));
+            return null;
+        }
+
+        if (definition is null)
+        {
+            // La définition est déjà signalée invalide : le modèle ne peut pas être contrôlé contre elle.
+            return null;
+        }
+
+        var template = PdfTemplate.Parse(content, definition);
+        errors.AddRange(template.Errors.Select(message => new DefinitionError(TemplatePath, message)));
+        return template.IsValid ? content : null;
     }
 
     private static string? ReadString(JsonObject root, string key, bool required, List<DefinitionError> errors)
@@ -175,6 +222,9 @@ public static class FormPackageReader
     }
 
     private static FormPackageResult Fail(string path, string message) => new(null, [new DefinitionError(path, message)]);
+
+    [GeneratedRegex(@"^[a-z0-9][a-z0-9_-]*(\.[a-z0-9_-]+)*\.html\z")]
+    private static partial Regex TemplateFileNamePattern();
 }
 
 public enum AccessMode
@@ -183,7 +233,10 @@ public enum AccessMode
     Pin,
 }
 
-/// <summary>Contenu d'un fichier de formulaire contrôlé. <c>SchemaJson</c> est la définition qui sera versionnée.</summary>
+/// <summary>
+/// Contenu d'un fichier de formulaire contrôlé. <c>SchemaJson</c>, <c>UiJson</c> et <c>PdfTemplateHtml</c>
+/// sont figés dans la version publiée.
+/// </summary>
 public sealed record FormPackage(
     string Slug,
     string Title,
@@ -191,7 +244,8 @@ public sealed record FormPackage(
     int? RetentionDays,
     AccessMode AccessMode,
     string SchemaJson,
-    string? UiJson);
+    string? UiJson,
+    string? PdfTemplateHtml = null);
 
 public sealed record FormPackageResult(FormPackage? Package, IReadOnlyList<DefinitionError> Errors)
 {

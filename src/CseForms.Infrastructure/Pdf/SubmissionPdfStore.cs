@@ -18,7 +18,7 @@ internal sealed class SubmissionPdfStore(CseFormsDbContext db) : ISubmissionPdfS
             join v in db.FormVersions on s.FormVersionId equals v.Id
             join f in db.Forms on v.FormId equals f.Id
             where s.Id == submissionId
-            select new { s.Id, f.Title, s.CaseNumber, v.Number, s.CreatedAt, v.SchemaJson, s.DataJson })
+            select new { s.Id, f.Title, s.CaseNumber, v.Number, s.CreatedAt, v.SchemaJson, s.DataJson, v.PdfTemplateHtml })
             .SingleOrDefaultAsync(cancellationToken);
 
         if (row is null)
@@ -27,7 +27,7 @@ internal sealed class SubmissionPdfStore(CseFormsDbContext db) : ISubmissionPdfS
         }
 
         var settings = await db.Settings.AsNoTracking().ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
-        return new PdfSource(row.Id, row.Title, row.CaseNumber, row.Number, row.CreatedAt, row.SchemaJson, row.DataJson, settings);
+        return new PdfSource(row.Id, row.Title, row.CaseNumber, row.Number, row.CreatedAt, row.SchemaJson, row.DataJson, settings, row.PdfTemplateHtml);
     }
 
     public async Task<IReadOnlyList<string>> ReplacePdfAsync(SubmissionFile file, CancellationToken cancellationToken)

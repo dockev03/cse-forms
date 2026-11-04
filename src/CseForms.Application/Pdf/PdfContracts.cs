@@ -44,7 +44,10 @@ public interface ISubmissionPdfStore
     void DiscardFileChanges();
 }
 
-/// <summary>Tout ce que le PDF affiche : la réponse, la version remplie et les paramètres du CSE.</summary>
+/// <summary>
+/// Tout ce que le PDF affiche : la réponse, la version remplie (définition et modèle PDF éventuel)
+/// et les paramètres du CSE.
+/// </summary>
 public sealed record PdfSource(
     Guid SubmissionId,
     string FormTitle,
@@ -53,4 +56,5 @@ public sealed record PdfSource(
     DateTimeOffset SubmittedAt,
     string SchemaJson,
     string DataJson,
-    IReadOnlyDictionary<string, string> Settings);
+    IReadOnlyDictionary<string, string> Settings,
+    string? PdfTemplateHtml = null);

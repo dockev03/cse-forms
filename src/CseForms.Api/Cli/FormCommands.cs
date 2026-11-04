@@ -54,7 +54,13 @@ internal static class FormCommands
             return CliSupport.Fail(output, "Fichier introuvable.");
         }
 
-        var read = FormPackageReader.Read(await File.ReadAllTextAsync(path));
+        // Le modèle PDF éventuel est lu dans le même dossier ; son nom ne peut pas contenir de chemin.
+        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        var read = FormPackageReader.Read(await File.ReadAllTextAsync(path), name =>
+        {
+            var companion = Path.Combine(directory, name);
+            return File.Exists(companion) ? File.ReadAllText(companion) : null;
+        });
         if (!read.IsValid)
         {
             await output.WriteLineAsync("Définition refusée :");

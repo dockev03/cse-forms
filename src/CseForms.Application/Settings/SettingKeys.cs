@@ -1,3 +1,5 @@
+using Logo = CseForms.Application.Settings.CseLogo;
+
 namespace CseForms.Application.Settings;
 
 /// <summary>
@@ -12,6 +14,7 @@ public static class SettingKeys
     public const string CseEmail = "cse.email";
     public const string CsePhone = "cse.phone";
     public const string CseOffice = "cse.office";
+    public const string CseLogo = "cse.logo";
     public const string PublicBaseUrl = "app.publicBaseUrl";
 
     public static readonly IReadOnlyDictionary<string, string> Descriptions = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -21,6 +24,7 @@ public static class SettingKeys
         [CseEmail] = "Email de contact du CSE, communiqué aux salariés",
         [CsePhone] = "Téléphone de contact du CSE",
         [CseOffice] = "Composition du bureau : une ligne par membre (fonction : prénom nom)",
+        [CseLogo] = "Logo du CSE (PDF, flyer) : se règle avec « settings logo --file <image> »",
         [PublicBaseUrl] = "Adresse publique du site, par exemple https://formulaires.example.test (QR code, liens)",
     };
 
@@ -37,6 +41,11 @@ public static class SettingKeys
                 || uri.AbsolutePath != "/"))
         {
             return "Adresse HTTPS attendue, sans chemin ni paramètre : https://formulaires.example.test";
+        }
+
+        if (key == CseLogo && !Logo.IsValid(value))
+        {
+            return $"Logo attendu : {Logo.Rule}.";
         }
 
         if (key == CseEmail && !System.Net.Mail.MailAddress.TryCreate(value, out _))
