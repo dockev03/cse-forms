@@ -108,3 +108,4 @@ dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 40rem) {
   .values div { grid-template-columns: 1fr; gap: 0; }
 }
+.error-text { color: var(--error); font-weight: 600; }

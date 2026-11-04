@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using CseForms.Application.BackOffice;
 using CseForms.Application.Common;
 using CseForms.Application.FormDefinitions;
+using CseForms.Application.Pdf;
 
 namespace CseForms.Application.Tests;
 
@@ -89,6 +90,45 @@ public class BackOfficeServiceTests
             Task.FromResult<SubmissionRecord?>(submissionId == SubmissionId
                 ? new SubmissionRecord(SubmissionId, FormId, "F", "TST-2026-0001", 1, """{"sections":[{"id":"s","fields":[{"id":"nom","type":"text","label":"Nom"}]}]}""", """{"nom":"DUPONT"}""", "new", DateTimeOffset.UnixEpoch, null)
                 : null);
+
+        public bool HasPdf { get; set; }
+
+        public bool PdfPending { get; set; }
+
+        public int PdfRequests { get; private set; }
+
+        public Task<PdfState> GetPdfStateAsync(Guid submissionId, CancellationToken cancellationToken) =>
+            Task.FromResult(new PdfState(HasPdf ? DateTimeOffset.UnixEpoch : null, PdfPending, Failed: false));
+
+        public Task<StoredPdf?> GetPdfFileAsync(Guid submissionId, CancellationToken cancellationToken) =>
+            Task.FromResult(HasPdf ? new StoredPdf(PdfFileId, "chemin") : null);
+
+        public Task<bool> RequestPdfAsync(Guid submissionId, DateTimeOffset now, CancellationToken cancellationToken)
+        {
+            if (PdfPending)
+            {
+                return Task.FromResult(false);
+            }
+
+            PdfRequests++;
+            PdfPending = true;
+            return Task.FromResult(true);
+        }
+    }
+
+    private static readonly Guid PdfFileId = Guid.NewGuid();
+
+    private static BackOfficeService Service(FakeStore store, FakeAudit audit) => new(store, audit, new FakeVault(), TimeProvider.System);
+
+    private sealed class FakeVault : IFileVault
+    {
+        public Task<StoredFile> WriteAsync(Guid fileId, Guid submissionId, byte[] content, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<byte[]> ReadAsync(string storagePath, Guid fileId, CancellationToken cancellationToken) =>
+            Task.FromResult(fileId == PdfFileId ? "%PDF-fictif"u8.ToArray() : throw new InvalidOperationException());
+
+        public void Delete(string storagePath) => throw new NotSupportedException();
     }
 
     private sealed class FakeAudit : IAuditLog
@@ -108,7 +148,7 @@ public class BackOfficeServiceTests
     public async Task Viewing_a_submission_is_audited()
     {
         var audit = new FakeAudit();
-        var detail = await new BackOfficeService(new FakeStore(canAccess: true), audit).GetSubmissionAsync(User, SubmissionId, default);
+        var detail = await Service(new FakeStore(canAccess: true), audit).GetSubmissionAsync(User, SubmissionId, default);
 
         Assert.NotNull(detail);
         Assert.Equal("DUPONT", Assert.IsType<PresentedValue>(detail.Sections[0].Items[0]).Value);
@@ -119,7 +159,7 @@ public class BackOfficeServiceTests
     public async Task Denied_access_looks_like_not_found_and_is_audited()
     {
         var audit = new FakeAudit();
-        var service = new BackOfficeService(new FakeStore(canAccess: false), audit);
+        var service = Service(new FakeStore(canAccess: false), audit);
 
         Assert.Null(await service.GetSubmissionAsync(User, SubmissionId, default));
         Assert.Null(await service.ListSubmissionsAsync(User, FormId, new SubmissionFilter(), default));
@@ -132,7 +172,7 @@ public class BackOfficeServiceTests
     {
         var audit = new FakeAudit();
 
-        Assert.Null(await new BackOfficeService(new FakeStore(canAccess: true), audit).GetSubmissionAsync(User, Guid.NewGuid(), default));
+        Assert.Null(await Service(new FakeStore(canAccess: true), audit).GetSubmissionAsync(User, Guid.NewGuid(), default));
         Assert.Empty(audit.Entries);
     }
 
@@ -142,7 +182,7 @@ public class BackOfficeServiceTests
         var store = new FakeStore(canAccess: true);
         var filter = new SubmissionFilter(" tst-2026 ", " new ", " Riom ", new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31), Page: 0);
 
-        await new BackOfficeService(store, new FakeAudit()).ListSubmissionsAsync(User, FormId, filter, default);
+        await Service(store, new FakeAudit()).ListSubmissionsAsync(User, FormId, filter, default);
 
         var query = store.LastQuery!;
         Assert.Equal("TST-2026", query.CaseNumberContains);
@@ -152,5 +192,43 @@ public class BackOfficeServiceTests
         Assert.Equal(new DateTimeOffset(2026, 6, 30, 22, 0, 0, TimeSpan.Zero), query.FromUtc);
         Assert.Equal(new DateTimeOffset(2026, 7, 31, 22, 0, 0, TimeSpan.Zero), query.ToUtcExclusive);
         Assert.Equal(1, query.Page);
+    }
+
+    [Fact]
+    public async Task Pdf_download_is_audited_and_named_after_the_case_number()
+    {
+        var audit = new FakeAudit();
+        var download = await Service(new FakeStore(canAccess: true) { HasPdf = true }, audit).DownloadPdfAsync(User, SubmissionId, default);
+
+        Assert.NotNull(download);
+        Assert.Equal("TST-2026-0001.pdf", download.FileName);
+        Assert.Equal((AuditActions.SubmissionDownloaded, (Guid?)User.Id, $"submission:{SubmissionId}"), Assert.Single(audit.Entries));
+    }
+
+    [Fact]
+    public async Task Pdf_download_without_right_or_file_returns_nothing()
+    {
+        var audit = new FakeAudit();
+
+        Assert.Null(await Service(new FakeStore(canAccess: false) { HasPdf = true }, audit).DownloadPdfAsync(User, SubmissionId, default));
+        Assert.Equal(AuditActions.AccessDenied, Assert.Single(audit.Entries).Action);
+
+        Assert.Null(await Service(new FakeStore(canAccess: true), new FakeAudit()).DownloadPdfAsync(User, SubmissionId, default));
+    }
+
+    [Fact]
+    public async Task Regeneration_is_refused_to_readers_and_not_duplicated()
+    {
+        var store = new FakeStore(canAccess: true);
+        var audit = new FakeAudit();
+        var service = Service(store, audit);
+
+        Assert.Equal(PdfRequestOutcome.Forbidden, await service.RegeneratePdfAsync(User with { IsReadOnly = true }, SubmissionId, default));
+        Assert.Equal(PdfRequestOutcome.Requested, await service.RegeneratePdfAsync(User, SubmissionId, default));
+        Assert.Equal(PdfRequestOutcome.AlreadyPending, await service.RegeneratePdfAsync(User, SubmissionId, default));
+        Assert.Equal(PdfRequestOutcome.NotFound, await service.RegeneratePdfAsync(User, Guid.NewGuid(), default));
+
+        Assert.Equal(1, store.PdfRequests);
+        Assert.Equal([AuditActions.AccessDenied, AuditActions.PdfRegenerationRequested], audit.Entries.Select(e => e.Action));
     }
 }

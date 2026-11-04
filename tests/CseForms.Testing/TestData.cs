@@ -17,6 +17,9 @@ public static class TestData
         ]}]}
         """;
 
+    /// <summary>Clé de chiffrement de test, jamais utilisée ailleurs.</summary>
+    public static readonly string StorageKey = Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i + 1)).ToArray());
+
     public static string HashAccessCode(string code) => new AccessCodeHasher().Hash(code);
 
     public static async Task<Form> AddPublishedFormAsync(

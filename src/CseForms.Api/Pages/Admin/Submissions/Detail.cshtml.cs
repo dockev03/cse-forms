@@ -10,6 +10,8 @@ public sealed class DetailModel(BackOfficeService service) : PageModel
 {
     public SubmissionDetail Detail { get; private set; } = null!;
 
+    public bool CanRegenerate => !User.ToCurrentUser().IsReadOnly;
+
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken cancellationToken)
     {
         var detail = await service.GetSubmissionAsync(User.ToCurrentUser(), id, cancellationToken);
@@ -21,4 +23,13 @@ public sealed class DetailModel(BackOfficeService service) : PageModel
         Detail = detail;
         return Page();
     }
+
+    /// <summary>Demande de régénération (jeton anti-CSRF vérifié), puis retour sur la fiche.</summary>
+    public async Task<IActionResult> OnPostRegenerateAsync(Guid id, CancellationToken cancellationToken) =>
+        await service.RegeneratePdfAsync(User.ToCurrentUser(), id, cancellationToken) switch
+        {
+            PdfRequestOutcome.NotFound => NotFound(),
+            PdfRequestOutcome.Forbidden => Forbid(),
+            _ => RedirectToPage(new { id }),
+        };
 }

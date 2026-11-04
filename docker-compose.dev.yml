@@ -1,4 +1,4 @@
-# Environnement de développement local uniquement : PostgreSQL.
+# Environnement de développement local uniquement : PostgreSQL et Gotenberg.
 # Usage : cp .env.example .env, renseigner les valeurs, puis
 #   docker compose -f docker-compose.dev.yml up -d
 services:
@@ -19,6 +19,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    # Pas de téléchargement de ressources externes pendant la conversion ; aucune donnée conservée.
+    command:
+      - gotenberg
+      - --chromium-deny-list=^(?!file:///tmp/).*
+      - --api-timeout=60s
+    ports:
+      - "127.0.0.1:${GOTENBERG_PORT:-3000}:3000"
 
 volumes:
   postgres-data:

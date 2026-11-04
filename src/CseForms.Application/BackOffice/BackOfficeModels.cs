@@ -19,10 +19,12 @@ public static class AuditActions
     public const string Logout = "logout";
     public const string SubmissionViewed = "submission.view";
     public const string AccessDenied = "access.denied";
+    public const string SubmissionDownloaded = "submission.download";
+    public const string PdfRegenerationRequested = "submission.pdf.regenerate";
 }
 
-/// <summary>Utilisateur connecté, tel que vu par les cas d'usage.</summary>
-public sealed record CurrentUser(Guid Id, bool IsAdmin);
+/// <summary>Utilisateur connecté, tel que vu par les cas d'usage. Un lecteur ne déclenche aucune action.</summary>
+public sealed record CurrentUser(Guid Id, bool IsAdmin, bool IsReadOnly = false);
 
 public sealed record FormSummary(Guid Id, string Slug, string Title, string Status, int ResponseCount);
 
@@ -78,7 +80,30 @@ public sealed record SubmissionDetail(
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? PurgeAt,
-    IReadOnlyList<PresentedSection> Sections);
+    IReadOnlyList<PresentedSection> Sections,
+    PdfState Pdf);
+
+/// <summary>
+/// État du PDF d'une réponse : date du PDF disponible, génération en cours (première ou régénération),
+/// échec définitif de la dernière génération.
+/// </summary>
+public sealed record PdfState(DateTimeOffset? GeneratedAt, bool Generating, bool Failed)
+{
+    public bool Available => GeneratedAt is not null;
+}
+
+/// <summary>PDF stocké, à déchiffrer pour le téléchargement.</summary>
+public sealed record StoredPdf(Guid FileId, string StoragePath);
+
+public sealed record PdfDownload(string FileName, byte[] Content);
+
+public enum PdfRequestOutcome
+{
+    Requested,
+    AlreadyPending,
+    NotFound,
+    Forbidden,
+}
 
 public sealed record PresentedSection(string? Title, IReadOnlyList<PresentedItem> Items);
 

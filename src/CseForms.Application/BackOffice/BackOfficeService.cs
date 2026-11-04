@@ -1,5 +1,6 @@
 using CseForms.Application.Common;
 using CseForms.Application.FormDefinitions;
+using CseForms.Application.Pdf;
 
 namespace CseForms.Application.BackOffice;
 
@@ -7,7 +8,7 @@ namespace CseForms.Application.BackOffice;
 /// Cas d'usage du back-office. Les droits sont vérifiés ici, à chaque appel, quel que soit l'écran :
 /// un compte sans droit sur le formulaire obtient la même réponse qu'une ressource inexistante.
 /// </summary>
-public sealed class BackOfficeService(IBackOfficeStore store, IAuditLog audit)
+public sealed class BackOfficeService(IBackOfficeStore store, IAuditLog audit, IFileVault vault, TimeProvider timeProvider)
 {
     public Task<IReadOnlyList<FormSummary>> ListFormsAsync(CurrentUser user, CancellationToken cancellationToken) =>
         store.ListFormsAsync(user, cancellationToken);
@@ -46,15 +47,9 @@ public sealed class BackOfficeService(IBackOfficeStore store, IAuditLog audit)
 
     public async Task<SubmissionDetail?> GetSubmissionAsync(CurrentUser user, Guid submissionId, CancellationToken cancellationToken)
     {
-        var record = await store.GetSubmissionAsync(submissionId, cancellationToken);
+        var record = await FindAccessibleAsync(user, submissionId, cancellationToken);
         if (record is null)
         {
-            return null;
-        }
-
-        if (!await store.CanAccessFormAsync(user, record.FormId, cancellationToken))
-        {
-            await audit.RecordAsync(AuditActions.AccessDenied, user.Id, $"submission:{submissionId}", cancellationToken);
             return null;
         }
 
@@ -74,7 +69,64 @@ public sealed class BackOfficeService(IBackOfficeStore store, IAuditLog audit)
             record.Status,
             record.CreatedAt,
             record.PurgeAt,
-            sections);
+            sections,
+            await store.GetPdfStateAsync(submissionId, cancellationToken));
+    }
+
+    /// <summary>PDF déchiffré, prêt à télécharger ; chaque téléchargement est journalisé.</summary>
+    public async Task<PdfDownload?> DownloadPdfAsync(CurrentUser user, Guid submissionId, CancellationToken cancellationToken)
+    {
+        var record = await FindAccessibleAsync(user, submissionId, cancellationToken);
+        if (record is null || await store.GetPdfFileAsync(submissionId, cancellationToken) is not { } file)
+        {
+            return null;
+        }
+
+        var content = await vault.ReadAsync(file.StoragePath, file.FileId, cancellationToken);
+        await audit.RecordAsync(AuditActions.SubmissionDownloaded, user.Id, $"submission:{submissionId}", cancellationToken);
+        return new PdfDownload($"{record.CaseNumber}.pdf", content);
+    }
+
+    /// <summary>Demande une nouvelle génération du PDF (éditeur ou administrateur).</summary>
+    public async Task<PdfRequestOutcome> RegeneratePdfAsync(CurrentUser user, Guid submissionId, CancellationToken cancellationToken)
+    {
+        var record = await FindAccessibleAsync(user, submissionId, cancellationToken);
+        if (record is null)
+        {
+            return PdfRequestOutcome.NotFound;
+        }
+
+        if (user.IsReadOnly)
+        {
+            await audit.RecordAsync(AuditActions.AccessDenied, user.Id, $"submission:{submissionId}", cancellationToken);
+            return PdfRequestOutcome.Forbidden;
+        }
+
+        if (!await store.RequestPdfAsync(submissionId, timeProvider.GetUtcNow(), cancellationToken))
+        {
+            return PdfRequestOutcome.AlreadyPending;
+        }
+
+        await audit.RecordAsync(AuditActions.PdfRegenerationRequested, user.Id, $"submission:{submissionId}", cancellationToken);
+        return PdfRequestOutcome.Requested;
+    }
+
+    /// <summary>Réponse existante sur un formulaire accessible au compte ; un refus est journalisé.</summary>
+    private async Task<SubmissionRecord?> FindAccessibleAsync(CurrentUser user, Guid submissionId, CancellationToken cancellationToken)
+    {
+        var record = await store.GetSubmissionAsync(submissionId, cancellationToken);
+        if (record is null)
+        {
+            return null;
+        }
+
+        if (!await store.CanAccessFormAsync(user, record.FormId, cancellationToken))
+        {
+            await audit.RecordAsync(AuditActions.AccessDenied, user.Id, $"submission:{submissionId}", cancellationToken);
+            return null;
+        }
+
+        return record;
     }
 
     /// <summary>Premier champ de type site de la définition courante : sert au filtre par site.</summary>

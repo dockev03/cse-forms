@@ -11,7 +11,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
 | `src/CseForms.Api` | API, formulaire public (`/f/{slug}`, fichiers dans `wwwroot`) et back-office |
 | `forms` | Fichiers de définition des formulaires, publiés avec `forms import` |
-| `src/CseForms.Worker` | Tâches de fond : PDF, emails, purge (à venir) |
+| `src/CseForms.Worker` | Tâches de fond (Hangfire) : génération des PDF ; emails et purge à venir |
 | `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
 
@@ -21,12 +21,15 @@ Prérequis : SDK .NET 10, Docker.
 
 ```bash
 cp .env.example .env            # puis remplacer les valeurs
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d   # PostgreSQL et Gotenberg
 set -a; . ./.env; set +a        # charge les variables dans le shell
 dotnet tool restore
 dotnet ef database update -p src/CseForms.Infrastructure -s src/CseForms.Infrastructure
 dotnet run --project src/CseForms.Api
+dotnet run --project src/CseForms.Worker   # dans un autre terminal : génération des PDF
 ```
+
+La clé de chiffrement des PDF se génère avec `openssl rand -base64 32` (variable `Storage__EncryptionKey`). Voir [`docs/back-office.md`](docs/back-office.md#pdf).
 
 Le back-office (`/admin`) exige HTTPS : ses cookies sont `Secure`. En local, lancer l'API avec `ASPNETCORE_URLS=https://127.0.0.1:7214` (certificat de développement : `dotnet dev-certs https`). En production, Traefik termine le TLS et transmet `X-Forwarded-Proto`. Voir [`docs/back-office.md`](docs/back-office.md).
 
