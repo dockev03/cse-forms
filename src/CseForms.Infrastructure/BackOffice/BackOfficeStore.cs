@@ -1,6 +1,8 @@
 using System.Text.Json;
 using CseForms.Application.BackOffice;
 using CseForms.Domain.Forms;
+using CseForms.Domain.Jobs;
+using CseForms.Domain.Submissions;
 using CseForms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -107,6 +109,48 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
             select new SubmissionRecord(
                 s.Id, f.Id, f.Title, s.CaseNumber, v.Number, v.SchemaJson, s.DataJson, s.Status, s.CreatedAt, s.PurgeAt))
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<PdfState> GetPdfStateAsync(Guid submissionId, CancellationToken cancellationToken)
+    {
+        var generatedAt = await db.SubmissionFiles.AsNoTracking()
+            .Where(f => f.SubmissionId == submissionId && f.Kind == SubmissionFileKind.Pdf)
+            .Select(f => (DateTimeOffset?)f.CreatedAt)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var lastStatus = await db.Jobs.AsNoTracking()
+            .Where(j => j.SubmissionId == submissionId && j.Type == JobType.Pdf)
+            .OrderByDescending(j => j.CreatedAt)
+            .Select(j => (JobStatus?)j.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new PdfState(
+            generatedAt,
+            Generating: lastStatus is JobStatus.Pending or JobStatus.Queued,
+            Failed: lastStatus is JobStatus.Failed);
+    }
+
+    public Task<StoredPdf?> GetPdfFileAsync(Guid submissionId, CancellationToken cancellationToken) =>
+        db.SubmissionFiles.AsNoTracking()
+            .Where(f => f.SubmissionId == submissionId && f.Kind == SubmissionFileKind.Pdf)
+            .Select(f => new StoredPdf(f.Id, f.StoragePath))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> RequestPdfAsync(Guid submissionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var pending = await db.Jobs.AnyAsync(
+            j => j.SubmissionId == submissionId
+                && j.Type == JobType.Pdf
+                && (j.Status == JobStatus.Pending || j.Status == JobStatus.Queued),
+            cancellationToken);
+        if (pending)
+        {
+            return false;
+        }
+
+        db.Jobs.Add(new SubmissionJob(submissionId, JobType.Pdf, now));
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 
     private static string? SiteOf(string dataJson, string? siteFieldId)
     {

@@ -87,6 +87,11 @@ public class PublicFormApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var stored = await db.Submissions.SingleAsync(s => s.CaseNumber == caseNumber);
         Assert.Equal(form.CurrentVersionId, stored.FormVersionId);
         Assert.Equal("DUPONT", JsonNode.Parse(stored.DataJson)!["nom"]!.GetValue<string>());
+
+        // Le PDF est demandé dans la même transaction que la réponse.
+        var job = await db.Jobs.SingleAsync(j => j.SubmissionId == stored.Id);
+        Assert.Equal(CseForms.Domain.Jobs.JobType.Pdf, job.Type);
+        Assert.Equal(CseForms.Domain.Jobs.JobStatus.Pending, job.Status);
     }
 
     [Fact]

@@ -18,6 +18,33 @@
     }
 </dl>
 
+<section class="card" aria-labelledby="pdf-title">
+    <h2 id="pdf-title">PDF</h2>
+    @if (detail.Pdf.Available)
+    {
+        <p>Généré le @Display.DateTime(detail.Pdf.GeneratedAt!.Value).
+            <a href="/admin/reponses/@detail.Id/pdf">Télécharger le PDF</a> (téléchargement journalisé).</p>
+    }
+    @if (detail.Pdf.Generating)
+    {
+        <p role="status">@(detail.Pdf.Available ? "Nouvelle génération en cours." : "Génération en cours : rechargez la page dans quelques instants.")</p>
+    }
+    else if (detail.Pdf.Failed)
+    {
+        <p class="error-text" role="alert">La dernière génération a échoué. Vous pouvez la relancer.</p>
+    }
+    else if (!detail.Pdf.Available)
+    {
+        <p>Aucun PDF disponible.</p>
+    }
+    @if (Model.CanRegenerate && !detail.Pdf.Generating)
+    {
+        <form method="post" asp-page-handler="Regenerate" asp-route-id="@detail.Id">
+            <button type="submit">Régénérer le PDF</button>
+        </form>
+    }
+</section>
+
 @foreach (var part in detail.Sections)
 {
     <section class="card">

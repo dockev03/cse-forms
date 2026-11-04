@@ -176,6 +176,57 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                     b.ToTable("form_version", (string)null);
                 });
 
+            modelBuilder.Entity("CseForms.Domain.Jobs.SubmissionJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_job");
+
+                    b.HasIndex("SubmissionId")
+                        .HasDatabaseName("ix_job_submission_id");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_job_status_created_at");
+
+                    b.ToTable("job", (string)null);
+                });
+
             modelBuilder.Entity("CseForms.Domain.Settings.Setting", b =>
                 {
                     b.Property<string>("Key")
@@ -269,6 +320,53 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_submission_purge_at");
 
                     b.ToTable("submission", (string)null);
+                });
+
+            modelBuilder.Entity("CseForms.Domain.Submissions.SubmissionFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sha256")
+                        .IsFixedLength();
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("storage_path");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_file");
+
+                    b.HasIndex("SubmissionId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ix_submission_file_submission_id_kind");
+
+                    b.ToTable("submission_file", (string)null);
                 });
 
             modelBuilder.Entity("CseForms.Infrastructure.Identity.AppRole", b =>
@@ -574,6 +672,16 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_form_version_form_form_id");
                 });
 
+            modelBuilder.Entity("CseForms.Domain.Jobs.SubmissionJob", b =>
+                {
+                    b.HasOne("CseForms.Domain.Submissions.Submission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_submission_submission_id");
+                });
+
             modelBuilder.Entity("CseForms.Domain.Submissions.Submission", b =>
                 {
                     b.HasOne("CseForms.Domain.Forms.FormVersion", null)
@@ -582,6 +690,16 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_submission_form_version_form_version_id");
+                });
+
+            modelBuilder.Entity("CseForms.Domain.Submissions.SubmissionFile", b =>
+                {
+                    b.HasOne("CseForms.Domain.Submissions.Submission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_submission_file_submission_submission_id");
                 });
 
             modelBuilder.Entity("CseForms.Infrastructure.Identity.UserFormAccess", b =>

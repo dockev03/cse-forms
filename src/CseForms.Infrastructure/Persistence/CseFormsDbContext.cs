@@ -1,5 +1,6 @@
 using CseForms.Domain.Audit;
 using CseForms.Domain.Forms;
+using CseForms.Domain.Jobs;
 using CseForms.Domain.Settings;
 using CseForms.Domain.Sites;
 using CseForms.Domain.Submissions;
@@ -18,6 +19,10 @@ public sealed class CseFormsDbContext(DbContextOptions<CseFormsDbContext> option
     public DbSet<FormVersion> FormVersions => Set<FormVersion>();
 
     public DbSet<Submission> Submissions => Set<Submission>();
+
+    public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
+
+    public DbSet<SubmissionJob> Jobs => Set<SubmissionJob>();
 
     public DbSet<Site> Sites => Set<Site>();
 

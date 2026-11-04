@@ -9,6 +9,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public PostgresFixture Database { get; } = new();
 
+    /// <summary>Dossier de stockage jetable, supprimé avec la fabrique.</summary>
+    public string StoragePath { get; } = Directory.CreateTempSubdirectory("cse-forms-api-").FullName;
+
     protected virtual int SubmitPermitLimit => 1000;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -17,6 +20,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("RateLimiting:PublicSubmit:PermitLimit", SubmitPermitLimit.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("RateLimiting:PublicRead:PermitLimit", "1000");
         builder.UseSetting("RateLimiting:Login:PermitLimit", "1000");
+        builder.UseSetting("Storage:Path", StoragePath);
+        builder.UseSetting("Storage:EncryptionKey", TestData.StorageKey);
     }
 
     public Task InitializeAsync() => Database.InitializeAsync();
@@ -25,6 +30,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await Database.DisposeAsync();
+        Directory.Delete(StoragePath, recursive: true);
     }
 }
 
