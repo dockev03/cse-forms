@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\forms\*.json" Link="forms\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\forms\*.json;..\..\forms\*.html" Link="forms\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -102,9 +102,40 @@ Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.js
 | `retentionDays` | Conservation des réponses en jours ; absente : non définie | non |
 | `access` | `{ "mode": "public" }` ou `{ "mode": "pin" }` (obligatoire) | non |
 | `ui` | Présentation, stockée dans `ui_json` | oui |
+| `pdfTemplate` | Nom du fichier HTML du [modèle PDF](#modèle-pdf), placé dans le même dossier ; absent : modèle générique | oui (`pdf_template_html`) |
 | `sections`, `receipt` | Définition, stockée dans `schema_json` | oui |
 
-Toute autre propriété est refusée, y compris `notifications` : les destinataires se règlent en base. Réimporter un fichier dont la définition et la présentation n'ont pas changé ne crée pas de version ; sinon une nouvelle version est publiée, sans rouvrir un formulaire fermé. En mode `pin`, le formulaire n'est jamais publié sans code d'accès (4 à 12 chiffres, stocké haché) : il est demandé au premier import.
+Toute autre propriété est refusée, y compris `notifications` : les destinataires se règlent en base. Réimporter un fichier dont la définition, la présentation et le modèle PDF n'ont pas changé ne crée pas de version ; sinon une nouvelle version est publiée, sans rouvrir un formulaire fermé. En mode `pin`, le formulaire n'est jamais publié sans code d'accès (4 à 12 chiffres, stocké haché) : il est demandé au premier import.
+
+## Modèle PDF
+
+Un formulaire peut fournir sa propre mise en page du PDF (exemple : [`forms/inscription.pdf.html`](../forms/inscription.pdf.html)). C'est un fragment HTML (contenu du `body`, avec un bloc `<style>` éventuel), figé dans la version publiée : une réponse garde toujours la mise en page de la version qu'elle a remplie. Le pied de page (numéro de dossier, pages) est ajouté automatiquement.
+
+Syntaxe :
+
+| Balise | Effet |
+| --- | --- |
+| `{{ nom }}` | Valeur encodée : un texte saisi n'est jamais interprété comme du HTML |
+| `{{#if nom}} ... {{else}} ... {{/if}}` | Bloc affiché si la valeur est présente (`{{else}}` facultatif) |
+| `{{#each field.groupe}} ... {{/each}}` | Une fois par ligne d'un groupe répétable ; pas d'imbrication |
+
+Noms disponibles :
+
+| Nom | Valeur |
+| --- | --- |
+| `field.<id>` | Réponse à un champ, mise en forme comme dans le back-office (dates JJ/MM/AAAA, adresse sur une ligne, Oui/Non) ; vide si le champ était masqué |
+| `label.<id>` | Libellé du champ dans la version remplie |
+| `item.<id>`, `item.index` | Dans `{{#each}}` : champ de la ligne, numéro de ligne à partir de 1 |
+| `form.title`, `form.version` | Titre et numéro de version |
+| `case.number`, `submitted.date`, `submitted.time` | Numéro de dossier, date et heure de soumission (heure de Paris) |
+| `cse.name`, `cse.address`, `cse.email`, `cse.phone`, `cse.office` | Paramètres du CSE |
+| `cse.logo` | Image du logo (paramètre `cse.logo`) ; rien s'il n'est pas défini |
+
+Pour `{{#if}}`, une case non cochée, un groupe sans ligne et un texte vide comptent comme absents.
+
+Le modèle est contrôlé à l'import, contre la définition du même fichier : noms inconnus, blocs mal fermés et balises mal formées sont refusés avec leur numéro de ligne. Le modèle ne peut rien charger ni exécuter : sont refusés les balises `script`, `img`, `link`, `iframe`, `svg`, `meta`, `form` (entre autres), les attributs `on...`, `src`, `href`, les `url(...)` et `@import` en CSS, et `javascript:`. La seule image possible est le logo, fourni par les paramètres. Le document produit porte en plus une CSP `default-src 'none'`.
+
+Si un modèle enregistré ne peut pas être appliqué, le PDF est produit avec le modèle générique et l'incident est journalisé, sans donnée de la réponse.
 
 ## Jeux de tests partagés
 

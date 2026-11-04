@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace CseForms.Api.Cli;
 
 /// <summary>
-/// Paramètres de l'application (coordonnées et bureau du CSE, adresse publique) :
-/// <c>settings set|unset|list</c>. Seules les clés connues sont acceptées.
+/// Paramètres de l'application (coordonnées, bureau et logo du CSE, adresse publique) :
+/// <c>settings set|logo|unset|list</c>. Seules les clés connues sont acceptées.
 /// </summary>
 internal static class SettingCommands
 {
@@ -17,6 +17,7 @@ internal static class SettingCommands
         Utilisation :
           settings set   --key <clé> --value <valeur>
           settings set   --key <clé> < fichier.txt     valeur sur plusieurs lignes, lue sur l'entrée standard
+          settings logo  --file <image>              logo du CSE : {CseLogo.Rule}
           settings unset --key <clé>
           settings list
         Clés :
@@ -34,6 +35,7 @@ internal static class SettingCommands
             return args.ElementAtOrDefault(1) switch
             {
                 "set" => await SetAsync(db, options, input, output),
+                "logo" => await LogoAsync(db, options, output),
                 "unset" => await UnsetAsync(db, KnownKey(options), output),
                 "list" => await ListAsync(db, output),
                 _ => CliSupport.Fail(output, Usage),
@@ -48,6 +50,11 @@ internal static class SettingCommands
     private static async Task<int> SetAsync(CseFormsDbContext db, Dictionary<string, string> options, TextReader input, TextWriter output)
     {
         var key = KnownKey(options);
+        if (key == SettingKeys.CseLogo)
+        {
+            return CliSupport.Fail(output, "Le logo se règle avec « settings logo --file <image> ».");
+        }
+
         var value = Normalize(options.TryGetValue("value", out var given) ? given : await input.ReadToEndAsync());
 
         if (value.Length == 0 || value.Length > ValueMaxLength)
@@ -65,6 +72,38 @@ internal static class SettingCommands
             return CliSupport.Fail(output, error);
         }
 
+        await SaveAsync(db, key, value);
+        await output.WriteLineAsync($"Paramètre « {key} » enregistré.");
+        return 0;
+    }
+
+    private static async Task<int> LogoAsync(CseFormsDbContext db, Dictionary<string, string> options, TextWriter output)
+    {
+        var path = CliSupport.Required(options, Usage, "file");
+        if (!File.Exists(path))
+        {
+            return CliSupport.Fail(output, "Fichier introuvable.");
+        }
+
+        // Taille contrôlée avant lecture : un gros fichier n'est jamais chargé en mémoire.
+        if (new FileInfo(path).Length > CseLogo.MaxBytes)
+        {
+            return CliSupport.Fail(output, $"Logo refusé : {CseLogo.Rule}.");
+        }
+
+        var dataUri = CseLogo.ToDataUri(await File.ReadAllBytesAsync(path));
+        if (dataUri is null)
+        {
+            return CliSupport.Fail(output, $"Logo refusé : {CseLogo.Rule}.");
+        }
+
+        await SaveAsync(db, SettingKeys.CseLogo, dataUri);
+        await output.WriteLineAsync("Logo du CSE enregistré.");
+        return 0;
+    }
+
+    private static async Task SaveAsync(CseFormsDbContext db, string key, string value)
+    {
         var setting = await db.Settings.FindAsync(key);
         if (setting is null)
         {
@@ -76,8 +115,6 @@ internal static class SettingCommands
         }
 
         await db.SaveChangesAsync();
-        await output.WriteLineAsync($"Paramètre « {key} » enregistré.");
-        return 0;
     }
 
     private static async Task<int> UnsetAsync(CseFormsDbContext db, string key, TextWriter output)
@@ -98,7 +135,9 @@ internal static class SettingCommands
         var values = await db.Settings.AsNoTracking().ToDictionaryAsync(s => s.Key, s => s.Value);
         foreach (var key in SettingKeys.Descriptions.Keys)
         {
-            var value = values.TryGetValue(key, out var v) ? v.Replace("\n", " / ", StringComparison.Ordinal) : "(non défini)";
+            var value = !values.TryGetValue(key, out var v) ? "(non défini)"
+                : key == SettingKeys.CseLogo ? $"(image, {Math.Max(1, CseLogo.DecodedSize(v) / 1024)} Ko)"
+                : v.Replace("\n", " / ", StringComparison.Ordinal);
             await output.WriteLineAsync($"{key} | {value}");
         }
 

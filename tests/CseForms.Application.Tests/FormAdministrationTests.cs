@@ -17,10 +17,17 @@ public class FormPackageReaderTests
     public static string InscriptionJson() =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "forms", "inscription.json"));
 
+    /// <summary>Lit les fichiers voisins de <c>forms/inscription.json</c>, comme la commande <c>forms import</c>.</summary>
+    public static string? ReadFormsFile(string name)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "forms", name);
+        return File.Exists(path) ? File.ReadAllText(path) : null;
+    }
+
     [Fact]
     public void Inscription_file_is_a_valid_package()
     {
-        var result = FormPackageReader.Read(InscriptionJson());
+        var result = FormPackageReader.Read(InscriptionJson(), ReadFormsFile);
 
         Assert.True(result.IsValid, string.Join(Environment.NewLine, result.Errors.Select(e => $"{e.Path} {e.Message}")));
         var package = result.Package!;
@@ -36,6 +43,52 @@ public class FormPackageReaderTests
             fields);
         Assert.Equal(10, definition.AllTopLevelFields.Single(f => f.Id == "enfants").Max);
         Assert.Contains("Toute modification d'état civil doit être communiquée au CSE", JsonNode.Parse(package.UiJson!)!["confirmationText"]!.GetValue<string>());
+        Assert.Equal(ReadFormsFile("inscription.pdf.html"), package.PdfTemplateHtml);
+    }
+
+    [Fact]
+    public void Pdf_template_is_read_next_to_the_file_and_kept_out_of_the_definition()
+    {
+        string? requested = null;
+        var result = FormPackageReader.Read(Package(""","pdfTemplate":"essai.pdf.html" """), name =>
+        {
+            requested = name;
+            return "<p>{{ field.nom }}</p>";
+        });
+
+        Assert.True(result.IsValid);
+        Assert.Equal("essai.pdf.html", requested);
+        Assert.Equal("<p>{{ field.nom }}</p>", result.Package!.PdfTemplateHtml);
+        Assert.DoesNotContain("pdfTemplate", result.Package.SchemaJson);
+    }
+
+    [Theory]
+    [InlineData("../secret.html")]
+    [InlineData("/etc/modele.html")]
+    [InlineData("sous-dossier/modele.html")]
+    [InlineData("modele.txt")]
+    [InlineData("modele.html\\n")]
+    public void Pdf_template_name_cannot_be_a_path(string name)
+    {
+        var read = false;
+        var result = FormPackageReader.Read(Package($$""","pdfTemplate":"{{name}}" """), _ =>
+        {
+            read = true;
+            return "<p></p>";
+        });
+
+        Assert.Contains(result.Errors, e => e.Path == "$.pdfTemplate");
+        Assert.False(read);
+    }
+
+    [Fact]
+    public void Missing_or_invalid_pdf_template_is_refused()
+    {
+        var missing = FormPackageReader.Read(Package(""","pdfTemplate":"absent.html" """), _ => null);
+        var invalid = FormPackageReader.Read(Package(""","pdfTemplate":"essai.html" """), _ => "<p>{{ field.inconnu }}</p>");
+
+        Assert.Contains(missing.Errors, e => e.Path == "$.pdfTemplate");
+        Assert.Contains(invalid.Errors, e => e.Path == "$.pdfTemplate" && e.Message.Contains("inconnu", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -98,12 +151,31 @@ public class FormAdminServiceTests
     private FormAdminService Service() =>
         new(_store, new FakeHasher(), new FixedTimeProvider(Now), NullLogger<FormAdminService>.Instance);
 
-    private static FormPackage Package(AccessMode mode = AccessMode.Public, string title = "Formulaire fictif", string label = "Nom") =>
+    private static FormPackage Package(
+        AccessMode mode = AccessMode.Public,
+        string title = "Formulaire fictif",
+        string label = "Nom",
+        string? pdfTemplate = null) =>
         FormPackageReader.Read($$"""
             {"slug":"essai","title":"{{title}}","caseNumberPrefix":"ESS","retentionDays":30,
-             "access":{"mode":"{{(mode == AccessMode.Pin ? "pin" : "public")}}"},
+             "access":{"mode":"{{(mode == AccessMode.Pin ? "pin" : "public")}}"},{{(pdfTemplate is null ? "" : "\"pdfTemplate\":\"essai.pdf.html\",")}}
              "sections":[{"id":"s","fields":[{"id":"nom","type":"text","label":"{{label}}"}]}]}
-            """).Package!;
+            """, _ => pdfTemplate).Package!;
+
+    [Fact]
+    public async Task Changed_pdf_template_creates_a_new_version()
+    {
+        await Service().ImportAsync(Package(pdfTemplate: "<p>{{ field.nom }}</p>"), null, "cli", default);
+        var unchanged = await Service().ImportAsync(Package(pdfTemplate: "<p>{{ field.nom }}</p>"), null, "cli", default);
+        var changed = await Service().ImportAsync(Package(pdfTemplate: "<h2>{{ field.nom }}</h2>"), null, "cli", default);
+        var removed = await Service().ImportAsync(Package(), null, "cli", default);
+
+        Assert.Equal(new ImportOutcome.Unchanged("essai", 1), unchanged);
+        Assert.Equal(new ImportOutcome.Published("essai", 2, Created: false), changed);
+        Assert.Equal(new ImportOutcome.Published("essai", 3, Created: false), removed);
+        var versions = _store.Forms[0].Versions.OrderBy(v => v.Number).Select(v => v.PdfTemplateHtml).ToList();
+        Assert.Equal(["<p>{{ field.nom }}</p>", "<h2>{{ field.nom }}</h2>", null], versions);
+    }
 
     [Fact]
     public async Task First_import_creates_and_publishes_the_form()

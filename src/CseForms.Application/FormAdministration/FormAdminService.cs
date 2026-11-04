@@ -61,12 +61,15 @@ public sealed partial class FormAdminService(
         }
 
         var current = form.CurrentVersion;
-        var unchanged = current is not null && SameJson(current.SchemaJson, package.SchemaJson) && SameJson(current.UiJson, package.UiJson);
+        var unchanged = current is not null
+            && SameJson(current.SchemaJson, package.SchemaJson)
+            && SameJson(current.UiJson, package.UiJson)
+            && string.Equals(current.PdfTemplateHtml, package.PdfTemplateHtml, StringComparison.Ordinal);
         var version = current;
         if (!unchanged)
         {
             var wasClosed = form.Status == FormStatus.Closed;
-            version = form.Publish(package.SchemaJson, package.UiJson, current?.PdfTemplateHtml, now, publishedBy);
+            version = form.Publish(package.SchemaJson, package.UiJson, package.PdfTemplateHtml, now, publishedBy);
 
             // Une nouvelle version ne rouvre pas un formulaire fermé.
             if (wasClosed)

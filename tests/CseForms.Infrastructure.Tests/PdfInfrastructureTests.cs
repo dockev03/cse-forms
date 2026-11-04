@@ -220,6 +220,38 @@ public class PdfStoreAndDispatcherTests(PostgresFixture fixture) : IClassFixture
     }
 
     [Fact]
+    public async Task Source_includes_the_pdf_template_of_the_filled_version()
+    {
+        Guid before;
+        Guid after;
+        await using (var db = fixture.CreateContext())
+        {
+            var form = await TestData.AddPublishedFormAsync(db, "pdf-modele");
+            var first = form.CreateSubmission($"TST-2026-{Random.Shared.Next(1000, 9999)}", """{"nom":"FICTIF"}""", Now, 0);
+            db.Submissions.Add(first);
+            await db.SaveChangesAsync();
+
+            form.Publish(TestData.SimpleDefinition, null, "<p>{{ field.nom }}</p>", Now, "test");
+            await db.SaveChangesAsync();
+            var second = form.CreateSubmission($"TST-2026-{Random.Shared.Next(1000, 9999)}", """{"nom":"FICTIF"}""", Now, 1);
+            db.Submissions.Add(second);
+            await db.SaveChangesAsync();
+
+            before = first.Id;
+            after = second.Id;
+        }
+
+        await using var context = fixture.CreateContext();
+        var store = new SubmissionPdfStore(context);
+        var old = await store.GetSourceAsync(before, default);
+        var current = await store.GetSourceAsync(after, default);
+
+        // Chaque réponse garde le modèle de la version qu'elle a remplie.
+        Assert.Equal((1, null), (old!.VersionNumber, old.PdfTemplateHtml));
+        Assert.Equal((2, "<p>{{ field.nom }}</p>"), (current!.VersionNumber, current.PdfTemplateHtml));
+    }
+
+    [Fact]
     public async Task Pending_jobs_are_dispatched_once()
     {
         var submissionId = await SeedSubmissionAsync("pdf-releve");

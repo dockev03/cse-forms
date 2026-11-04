@@ -1,0 +1,124 @@
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.35; }
+  .entete { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 2px solid #1f4e8c; padding-bottom: 8px; }
+  .cse-logo { max-height: 20mm; max-width: 45mm; display: block; margin-bottom: 4px; }
+  .cse-nom { font-size: 13pt; font-weight: bold; color: #1f4e8c; }
+  .contact { text-align: right; font-size: 8.5pt; color: #444; }
+  .adresse { white-space: pre-line; }
+  h1 { font-size: 17pt; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 10px; }
+  .dossier { display: flex; justify-content: space-between; border: 1px solid #1f4e8c; border-radius: 4px; padding: 6px 10px; margin-bottom: 12px; font-size: 9.5pt; }
+  .dossier strong { font-size: 11pt; }
+  .en-ligne { font-weight: bold; color: #1f4e8c; }
+  fieldset { border: 1px solid #9fb2cf; border-radius: 4px; margin: 0 0 10px; padding: 4px 10px 8px; break-inside: avoid; }
+  legend { font-weight: bold; color: #1f4e8c; padding: 0 4px; text-transform: uppercase; font-size: 9.5pt; }
+  .ligne { display: flex; gap: 16px; margin-top: 5px; }
+  .case { flex: 1; min-width: 0; }
+  .case.etroite { flex: 0 0 22%; }
+  .libelle { display: block; font-size: 8pt; color: #555; }
+  .valeur { display: block; border-bottom: 1px dotted #888; min-height: 15px; padding: 1px 2px; white-space: pre-line; }
+  .vide { color: #888; font-style: italic; }
+  table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+  th, td { border: 1px solid #9fb2cf; padding: 3px 6px; text-align: left; }
+  th { background: #eef2f8; font-size: 8.5pt; }
+  td.num { width: 7%; text-align: center; }
+  .coche { font-weight: bold; }
+  .rappel { margin-top: 10px; padding: 6px 10px; background: #fff6e0; border-left: 3px solid #d9a400; font-size: 9pt; }
+  .bureau { margin-top: 12px; font-size: 8.5pt; color: #444; white-space: pre-line; }
+</style>
+
+<div class="entete">
+  <div>
+    {{ cse.logo }}
+    <div class="cse-nom">{{#if cse.name}}{{ cse.name }}{{else}}CSE{{/if}}</div>
+  </div>
+  <div class="contact">
+    {{#if cse.address}}<div class="adresse">{{ cse.address }}</div>{{/if}}
+    {{#if cse.email}}<div>{{ cse.email }}</div>{{/if}}
+    {{#if cse.phone}}<div>{{ cse.phone }}</div>{{/if}}
+  </div>
+</div>
+
+<h1>Fiche d'inscription au CSE</h1>
+
+<div class="dossier">
+  <div>Dossier n° <strong>{{ case.number }}</strong></div>
+  <div>Soumis le {{ submitted.date }} à {{ submitted.time }}</div>
+  <div class="en-ligne">Formulaire soumis en ligne</div>
+</div>
+
+<fieldset>
+  <legend>État civil</legend>
+  <div class="ligne">
+    <div class="case etroite"><span class="libelle">{{ label.civilite }}</span><span class="valeur">{{ field.civilite }}</span></div>
+    <div class="case"><span class="libelle">{{ label.nom }}</span><span class="valeur">{{ field.nom }}</span></div>
+    <div class="case"><span class="libelle">{{ label.prenom }}</span><span class="valeur">{{ field.prenom }}</span></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Situation professionnelle</legend>
+  <div class="ligne">
+    <div class="case"><span class="libelle">{{ label.contrat }}</span><span class="valeur">{{ field.contrat }}</span></div>
+    <div class="case"><span class="libelle">{{ label.dateEmbauche }}</span><span class="valeur">{{ field.dateEmbauche }}</span></div>
+    <div class="case"><span class="libelle">Jusqu'au</span><span class="valeur">{{#if field.dateFin}}{{ field.dateFin }}{{else}}<span class="vide">Sans objet</span>{{/if}}</span></div>
+  </div>
+  <div class="ligne">
+    <div class="case"><span class="libelle">{{ label.site }}</span><span class="valeur">{{ field.site }}</span></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Coordonnées</legend>
+  <div class="ligne">
+    <div class="case"><span class="libelle">{{ label.adresse }}</span><span class="valeur">{{ field.adresse }}</span></div>
+  </div>
+  <div class="ligne">
+    <div class="case"><span class="libelle">{{ label.emailPerso }}</span><span class="valeur">{{ field.emailPerso }}</span></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Conjoint</legend>
+  {{#if field.conjointNom}}
+  <div class="ligne">
+    <div class="case"><span class="libelle">Nom</span><span class="valeur">{{ field.conjointNom }}</span></div>
+    <div class="case"><span class="libelle">Prénom</span><span class="valeur">{{ field.conjointPrenom }}</span></div>
+  </div>
+  {{else}}{{#if field.conjointPrenom}}
+  <div class="ligne">
+    <div class="case"><span class="libelle">Nom</span><span class="valeur"></span></div>
+    <div class="case"><span class="libelle">Prénom</span><span class="valeur">{{ field.conjointPrenom }}</span></div>
+  </div>
+  {{else}}
+  <p class="vide">Non renseigné</p>
+  {{/if}}{{/if}}
+</fieldset>
+
+<fieldset>
+  <legend>Enfants</legend>
+  {{#if field.enfants}}
+  <table>
+    <thead><tr><th scope="col">N°</th><th scope="col">Nom</th><th scope="col">Prénom</th><th scope="col">Date de naissance</th><th scope="col">Sexe</th></tr></thead>
+    <tbody>
+      {{#each field.enfants}}
+      <tr><td class="num">{{ item.index }}</td><td>{{ item.nom }}</td><td>{{ item.prenom }}</td><td>{{ item.naissance }}</td><td>{{ item.sexe }}</td></tr>
+      {{/each}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="vide">Aucun enfant déclaré</p>
+  {{/if}}
+</fieldset>
+
+<fieldset>
+  <legend>Validation</legend>
+  <div class="ligne"><div class="case"><span class="coche">{{#if field.attestation}}☑{{else}}☐{{/if}}</span> {{ label.attestation }}</div></div>
+  <div class="ligne"><div class="case"><span class="coche">{{#if field.rgpdLu}}☑{{else}}☐{{/if}}</span> {{ label.rgpdLu }}</div></div>
+</fieldset>
+
+<div class="rappel">Toute modification d'état civil doit être communiquée au CSE.</div>
+
+{{#if cse.office}}<div class="bureau"><strong>Bureau du CSE</strong>
+{{ cse.office }}</div>{{/if}}

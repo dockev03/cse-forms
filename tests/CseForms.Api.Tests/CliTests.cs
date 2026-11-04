@@ -62,8 +62,11 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
 
         await using (var db = factory.Database.CreateContext())
         {
-            var form = await db.Forms.SingleAsync(f => f.Slug == "inscription");
+            var form = await db.Forms.Include(f => f.Versions).SingleAsync(f => f.Slug == "inscription");
             Assert.Equal("INS", form.CaseNumberPrefix);
+            Assert.Equal(
+                await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "forms", "inscription.pdf.html")),
+                form.CurrentVersion!.PdfTemplateHtml);
             Assert.NotNull(form.AccessCodeHash);
             Assert.DoesNotContain("4821", form.AccessCodeHash);
         }
@@ -230,5 +233,52 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
         Assert.Equal(0, await RunAsync(string.Empty, "settings", "list"));
         Assert.Contains("cse.name | (non défini)", LastOutput);
         Assert.Contains("cse.office | Secrétaire : Prénom Fictif / Trésorier : Autre Fictif", LastOutput);
+    }
+
+    [Fact]
+    public async Task Pdf_template_is_read_next_to_the_form_file_and_checked()
+    {
+        var path = Path.Combine(_directory, "cli-modele.json");
+        await File.WriteAllTextAsync(path, """
+            {"slug":"cli-modele","title":"T","access":{"mode":"public"},"pdfTemplate":"cli-modele.pdf.html",
+             "sections":[{"id":"s","fields":[{"id":"nom","type":"text","label":"Nom"}]}]}
+            """);
+
+        Assert.Equal(1, await RunAsync(string.Empty, "forms", "import", "--file", path));
+        Assert.Contains("$.pdfTemplate", LastOutput);
+
+        await File.WriteAllTextAsync(Path.Combine(_directory, "cli-modele.pdf.html"), "<p>{{ field.nom }}</p><script></script>");
+        Assert.Equal(1, await RunAsync(string.Empty, "forms", "import", "--file", path));
+        Assert.Contains("Balise interdite", LastOutput);
+
+        await File.WriteAllTextAsync(Path.Combine(_directory, "cli-modele.pdf.html"), "<p>{{ field.nom }}</p>");
+        Assert.Equal(0, await RunAsync(string.Empty, "forms", "import", "--file", path));
+
+        await using var db = factory.Database.CreateContext();
+        var form = await db.Forms.Include(f => f.Versions).SingleAsync(f => f.Slug == "cli-modele");
+        Assert.Equal("<p>{{ field.nom }}</p>", form.CurrentVersion!.PdfTemplateHtml);
+    }
+
+    [Fact]
+    public async Task Logo_is_stored_as_a_data_uri_only_from_a_png_or_jpeg_file()
+    {
+        var png = Path.Combine(_directory, "logo.png");
+        await File.WriteAllBytesAsync(png, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
+        var svg = Path.Combine(_directory, "logo.svg");
+        await File.WriteAllTextAsync(svg, "<svg onload=\"x()\"></svg>");
+
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "logo", "--file", svg));
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "cse.logo", "--value", "data:image/png;base64,AAAA"));
+        Assert.Contains("settings logo", LastOutput);
+
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "logo", "--file", png));
+        await using (var db = factory.Database.CreateContext())
+        {
+            Assert.StartsWith("data:image/png;base64,", (await db.Settings.SingleAsync(s => s.Key == "cse.logo")).Value);
+        }
+
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "list"));
+        Assert.Contains("cse.logo | (image, 1 Ko)", LastOutput);
+        Assert.DoesNotContain("base64", LastOutput);
     }
 }
