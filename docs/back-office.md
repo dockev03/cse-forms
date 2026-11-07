@@ -31,6 +31,16 @@ Avec `SameSite=Strict`, un lien ouvert depuis un webmail arrive sans cookie : l'
 - `/admin/reponses/{id}` : fiche avec les libellés de la version remplie, dates au format JJ/MM/AAAA, groupes répétables en tableau. Lien profond utilisable dans les notifications. Le bloc PDF indique si le PDF est disponible, en cours de génération ou en échec.
 - `/admin/reponses/{id}/pdf` : téléchargement du PDF déchiffré, après contrôle des droits, jamais mis en cache.
 - Régénération du PDF : bouton de la fiche (POST avec jeton anti-CSRF), réservé aux rôles `admin` et `editor` ; ignorée si une génération est déjà en cours.
+- `/admin/formulaires/{id}/diffusion` : [diffusion](#diffusion-qr-code-et-flyer), réservée aux rôles `admin` et `editor` ayant le droit sur le formulaire.
+
+## Diffusion : QR code et flyer
+
+- Lien public `{app.publicBaseUrl}/f/{slug}` ; sans adresse publique, QR code et flyer sont indisponibles.
+- QR code en PNG (impression, 20 pixels par module) ou SVG (vectoriel, sans script ni lien), niveau de correction Q.
+- QR code par site : si le formulaire a un champ `site` préremplissable (`"prefill": "url"`), le lien porte `?{champ}={site}`. Seuls les sites actifs sont proposés et acceptés, comme sur le formulaire public.
+- Flyer PDF A4 : logo et nom du CSE, titre, site éventuel, QR code, adresse lisible, code d'accès, mention de confidentialité, contact du CSE.
+- Code d'accès : stocké haché, il ne peut pas être relu. Pour un formulaire protégé, l'élu le saisit au moment de générer le flyer ; il est vérifié contre le haché, imprimé, puis oublié : ni base, ni journal, ni file de tâches, ni réaffichage en cas d'erreur. Un code erroné est journalisé (sans le code).
+- Le flyer est produit à la demande par l'API, qui appelle Gotenberg sur le réseau interne (variable `Gotenberg__Url` de l'API) : le code saisi ne peut pas passer par la file de tâches sans être enregistré.
 
 ## PDF
 
@@ -74,5 +84,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.download` | `submission:{id}` |
 | `submission.pdf.regenerate` | `submission:{id}` |
 | `access.denied` | `submission:{id}` ou `form:{id}` |
+| `form.qrcode` | `form:{id}` |
+| `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 
 Chaque entrée porte l'id du compte (absent pour un identifiant inconnu) et l'horodatage UTC. Aucune donnée saisie, aucun email ni nom.

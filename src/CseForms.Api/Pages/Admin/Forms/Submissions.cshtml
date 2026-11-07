@@ -4,7 +4,13 @@
     ViewData["Title"] = $"Réponses : {Model.Form.Title}";
 }
 
-<p><a href="/admin">Formulaires</a></p>
+<p>
+    <a href="/admin">Formulaires</a>
+    @if (!User.ToCurrentUser().IsReadOnly)
+    {
+        <text> · </text><a href="/admin/formulaires/@Model.Form.Id/diffusion">QR code et flyer</a>
+    }
+</p>
 <h1>@Model.Form.Title</h1>
 
 <form method="get" class="card filters" aria-label="Filtrer les réponses">

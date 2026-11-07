@@ -1,0 +1,67 @@
+@page "/admin/formulaires/{formId:guid}/diffusion"
+@model CseForms.Api.Pages.Admin.Forms.DistributionModel
+@{
+    var form = Model.Distribution;
+    ViewData["Title"] = $"Diffusion : {form.Title}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@form.FormId/reponses">Réponses</a></p>
+<h1>Diffusion : @form.Title</h1>
+
+@if (Model.Error is not null)
+{
+    <div class="summary" role="alert"><p>@Model.Error</p></div>
+}
+
+<section class="card" aria-labelledby="lien">
+    <h2 id="lien">Lien public</h2>
+    @if (form.PublicUrl is null)
+    {
+        <p class="error-text">L'adresse publique du site n'est pas définie (paramètre <code>app.publicBaseUrl</code>) : QR code et flyer sont indisponibles.</p>
+    }
+    else
+    {
+        <p><strong>@form.PublicUrl</strong></p>
+        @if (form.Status != "Published")
+        {
+            <p class="error-text">Ce formulaire n'est pas publié : le lien n'accepte pas de réponse pour l'instant.</p>
+        }
+        <p>@(form.RequiresAccessCode ? "Accès protégé par un code d'accès, à imprimer sur le flyer." : "Accès public, sans code.")</p>
+    }
+</section>
+
+@if (form.PublicUrl is not null)
+{
+    <section class="card" aria-labelledby="qr">
+        <h2 id="qr">QR code</h2>
+        <p>PNG pour un document ou une affiche, SVG pour un imprimeur (qualité sans limite de taille).</p>
+        <form method="get" action="/admin/formulaires/@form.FormId/diffusion" class="filters">
+            <input type="hidden" name="handler" value="Qr">
+            @await Html.PartialAsync("_SiteSelect", (form, "qr-site"))
+            <div class="filter-actions">
+                <button type="submit" name="format" value="png" class="primary">Télécharger en PNG</button>
+                <button type="submit" name="format" value="svg">Télécharger en SVG</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card" aria-labelledby="flyer">
+        <h2 id="flyer">Flyer à imprimer</h2>
+        <p>Document A4 : logo et nom du CSE, titre, QR code, adresse, @(form.RequiresAccessCode ? "code d'accès, " : string.Empty)contact du CSE.</p>
+        <form method="post" asp-page-handler="Flyer" asp-route-formId="@form.FormId" class="filters">
+            @await Html.PartialAsync("_SiteSelect", (form, "flyer-site"))
+            @if (form.RequiresAccessCode)
+            {
+                <div class="field">
+                    <label for="code">Code d'accès du formulaire</label>
+                    <input id="code" name="code" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" required
+                           aria-describedby="code-aide">
+                    <p id="code-aide">Il est vérifié puis imprimé, jamais enregistré.</p>
+                </div>
+            }
+            <div class="filter-actions">
+                <button type="submit" class="primary">Générer le flyer (PDF)</button>
+            </div>
+        </form>
+    </section>
+}
