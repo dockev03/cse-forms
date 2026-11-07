@@ -15,7 +15,13 @@ else
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th scope="col">Formulaire</th><th scope="col">Adresse publique</th><th scope="col">État</th><th scope="col" class="num">Réponses</th></tr>
+                <tr>
+                    <th scope="col">Formulaire</th><th scope="col">Adresse publique</th><th scope="col">État</th><th scope="col" class="num">Réponses</th>
+                    @if (Model.CanDistribute)
+                    {
+                        <th scope="col">Diffusion</th>
+                    }
+                </tr>
             </thead>
             <tbody>
                 @foreach (var form in Model.Forms)
@@ -25,6 +31,10 @@ else
                         <td>/f/@form.Slug</td>
                         <td>@IndexModel.StatusLabel(form.Status)</td>
                         <td class="num">@form.ResponseCount</td>
+                        @if (Model.CanDistribute)
+                        {
+                            <td><a href="/admin/formulaires/@form.Id/diffusion">QR code et flyer</a></td>
+                        }
                     </tr>
                 }
             </tbody>

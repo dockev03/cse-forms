@@ -12,6 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Flyer produit à la demande : le code d'accès saisi n'est jamais confié à la file de tâches.
+builder.Services.AddPdfConversion(builder.Configuration);
 builder.Services.AddBackOffice(builder.Configuration);
 builder.Services.AddReverseProxySupport(builder.Configuration);
 builder.Services.AddPublicRateLimiting(builder.Configuration);

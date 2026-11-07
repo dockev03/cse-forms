@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<PublicFormService>();
         services.AddScoped<BackOfficeService>();
         services.AddScoped<FormAdminService>();
+        services.AddScoped<Distribution.DistributionService>();
 
         return services;
     }

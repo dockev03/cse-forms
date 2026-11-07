@@ -21,6 +21,9 @@ public static class AuditActions
     public const string AccessDenied = "access.denied";
     public const string SubmissionDownloaded = "submission.download";
     public const string PdfRegenerationRequested = "submission.pdf.regenerate";
+    public const string QrCodeDownloaded = "form.qrcode";
+    public const string FlyerGenerated = "form.flyer";
+    public const string FlyerCodeRejected = "form.flyer.code_rejected";
 }
 
 /// <summary>Utilisateur connecté, tel que vu par les cas d'usage. Un lecteur ne déclenche aucune action.</summary>

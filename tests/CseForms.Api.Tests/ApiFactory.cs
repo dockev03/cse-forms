@@ -1,6 +1,10 @@
+using CseForms.Application.Pdf;
 using CseForms.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CseForms.Api.Tests;
 
@@ -14,6 +18,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected virtual int SubmitPermitLimit => 1000;
 
+    /// <summary>Conversion PDF factice : garde le HTML reçu (flyer) au lieu d'appeler Gotenberg.</summary>
+    public RecordingPdfConverter PdfConverter { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", Database.ConnectionString);
@@ -22,6 +29,12 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("RateLimiting:Login:PermitLimit", "1000");
         builder.UseSetting("Storage:Path", StoragePath);
         builder.UseSetting("Storage:EncryptionKey", TestData.StorageKey);
+        builder.UseSetting("Gotenberg:Url", "http://127.0.0.1:9");
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IPdfConverter>();
+            services.AddSingleton<IPdfConverter>(PdfConverter);
+        });
     }
 
     public Task InitializeAsync() => Database.InitializeAsync();
@@ -31,6 +44,32 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await base.DisposeAsync();
         await Database.DisposeAsync();
         Directory.Delete(StoragePath, recursive: true);
+    }
+}
+
+public sealed class RecordingPdfConverter : IPdfConverter
+{
+    private readonly List<PdfHtml> _documents = [];
+
+    public IReadOnlyList<PdfHtml> Documents
+    {
+        get
+        {
+            lock (_documents)
+            {
+                return [.. _documents];
+            }
+        }
+    }
+
+    public Task<byte[]> ConvertAsync(PdfHtml html, CancellationToken cancellationToken)
+    {
+        lock (_documents)
+        {
+            _documents.Add(html);
+        }
+
+        return Task.FromResult("%PDF-1.7 flyer fictif"u8.ToArray());
     }
 }
 

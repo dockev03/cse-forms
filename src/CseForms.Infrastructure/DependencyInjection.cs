@@ -3,6 +3,8 @@ using CseForms.Application.Common;
 using CseForms.Application.FormAdministration;
 using CseForms.Infrastructure.BackOffice;
 using CseForms.Infrastructure.FormAdministration;
+using CseForms.Application.Distribution;
+using CseForms.Infrastructure.Distribution;
 using CseForms.Infrastructure.Jobs;
 using CseForms.Infrastructure.Notifications;
 using CseForms.Application.Notifications;
@@ -44,6 +46,8 @@ public static class DependencyInjection
         services.AddScoped<PendingJobDispatcher>();
         services.AddScoped<ISettingReader, SettingReader>();
         services.AddScoped<ISubmissionEmailStore, SubmissionEmailStore>();
+        services.AddScoped<IDistributionStore, DistributionStore>();
+        services.AddSingleton<IQrCodeRenderer, QrCodeRenderer>();
 
         services.AddOptions<StorageOptions>()
             .Bind(configuration.GetSection(StorageOptions.Section))
@@ -55,7 +59,7 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Conversion HTML vers PDF par Gotenberg : uniquement dans le Worker.</summary>
+    /// <summary>Conversion HTML vers PDF par Gotenberg : Worker (PDF des réponses) et API (flyer, produit à la demande).</summary>
     public static IServiceCollection AddPdfConversion(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<GotenbergOptions>()

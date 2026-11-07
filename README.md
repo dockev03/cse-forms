@@ -71,6 +71,10 @@ dotnet run --project src/CseForms.Api -- settings list
 - `settings` n'accepte que les clés connues (`settings list` les affiche) : coordonnées, bureau et logo du CSE, adresse publique du site. Aucun secret n'y est stocké.
 - `settings logo` n'accepte qu'une image PNG ou JPEG de 256 Ko au plus (pas de SVG, qui peut contenir du script) ; elle est stockée en base et intégrée aux documents, sans lien externe.
 
+## Diffusion
+
+QR code (PNG, SVG), QR code par site et flyer PDF se produisent dans le back-office : `/admin/formulaires/{id}/diffusion`, rôles `admin` et `editor`. Voir [`docs/back-office.md`](docs/back-office.md#diffusion-qr-code-et-flyer). Prérequis : paramètre `app.publicBaseUrl` et, pour le flyer, `Gotenberg__Url` dans la configuration de l'API.
+
 ## Emails
 
 Les emails partent du Worker, par SMTP direct (MailKit), jamais pendant la soumission. Voir [`docs/back-office.md`](docs/back-office.md#emails).

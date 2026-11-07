@@ -1,0 +1,14 @@
+@model (CseForms.Application.Distribution.DistributionPage Form, string Id)
+@if (Model.Form.SiteParameter is not null && Model.Form.Sites.Count > 0)
+{
+    <div class="field">
+        <label for="@Model.Id">Lieu de travail prérempli</label>
+        <select id="@Model.Id" name="site">
+            <option value="">Aucun (tous les sites)</option>
+            @foreach (var site in Model.Form.Sites)
+            {
+                <option value="@site">@site</option>
+            }
+        </select>
+    </div>
+}
