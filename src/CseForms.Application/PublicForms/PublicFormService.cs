@@ -1,7 +1,9 @@
 using System.Text.Json;
 using CseForms.Application.Common;
 using CseForms.Application.FormDefinitions;
+using CseForms.Application.Notifications;
 using CseForms.Domain.Forms;
+using CseForms.Domain.Jobs;
 using Microsoft.Extensions.Logging;
 
 namespace CseForms.Application.PublicForms;
@@ -82,7 +84,13 @@ public sealed partial class PublicFormService(
         }
 
         var saved = await store.SaveSubmissionAsync(
-            new SaveSubmissionCommand(form.Id, version.Id, validation.Data!.ToJsonString(), calendar.UtcNow, calendar.Today.Year),
+            new SaveSubmissionCommand(
+                form.Id,
+                version.Id,
+                validation.Data!.ToJsonString(),
+                calendar.UtcNow,
+                calendar.Today.Year,
+                JobsFor(version.SchemaJson, validation.Data!)),
             cancellationToken);
 
         switch (saved)
@@ -95,6 +103,19 @@ public sealed partial class PublicFormService(
             default:
                 return new SubmitOutcome.NotAccepting();
         }
+    }
+
+    /// <summary>
+    /// Tâches enregistrées avec la réponse : PDF et notification au CSE toujours (la notification ne fait rien
+    /// sans règle), accusé de réception seulement si le formulaire en prévoit un et que l'email est renseigné.
+    /// </summary>
+    private static IReadOnlyList<JobType> JobsFor(string schemaJson, System.Text.Json.Nodes.JsonObject data)
+    {
+        var receipt = ReceiptSettings.Read(schemaJson);
+        var wantsReceipt = receipt is not null && data[receipt.EmailField] is System.Text.Json.Nodes.JsonValue email
+            && email.TryGetValue<string>(out var address) && !string.IsNullOrWhiteSpace(address);
+
+        return wantsReceipt ? [JobType.Pdf, JobType.Notification, JobType.Receipt] : [JobType.Pdf, JobType.Notification];
     }
 
     private bool IsAccessCodeValid(string hash, string? accessCode)

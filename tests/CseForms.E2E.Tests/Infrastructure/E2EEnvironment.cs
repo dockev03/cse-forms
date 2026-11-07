@@ -15,7 +15,7 @@ public sealed class E2ECollection : ICollectionFixture<E2EEnvironment>
 
 /// <summary>
 /// Application complète pour les tests de bout en bout, démarrée une fois pour toute la collection :
-/// base PostgreSQL jetable, API et Worker en processus séparés, Gotenberg, navigateur Chromium.
+/// base PostgreSQL jetable, API et Worker en processus séparés, Gotenberg, serveur SMTP factice, navigateur Chromium.
 /// Les données sont créées par la ligne de commande d'administration, comme en production.
 /// Uniquement des données fictives ; mots de passe et code d'accès tirés au hasard à chaque exécution.
 /// </summary>
@@ -31,11 +31,22 @@ public sealed class E2EEnvironment : IAsyncLifetime
 
     public static readonly string[] Sites = ["Abrest", "Riom"];
 
+    /// <summary>Destinataire des notifications du formulaire d'inscription.</summary>
+    public const string NotificationRecipient = "elus.e2e@example.test";
+
+    /// <summary>Adresse publique déclarée dans les paramètres (liens des emails).</summary>
+    public const string PublicBaseUrl = "https://formulaires.example.test";
+
     private readonly List<string> _directories = [];
     private PostgresFixture? _database;
     private AppProcess? _api;
     private AppProcess? _worker;
     private IPlaywright? _playwright;
+    private FakeSmtpServer? _smtp;
+    private Dictionary<string, string> _environment = [];
+
+    /// <summary>Emails envoyés par le Worker.</summary>
+    public FakeSmtpServer Smtp => _smtp!;
 
     public string BaseUrl { get; private set; } = string.Empty;
 
@@ -66,6 +77,7 @@ public sealed class E2EEnvironment : IAsyncLifetime
 
         _database = new PostgresFixture();
         await _database.InitializeAsync();
+        _smtp = new FakeSmtpServer();
 
         var environment = new Dictionary<string, string>
         {
@@ -85,6 +97,7 @@ public sealed class E2EEnvironment : IAsyncLifetime
             ["Logging__LogLevel__Default"] = "Warning",
         };
 
+        _environment = environment;
         await SeedAsync(environment);
 
         // HTTPS obligatoire : cookies « Secure » et jeton anti-CSRF du back-office.
@@ -128,11 +141,20 @@ public sealed class E2EEnvironment : IAsyncLifetime
             await _database.DisposeAsync();
         }
 
+        if (_smtp is not null)
+        {
+            await _smtp.DisposeAsync();
+        }
+
         foreach (var directory in _directories)
         {
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    /// <summary>Commande d'administration du Worker, avec sa configuration ; lève une exception si elle échoue.</summary>
+    public Task<string> RunWorkerCommandAsync(params string[] args) =>
+        AppProcess.RunAsync(AppProcess.AssemblyPath("CseForms.Worker"), _environment, string.Empty, args);
 
     private async Task SeedAsync(Dictionary<string, string> environment)
     {
@@ -152,6 +174,25 @@ public sealed class E2EEnvironment : IAsyncLifetime
         }
 
         await AppProcess.RunAsync(cli, environment, string.Empty, "users", "grant", "--email", Reader.Email, "--form", FormSlug);
+
+        // Emails : serveur SMTP factice local, sans chiffrement ni authentification.
+        var settings = new Dictionary<string, string>
+        {
+            ["smtp.host"] = "127.0.0.1",
+            ["smtp.port"] = _smtp!.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["smtp.security"] = "none",
+            ["smtp.from"] = "formulaires.e2e@example.test",
+            ["app.publicBaseUrl"] = PublicBaseUrl,
+            ["cse.name"] = "CSE Démo",
+            ["cse.email"] = "cse.e2e@example.test",
+        };
+        foreach (var (key, value) in settings)
+        {
+            await AppProcess.RunAsync(cli, environment, string.Empty, "settings", "set", "--key", key, "--value", value);
+        }
+
+        await AppProcess.RunAsync(cli, environment, string.Empty, "notifications", "set", "--form", FormSlug,
+            "--to", NotificationRecipient, "--subject", "Nouvelle inscription n° {numero}, site {site}");
     }
 
     private async Task WaitUntilReadyAsync()

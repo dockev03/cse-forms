@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using CseForms.Application.FormDefinitions;
+using CseForms.Application.Notifications;
 using CseForms.Application.Pdf;
 
 namespace CseForms.Application.FormAdministration;
@@ -74,6 +75,11 @@ public static partial class FormPackageReader
         var schemaJson = definition.ToJsonString();
         var parsed = FormDefinitionParser.Parse(schemaJson);
         errors.AddRange(parsed.Errors);
+
+        if (root["receipt"] is { } receipt)
+        {
+            errors.AddRange(ReceiptSettings.Check(receipt, parsed.IsValid ? parsed.Definition : null));
+        }
 
         var pdfTemplate = ReadPdfTemplate(root, readCompanionFile, parsed.Definition, errors);
 

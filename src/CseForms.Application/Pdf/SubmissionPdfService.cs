@@ -1,3 +1,4 @@
+using CseForms.Application.Jobs;
 using CseForms.Domain.Submissions;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +12,7 @@ public sealed partial class SubmissionPdfService(
     ISubmissionPdfStore store,
     IFileVault vault,
     IPdfConverter converter,
+    IJobFailureAlerter alerter,
     TimeProvider timeProvider,
     ILogger<SubmissionPdfService> logger)
 {
@@ -23,10 +25,11 @@ public sealed partial class SubmissionPdfService(
         }
 
         StoredFile? written = null;
+        PdfSource? source = null;
         var committed = false;
         try
         {
-            var source = await store.GetSourceAsync(job.SubmissionId, cancellationToken)
+            source = await store.GetSourceAsync(job.SubmissionId, cancellationToken)
                 ?? throw new InvalidOperationException("Réponse introuvable.");
 
             var html = SubmissionPdfRenderer.Render(source, out var templateRejected);
@@ -85,6 +88,7 @@ public sealed partial class SubmissionPdfService(
             }
 
             LogFailed(ex, job.Id, job.SubmissionId, job.Attempts);
+            await alerter.AlertAsync(new JobFailure(job.Id, job.Type, job.SubmissionId, source?.CaseNumber, job.LastError), cancellationToken);
             return JobRunResult.Done;
         }
     }

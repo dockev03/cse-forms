@@ -116,7 +116,7 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
 - Génération PDF à partir d'un modèle HTML propre à chaque formulaire, ou d'un modèle générique par défaut (libellé + valeur). Le PDF est stocké chiffré et n'est jamais joint à un email.
 - Règles de notification par formulaire : destinataires fixes, objet et corps paramétrables avec variables non personnelles (`{formulaire}`, `{numero}`, `{date}`, `{site}`), lien profond vers la réponse dans le back-office.
 - Accusé de réception au répondant (champ email désigné) : numéro de dossier et rappel des modalités, sans aucune donnée saisie.
-- File de tâches avec relances (3 essais) et alerte à l'administrateur en cas d'échec définitif.
+- File de tâches avec relances (3 essais) et alerte à l'administrateur en cas d'échec définitif (adresse d'alerte dans les paramètres).
 - Enregistrement des réponses partielles pour reprise ultérieure (V2).
 - Webhook sortant optionnel (V2), sans données personnelles par défaut.
 

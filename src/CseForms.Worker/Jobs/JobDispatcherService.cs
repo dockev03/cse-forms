@@ -44,6 +44,9 @@ public sealed partial class JobDispatcherService(
             case JobType.Pdf:
                 jobs.Enqueue<PdfJob>(j => j.RunAsync(job.Id, CancellationToken.None));
                 break;
+            case JobType.Notification or JobType.Receipt:
+                jobs.Enqueue<EmailJob>(j => j.RunAsync(job.Id, CancellationToken.None));
+                break;
             default:
                 throw new InvalidOperationException($"Type de tâche inconnu : {job.Type}.");
         }

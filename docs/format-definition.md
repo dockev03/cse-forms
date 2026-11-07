@@ -18,7 +18,7 @@ Référence du JSON stocké dans `form_version.schema_json`. Il pilote le rendu 
 }
 ```
 
-Les autres propriétés de premier niveau (`slug`, `notifications`, `receipt`...) sont ignorées par le moteur et traitées par d'autres composants. Dans une section, un champ ou une règle, toute propriété inconnue est refusée à la publication.
+Les autres propriétés de premier niveau (`slug`, `receipt`...) sont ignorées par le moteur et traitées par d'autres composants (voir [accusé de réception](#accusé-de-réception)). Dans une section, un champ ou une règle, toute propriété inconnue est refusée à la publication.
 
 Les identifiants (`id`) commencent par une lettre et ne contiennent que lettres, chiffres et `_` (64 caractères maximum). Ils sont uniques dans tout le formulaire, et uniques dans chaque groupe répétable.
 
@@ -106,6 +106,19 @@ Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.js
 | `sections`, `receipt` | Définition, stockée dans `schema_json` | oui |
 
 Toute autre propriété est refusée, y compris `notifications` : les destinataires se règlent en base. Réimporter un fichier dont la définition, la présentation et le modèle PDF n'ont pas changé ne crée pas de version ; sinon une nouvelle version est publiée, sans rouvrir un formulaire fermé. En mode `pin`, le formulaire n'est jamais publié sans code d'accès (4 à 12 chiffres, stocké haché) : il est demandé au premier import.
+
+## Accusé de réception
+
+```json
+"receipt": { "emailField": "emailPerso", "message": "Toute modification d'état civil doit être communiquée au CSE." }
+```
+
+| Propriété | Rôle |
+| --- | --- |
+| `emailField` | Champ `email` de premier niveau, enregistré (pas `persist: false`), qui reçoit l'accusé (obligatoire) |
+| `message` | Texte fixe ajouté à l'accusé, 1000 caractères au plus (facultatif) |
+
+L'accusé ne contient jamais de donnée saisie : numéro de dossier, formulaire, date et heure, `message`, contact du CSE. Aucune autre propriété n'est acceptée. Sans `receipt`, ou si le répondant n'a pas renseigné le champ, aucun accusé n'est envoyé. `receipt` fait partie de la définition versionnée.
 
 ## Modèle PDF
 

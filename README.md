@@ -11,7 +11,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
 | `src/CseForms.Api` | API, formulaire public (`/f/{slug}`, fichiers dans `wwwroot`) et back-office |
 | `forms` | Fichiers de définition des formulaires, publiés avec `forms import` |
-| `src/CseForms.Worker` | Tâches de fond (Hangfire) : génération des PDF ; emails et purge à venir |
+| `src/CseForms.Worker` | Tâches de fond (Hangfire) : génération des PDF, notifications et accusés de réception par email ; purge à venir |
 | `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
 | `tests/CseForms.E2E.Tests` | Tests de bout en bout Playwright (navigateur réel) |
@@ -27,7 +27,7 @@ set -a; . ./.env; set +a        # charge les variables dans le shell
 dotnet tool restore
 dotnet ef database update -p src/CseForms.Infrastructure -s src/CseForms.Infrastructure
 dotnet run --project src/CseForms.Api
-dotnet run --project src/CseForms.Worker   # dans un autre terminal : génération des PDF
+dotnet run --project src/CseForms.Worker   # dans un autre terminal : PDF et emails
 ```
 
 La clé de chiffrement des PDF se génère avec `openssl rand -base64 32` (variable `Storage__EncryptionKey`). Voir [`docs/back-office.md`](docs/back-office.md#pdf).
@@ -70,6 +70,34 @@ dotnet run --project src/CseForms.Api -- settings list
 - `sites disable --label <libellé>` retire un site des listes sans toucher aux réponses existantes ; `sites enable` le réactive.
 - `settings` n'accepte que les clés connues (`settings list` les affiche) : coordonnées, bureau et logo du CSE, adresse publique du site. Aucun secret n'y est stocké.
 - `settings logo` n'accepte qu'une image PNG ou JPEG de 256 Ko au plus (pas de SVG, qui peut contenir du script) ; elle est stockée en base et intégrée aux documents, sans lien externe.
+
+## Emails
+
+Les emails partent du Worker, par SMTP direct (MailKit), jamais pendant la soumission. Voir [`docs/back-office.md`](docs/back-office.md#emails).
+
+```bash
+dotnet run --project src/CseForms.Api -- settings set --key smtp.host --value smtp.example.test
+dotnet run --project src/CseForms.Api -- settings set --key smtp.port --value 587
+dotnet run --project src/CseForms.Api -- settings set --key smtp.security --value starttls
+dotnet run --project src/CseForms.Api -- settings set --key smtp.from --value formulaires@example.test
+dotnet run --project src/CseForms.Api -- settings set --key alerts.email --value admin@example.test
+dotnet run --project src/CseForms.Api -- settings set --key app.publicBaseUrl --value https://formulaires.example.test
+dotnet run --project src/CseForms.Api -- notifications set --form inscription --to elu1@example.test,elu2@example.test \
+  --subject "Nouvelle inscription n° {numero}, site {site}"
+dotnet run --project src/CseForms.Api -- notifications show --form inscription
+```
+
+Test des réglages SMTP, depuis le Worker qui détient les identifiants (en conteneur : `docker compose exec worker dotnet CseForms.Worker.dll mail test --to ...`) :
+
+```bash
+dotnet run --project src/CseForms.Worker -- mail test --to admin@example.test
+```
+
+L'email de test rappelle le serveur, le port, le chiffrement et l'expéditeur, sans identifiant. En cas d'échec, la commande affiche la cause (serveur injoignable, authentification refusée...) et rend un code d'erreur.
+
+- Identifiant et mot de passe SMTP : variables `Smtp__Username` et `Smtp__Password` du Worker, jamais en base. Sans chiffrement (`smtp.security` à `none`), l'authentification est refusée.
+- `notifications set` remplace la règle du formulaire ; `--body-file` donne un corps personnalisé. Variables : `{formulaire}`, `{numero}`, `{date}`, `{site}`, `{lien}` ; une variable inconnue est refusée. `notifications remove` coupe les notifications du formulaire.
+- L'accusé de réception se règle dans le fichier du formulaire (`receipt`, voir le [format](docs/format-definition.md#accusé-de-réception)).
 
 ## Tests
 
