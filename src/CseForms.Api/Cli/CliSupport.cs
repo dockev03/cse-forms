@@ -2,11 +2,11 @@ namespace CseForms.Api.Cli;
 
 /// <summary>
 /// Point d'entrée et outils communs des commandes d'administration :
-/// <c>dotnet CseForms.Api.dll users|forms|sites|settings ...</c>.
+/// <c>dotnet CseForms.Api.dll users|forms|sites|settings|notifications ...</c>.
 /// </summary>
 internal static class CliSupport
 {
-    private static readonly string[] Commands = ["users", "forms", "sites", "settings"];
+    private static readonly string[] Commands = ["users", "forms", "sites", "settings", "notifications"];
 
     public static bool IsCommand(string[] args) => args.Length > 0 && Commands.Contains(args[0]);
 
@@ -16,6 +16,7 @@ internal static class CliSupport
             "users" => UserCommands.RunAsync(services, args, input, output, interactive),
             "forms" => FormCommands.RunAsync(services, args, input, output, interactive),
             "sites" => SiteCommands.RunAsync(services, args, output),
+            "notifications" => NotificationCommands.RunAsync(services, args, output),
             _ => SettingCommands.RunAsync(services, args, input, output),
         };
 

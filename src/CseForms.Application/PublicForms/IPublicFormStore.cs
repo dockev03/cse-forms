@@ -1,4 +1,5 @@
 using CseForms.Domain.Forms;
+using CseForms.Domain.Jobs;
 
 namespace CseForms.Application.PublicForms;
 
@@ -18,7 +19,14 @@ public interface IPublicFormStore
 
 public sealed record PublishedForm(Form Form, FormVersion Version, int ResponseCount);
 
-public sealed record SaveSubmissionCommand(Guid FormId, Guid FilledVersionId, string DataJson, DateTimeOffset Now, int CaseYear);
+/// <param name="Jobs">Tâches de fond enregistrées dans la même transaction que la réponse.</param>
+public sealed record SaveSubmissionCommand(
+    Guid FormId,
+    Guid FilledVersionId,
+    string DataJson,
+    DateTimeOffset Now,
+    int CaseYear,
+    IReadOnlyList<JobType> Jobs);
 
 public abstract record SaveSubmissionOutcome
 {

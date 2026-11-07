@@ -102,9 +102,10 @@ public class SubmissionPdfServiceTests
     private readonly FakeStore _store = new();
     private readonly FakeVault _vault = new();
     private readonly FakeConverter _converter = new();
+    private readonly RecordingAlerter _alerter = new();
 
     private SubmissionPdfService Service() =>
-        new(_store, _vault, _converter, new FixedTimeProvider(Now), NullLogger<SubmissionPdfService>.Instance);
+        new(_store, _vault, _converter, _alerter, new FixedTimeProvider(Now), NullLogger<SubmissionPdfService>.Instance);
 
     [Fact]
     public async Task Successful_job_stores_the_pdf_and_removes_the_previous_one()
@@ -129,8 +130,11 @@ public class SubmissionPdfServiceTests
 
         Assert.Equal(JobRunResult.Retry, await Service().RunJobAsync(_store.Job.Id, default));
         Assert.Equal(JobRunResult.Retry, await Service().RunJobAsync(_store.Job.Id, default));
+        Assert.Empty(_alerter.Failures);
         Assert.Equal(JobRunResult.Done, await Service().RunJobAsync(_store.Job.Id, default));
 
+        var alert = Assert.Single(_alerter.Failures);
+        Assert.Equal((JobType.Pdf, _store.Job.SubmissionId, nameof(HttpRequestException)), (alert.Type, alert.SubmissionId, alert.Error));
         Assert.Equal(JobStatus.Failed, _store.Job.Status);
         Assert.Equal(3, _store.Job.Attempts);
         Assert.Equal(nameof(HttpRequestException), _store.Job.LastError);

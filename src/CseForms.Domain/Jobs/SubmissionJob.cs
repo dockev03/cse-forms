@@ -5,6 +5,12 @@ namespace CseForms.Domain.Jobs;
 public enum JobType
 {
     Pdf,
+
+    /// <summary>Notification au CSE, sans donnée personnelle.</summary>
+    Notification,
+
+    /// <summary>Accusé de réception au répondant, sans donnée saisie.</summary>
+    Receipt,
 }
 
 public enum JobStatus

@@ -2,6 +2,7 @@ using CseForms.Domain.Audit;
 using CseForms.Domain.Forms;
 using CseForms.Domain.Jobs;
 using CseForms.Domain.Settings;
+using CseForms.Domain.Notifications;
 using CseForms.Domain.Sites;
 using CseForms.Domain.Submissions;
 using CseForms.Infrastructure.Identity;
@@ -25,6 +26,8 @@ public sealed class CseFormsDbContext(DbContextOptions<CseFormsDbContext> option
     public DbSet<SubmissionJob> Jobs => Set<SubmissionJob>();
 
     public DbSet<Site> Sites => Set<Site>();
+
+    public DbSet<NotificationRule> NotificationRules => Set<NotificationRule>();
 
     public DbSet<Setting> Settings => Set<Setting>();
 

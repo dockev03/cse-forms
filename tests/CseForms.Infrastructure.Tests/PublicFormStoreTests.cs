@@ -1,5 +1,6 @@
 using CseForms.Application.PublicForms;
 using CseForms.Domain.Forms;
+using CseForms.Domain.Jobs;
 using CseForms.Infrastructure.Persistence;
 using CseForms.Infrastructure.PublicForms;
 using CseForms.Infrastructure.Security;
@@ -16,7 +17,7 @@ public class PublicFormStoreTests(PostgresFixture fixture) : IClassFixture<Postg
     {
         await using var db = fixture.CreateContext();
         return await new PublicFormStore(db).SaveSubmissionAsync(
-            new SaveSubmissionCommand(form.Id, versionId ?? form.CurrentVersionId!.Value, """{"nom":"FICTIF"}""", Now, year),
+            new SaveSubmissionCommand(form.Id, versionId ?? form.CurrentVersionId!.Value, """{"nom":"FICTIF"}""", Now, year, [JobType.Pdf, JobType.Notification]),
             CancellationToken.None);
     }
 
@@ -50,6 +51,23 @@ public class PublicFormStoreTests(PostgresFixture fixture) : IClassFixture<Postg
             Assert.Equal(form.CurrentVersionId, published.Version.Id);
             Assert.Equal(1, published.ResponseCount);
         }
+    }
+
+    [Fact]
+    public async Task Requested_jobs_are_saved_with_the_submission()
+    {
+        Form form;
+        await using (var db = fixture.CreateContext())
+        {
+            form = await TestData.AddPublishedFormAsync(db, "store-taches");
+        }
+
+        var created = Assert.IsType<SaveSubmissionOutcome.Created>(await SaveAsync(form));
+
+        await using var check = fixture.CreateContext();
+        var jobs = await check.Jobs.Where(j => j.SubmissionId == created.SubmissionId).Select(j => new { j.Type, j.Status }).ToListAsync();
+        Assert.Equal([JobType.Pdf, JobType.Notification], jobs.Select(j => j.Type).Order());
+        Assert.All(jobs, j => Assert.Equal(JobStatus.Pending, j.Status));
     }
 
     [Fact]

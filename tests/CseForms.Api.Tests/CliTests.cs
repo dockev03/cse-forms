@@ -44,6 +44,7 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
         Assert.True(CliSupport.IsCommand(["sites", "list"]));
         Assert.True(CliSupport.IsCommand(["settings", "list"]));
         Assert.True(CliSupport.IsCommand(["users", "list"]));
+        Assert.True(CliSupport.IsCommand(["notifications", "show"]));
         Assert.False(CliSupport.IsCommand([]));
         Assert.False(CliSupport.IsCommand(["--urls", "https://127.0.0.1"]));
     }
@@ -280,5 +281,56 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
         Assert.Equal(0, await RunAsync(string.Empty, "settings", "list"));
         Assert.Contains("cse.logo | (image, 1 Ko)", LastOutput);
         Assert.DoesNotContain("base64", LastOutput);
+    }
+
+    [Fact]
+    public async Task Notification_rule_is_set_shown_and_removed()
+    {
+        Assert.Equal(0, await RunAsync(string.Empty, "forms", "import", "--file", WriteForm("cli-notif")));
+
+        Assert.Equal(1, await RunAsync(string.Empty, "notifications", "set", "--form", "cli-inconnu", "--to", "elu@example.test"));
+        Assert.Equal(1, await RunAsync(string.Empty, "notifications", "set", "--form", "cli-notif", "--to", "pas-une-adresse"));
+        Assert.Equal(1, await RunAsync(string.Empty, "notifications", "set", "--form", "cli-notif", "--to", "elu@example.test", "--subject", "Inscription de {nom}"));
+        Assert.Contains("{nom}", LastOutput);
+
+        var bodyFile = Path.Combine(_directory, "corps.txt");
+        await File.WriteAllTextAsync(bodyFile, "Nouvelle réponse {numero} du {date}.\r\n");
+        Assert.Equal(0, await RunAsync(string.Empty, "notifications", "set", "--form", "cli-notif",
+            "--to", "Elu@Example.test; autre@example.test", "--subject", "Dossier {numero}, site {site}", "--body-file", bodyFile));
+
+        Assert.Equal(0, await RunAsync(string.Empty, "notifications", "show", "--form", "cli-notif"));
+        Assert.Contains("Destinataires : elu@example.test, autre@example.test", LastOutput);
+        Assert.Contains("Objet : Dossier {numero}, site {site}", LastOutput);
+        Assert.Contains("Nouvelle réponse {numero} du {date}.", LastOutput);
+
+        // Une nouvelle règle remplace la précédente.
+        Assert.Equal(0, await RunAsync(string.Empty, "notifications", "set", "--form", "cli-notif", "--to", "elu@example.test"));
+        await using (var db = factory.Database.CreateContext())
+        {
+            var formId = (await db.Forms.SingleAsync(f => f.Slug == "cli-notif")).Id;
+            var rule = await db.NotificationRules.SingleAsync(r => r.FormId == formId);
+            Assert.Equal(["elu@example.test"], rule.Recipients);
+            Assert.Null(rule.Subject);
+        }
+
+        Assert.Equal(0, await RunAsync(string.Empty, "notifications", "remove", "--form", "cli-notif"));
+        Assert.Equal(0, await RunAsync(string.Empty, "notifications", "show", "--form", "cli-notif"));
+        Assert.Contains("Aucune notification", LastOutput);
+    }
+
+    [Fact]
+    public async Task Smtp_and_alert_settings_are_checked()
+    {
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.host", "--value", "smtp.example.test"));
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.port", "--value", "587"));
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.security", "--value", "starttls"));
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.from", "--value", "formulaires@example.test"));
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "set", "--key", "alerts.email", "--value", "admin@example.test"));
+
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.host", "--value", "smtp://smtp.example.test:587"));
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.port", "--value", "70000"));
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.security", "--value", "tls"));
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.from", "--value", "CSE <formulaires@example.test>"));
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "smtp.password", "--value", "secret"));
     }
 }

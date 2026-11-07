@@ -8,7 +8,10 @@
     "multiStep": true,
     "confirmationText": "Votre fiche a bien été transmise au CSE. Si vous avez indiqué votre email, un accusé de réception vous est envoyé. Toute modification d'état civil doit être communiquée au CSE."
   },
-  "receipt": { "emailField": "emailPerso" },
+  "receipt": {
+    "emailField": "emailPerso",
+    "message": "Toute modification d'état civil doit être communiquée au CSE."
+  },
   "sections": [
     {
       "id": "etatCivil",

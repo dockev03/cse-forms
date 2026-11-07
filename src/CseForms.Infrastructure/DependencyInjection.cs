@@ -4,6 +4,8 @@ using CseForms.Application.FormAdministration;
 using CseForms.Infrastructure.BackOffice;
 using CseForms.Infrastructure.FormAdministration;
 using CseForms.Infrastructure.Jobs;
+using CseForms.Infrastructure.Notifications;
+using CseForms.Application.Notifications;
 using CseForms.Infrastructure.Pdf;
 using CseForms.Infrastructure.Storage;
 using CseForms.Application.Pdf;
@@ -40,6 +42,8 @@ public static class DependencyInjection
         services.AddScoped<IFormAdminStore, FormAdminStore>();
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
         services.AddScoped<PendingJobDispatcher>();
+        services.AddScoped<ISettingReader, SettingReader>();
+        services.AddScoped<ISubmissionEmailStore, SubmissionEmailStore>();
 
         services.AddOptions<StorageOptions>()
             .Bind(configuration.GetSection(StorageOptions.Section))
@@ -66,6 +70,19 @@ public static class DependencyInjection
             http.BaseAddress = new Uri(options.Url.TrimEnd('/') + "/");
             http.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
+
+        return services;
+    }
+
+    /// <summary>Envoi des emails par SMTP : uniquement dans le Worker.</summary>
+    public static IServiceCollection AddEmailSending(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<SmtpOptions>()
+            .Bind(configuration.GetSection(SmtpOptions.Section))
+            .Validate(o => string.IsNullOrEmpty(o.Username) || !string.IsNullOrEmpty(o.Password), "Smtp__Password est obligatoire avec Smtp__Username.")
+            .Validate(o => o.TimeoutSeconds is > 0 and <= 300, "Smtp__TimeoutSeconds doit être compris entre 1 et 300.")
+            .ValidateOnStart();
+        services.AddScoped<IEmailSender, MailKitEmailSender>();
 
         return services;
     }

@@ -77,8 +77,11 @@ internal sealed class PublicFormStore(CseFormsDbContext db) : IPublicFormStore
 
         db.Submissions.Add(submission);
 
-        // Même transaction que la réponse : le PDF sera produit même si le serveur s'arrête ici.
-        db.Jobs.Add(new SubmissionJob(submission.Id, JobType.Pdf, command.Now));
+        // Même transaction que la réponse : PDF et emails partiront même si le serveur s'arrête ici.
+        foreach (var type in command.Jobs.Distinct())
+        {
+            db.Jobs.Add(new SubmissionJob(submission.Id, type, command.Now));
+        }
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 

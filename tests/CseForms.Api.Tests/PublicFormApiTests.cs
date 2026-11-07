@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CseForms.Domain.Forms;
+using CseForms.Domain.Jobs;
 using CseForms.Testing;
 using Microsoft.EntityFrameworkCore;
 
@@ -88,10 +89,34 @@ public class PublicFormApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(form.CurrentVersionId, stored.FormVersionId);
         Assert.Equal("DUPONT", JsonNode.Parse(stored.DataJson)!["nom"]!.GetValue<string>());
 
-        // Le PDF est demandé dans la même transaction que la réponse.
-        var job = await db.Jobs.SingleAsync(j => j.SubmissionId == stored.Id);
-        Assert.Equal(CseForms.Domain.Jobs.JobType.Pdf, job.Type);
-        Assert.Equal(CseForms.Domain.Jobs.JobStatus.Pending, job.Status);
+        // PDF et notification sont demandés dans la même transaction que la réponse ; pas d'accusé sans « receipt ».
+        var jobs = await db.Jobs.Where(j => j.SubmissionId == stored.Id).ToListAsync();
+        Assert.Equal([JobType.Pdf, JobType.Notification], jobs.Select(j => j.Type).Order());
+        Assert.All(jobs, j => Assert.Equal(JobStatus.Pending, j.Status));
+    }
+
+    [Theory]
+    [InlineData("camille.fictif@example.test", true)]
+    [InlineData(null, false)]
+    public async Task Receipt_is_requested_only_when_the_respondent_gave_an_email(string? email, bool expected)
+    {
+        var slug = $"api-accuse-{expected.ToString().ToLowerInvariant()}";
+        await using (var db = factory.Database.CreateContext())
+        {
+            await TestData.AddPublishedFormAsync(db, slug, """
+                {"receipt":{"emailField":"mail"},"sections":[{"id":"s","fields":[
+                  {"id":"nom","type":"text","label":"Nom","required":true},
+                  {"id":"mail","type":"email","label":"Email"}]}]}
+                """);
+        }
+
+        var response = await SubmitAsync(slug, new { version = 1, data = new { nom = "Fictif", mail = email } });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var caseNumber = (await ReadJsonAsync(response))["caseNumber"]!.GetValue<string>();
+
+        await using var check = factory.Database.CreateContext();
+        var submission = await check.Submissions.SingleAsync(s => s.CaseNumber == caseNumber);
+        Assert.Equal(expected, await check.Jobs.AnyAsync(j => j.SubmissionId == submission.Id && j.Type == JobType.Receipt));
     }
 
     [Fact]
