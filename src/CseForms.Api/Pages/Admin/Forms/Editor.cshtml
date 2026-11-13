@@ -1,0 +1,74 @@
+@page "/admin/formulaires/nouveau"
+@model CseForms.Api.Pages.Admin.Forms.EditorModel
+@using CseForms.Application.FormAdministration
+@{
+    var document = Model.Document;
+    ViewData["Title"] = Model.IsNew ? "Nouveau formulaire" : $"Modifier le formulaire /f/{document.Slug}";
+}
+
+<p>
+    <a href="/admin">Formulaires</a>
+    @if (!Model.IsNew)
+    {
+        <text> · <a href="/admin/formulaires/@document.FormId/reglages">Réglages</a></text>
+    }
+</p>
+<h1>@ViewData["Title"]</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert" id="editor-errors">
+        <p>Brouillon non enregistré, à corriger :</p>
+        <ul>
+            @foreach (var error in Model.Errors)
+            {
+                <li data-path="@error.Path" data-message="@error.Message"><code>@error.Path</code> : @error.Message</li>
+            }
+        </ul>
+    </div>
+}
+
+<section class="card" aria-labelledby="source">
+    <h2 id="source">Avant de commencer</h2>
+    <p>
+        @switch (document.Source)
+        {
+            case EditorSource.Draft:
+                <text>Vous modifiez le brouillon en cours de ce formulaire.</text>
+                break;
+            case EditorSource.Version:
+                <text>Vous partez de la version en ligne. Elle reste en ligne : vos modifications deviennent un brouillon.</text>
+                break;
+            default:
+                <text>Vous partez d'un formulaire vierge.</text>
+                break;
+        }
+        L'enregistrement ne publie rien : il applique les mêmes contrôles qu'un import, puis ouvre l'aperçu (mobile et ordinateur), d'où le brouillon se publie.
+    </p>
+    @if (document.HasPdfTemplate)
+    {
+        <p>Ce formulaire a un modèle PDF personnalisé : il est conservé tel quel. Un champ qu'il utilise ne peut être ni supprimé ni renommé.</p>
+    }
+</section>
+
+<form method="post" enctype="multipart/form-data" id="editor-form" class="card">
+    <div id="editor" data-slug="@document.Slug" data-source="@Model.SourceName" data-published-ids="@string.Join(' ', document.PublishedFieldIds)" hidden></div>
+    <div class="field" id="json-fallback">
+        <label for="package">Fichier de formulaire (JSON)</label>
+        <p class="help" id="package-aide">Format décrit dans <code>docs/format-definition.md</code> : réglages, présentation et champs. Le code d'accès n'y figure jamais : il est demandé à la publication.</p>
+        <textarea id="package" name="package" rows="24" class="code" spellcheck="false" aria-describedby="package-aide">@Model.PackageJson</textarea>
+    </div>
+    <div class="actions">
+        <button type="submit" class="primary">Enregistrer le brouillon et voir l'aperçu</button>
+        @if (!Model.IsNew)
+        {
+            <a href="/admin/formulaires/@document.FormId/reglages">Annuler</a>
+        }
+        else
+        {
+            <a href="/admin">Annuler</a>
+        }
+    </div>
+</form>
+
+<script type="module" src="/assets/js/editor.mjs"></script>

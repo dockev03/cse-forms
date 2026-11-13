@@ -122,6 +122,9 @@ internal static class BackOfficeSetup
                 options.Conventions.AllowAnonymousToPage("/Admin/Login");
                 options.Conventions.AllowAnonymousToPage("/Admin/LoginCode");
                 options.Conventions.AllowAnonymousToPage("/Admin/AccessDenied");
+
+                // Éditeur visuel : /admin/formulaires/nouveau (création) et /admin/formulaires/{id}/editeur (modification).
+                options.Conventions.AddPageRoute("/Admin/Forms/Editor", "/admin/formulaires/{formId:guid}/editeur");
             })
             .AddMvcOptions(options => options.Filters.Add<PasswordChangeFilter>());
 

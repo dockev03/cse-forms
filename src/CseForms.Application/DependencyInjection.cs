@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<FormLifecycleService>();
         services.AddScoped<FormImportService>();
         services.AddScoped<FormDraftService>();
+        services.AddScoped<FormEditorService>();
         services.AddScoped<FormDuplicationService>();
         services.AddScoped<FormTemplateService>();
         services.AddScoped<Notifications.NotificationRuleService>();

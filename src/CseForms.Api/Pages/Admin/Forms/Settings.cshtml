@@ -51,7 +51,7 @@
 
 <section class="card" aria-labelledby="version">
     <h2 id="version">Définition</h2>
-    <p>Les champs, la présentation, la durée de conservation et le modèle PDF viennent du fichier de formulaire. Pour les modifier, <a href="/admin/formulaires/import">importez une nouvelle version</a> : les réponses déjà reçues restent rattachées à leur version. Pour vérifier le rendu avant de publier, enregistrez-la comme brouillon.</p>
+    <p>Les champs, la présentation, la durée de conservation et le modèle PDF viennent du fichier de formulaire. Pour les modifier, <a href="/admin/formulaires/@form.FormId/editeur">ouvrez l'éditeur</a> ou <a href="/admin/formulaires/import">importez une nouvelle version</a> : les modifications deviennent un brouillon, vérifié dans l'aperçu puis publié. Les réponses déjà reçues restent rattachées à leur version.</p>
     @if (form.DraftSavedAt is { } draftSavedAt)
     {
         <p>Brouillon enregistré le @Display.DateTime(draftSavedAt), non publié : <a href="/admin/formulaires/@form.FormId/apercu">voir l'aperçu (mobile et ordinateur)</a>.</p>

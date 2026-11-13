@@ -92,7 +92,7 @@ Côté client, un choix unique de 4 options ou moins s'affiche en boutons radio,
 
 ## Fichier de formulaire
 
-Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.json`](../forms/inscription.json)) depuis le back-office ([import](back-office.md#import-dun-formulaire)) ou avec `forms import` (voir le README). Le fichier réunit les réglages du formulaire, la présentation et la définition :
+Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.json`](../forms/inscription.json)) depuis le back-office ([import](back-office.md#import-dun-formulaire)) ou avec `forms import` (voir le README). L'[éditeur visuel](back-office.md#éditeur-visuel) produit ce même fichier, contrôlé de la même façon. Le fichier réunit les réglages du formulaire, la présentation et la définition :
 
 | Propriété | Rôle | Versionnée |
 | --- | --- | --- |
