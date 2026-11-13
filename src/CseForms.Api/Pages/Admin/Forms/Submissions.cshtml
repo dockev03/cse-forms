@@ -13,6 +13,11 @@
 </p>
 <h1>@Model.Form.Title</h1>
 
+@if (Model.Deleted == "1")
+{
+    <div class="notice" role="status"><p>La réponse a été supprimée définitivement.</p></div>
+}
+
 <form method="get" class="card filters" aria-label="Filtrer les réponses">
     <div class="field">
         <label for="q">Numéro de dossier</label>
@@ -22,7 +27,7 @@
         <label for="statut">Statut</label>
         <select id="statut" name="statut">
             <option value="">Tous</option>
-            @foreach (var status in Model.Result.Statuses)
+            @foreach (var status in SubmissionStatuses.All.Union(Model.Result.Statuses))
             {
                 <option value="@status" selected="@(status == Model.Statut)">@SubmissionStatuses.Label(status)</option>
             }
@@ -54,6 +59,11 @@
 </form>
 
 <p role="status">@Model.Result.TotalCount réponse(s)</p>
+
+@if (Model.Result.TotalCount > 0 && !User.ToCurrentUser().IsReadOnly)
+{
+    <p><a href="@Model.ExportUrl()">Exporter ces @Model.Result.TotalCount réponse(s) en CSV</a> (export journalisé ; le fichier contient des données personnelles, à ne pas transférer hors du CSE).</p>
+}
 
 @if (Model.Result.Items.Count > 0)
 {

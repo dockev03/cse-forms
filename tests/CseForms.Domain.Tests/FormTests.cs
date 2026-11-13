@@ -145,14 +145,12 @@ public class FormTests
     }
 
     [Fact]
-    public void Purge_date_follows_retention()
+    public void New_submission_is_never_scheduled_for_purge()
     {
         var form = new Form("inscription", "Titre", Now);
         form.Publish(Schema, null, null, Now, null);
+        form.SetRetentionDays(90);
 
         Assert.Null(form.CreateSubmission("INS-2026-0001", "{}", Now, 0).PurgeAt);
-
-        form.SetRetentionDays(90);
-        Assert.Equal(Now.AddDays(90), form.CreateSubmission("INS-2026-0002", "{}", Now, 1).PurgeAt);
     }
 }

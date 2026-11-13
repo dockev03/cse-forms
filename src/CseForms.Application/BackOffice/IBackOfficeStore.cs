@@ -19,9 +19,28 @@ public interface IBackOfficeStore
 
     /// <summary>Ajoute une tâche de génération, sauf si une génération est déjà en cours ; renvoie vrai si elle est ajoutée.</summary>
     Task<bool> RequestPdfAsync(Guid submissionId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Change le statut d'une réponse et tient sa date de purge à jour (conservation du formulaire).
+    /// Renvoie le statut précédent, ou null si la réponse est introuvable ou déjà à ce statut.
+    /// </summary>
+    Task<string?> ChangeStatusAsync(Guid submissionId, string status, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Actions journalisées sur la réponse (hors consultations) et tâches de fond terminées, du plus récent au plus ancien.</summary>
+    Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid submissionId, CancellationToken cancellationToken);
+
+    /// <summary>Toutes les réponses filtrées (sans pagination), avec les définitions des versions remplies.</summary>
+    Task<ExportData> GetExportDataAsync(SubmissionQuery query, CancellationToken cancellationToken);
 }
 
 public interface IAuditLog
 {
-    Task RecordAsync(string action, Guid? userId, string? target, CancellationToken cancellationToken);
+    /// <summary>
+    /// Enregistre une action. <paramref name="detail"/> est une précision technique (statuts, numéro de dossier,
+    /// nombre de lignes), jamais une donnée saisie.
+    /// </summary>
+    Task RecordAsync(string action, Guid? userId, string? target, string? detail, CancellationToken cancellationToken);
+
+    Task RecordAsync(string action, Guid? userId, string? target, CancellationToken cancellationToken) =>
+        RecordAsync(action, userId, target, null, cancellationToken);
 }

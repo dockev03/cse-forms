@@ -3,6 +3,8 @@ using CseForms.Application.BackOffice;
 using CseForms.Application.Common;
 using CseForms.Application.FormDefinitions;
 using CseForms.Application.Pdf;
+using CseForms.Application.Retention;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CseForms.Application.Tests;
 
@@ -114,30 +116,91 @@ public class BackOfficeServiceTests
             PdfPending = true;
             return Task.FromResult(true);
         }
+
+        public string Status { get; private set; } = "new";
+
+        public Task<string?> ChangeStatusAsync(Guid submissionId, string status, DateTimeOffset now, CancellationToken cancellationToken)
+        {
+            if (submissionId != SubmissionId || status == Status)
+            {
+                return Task.FromResult<string?>(null);
+            }
+
+            var previous = Status;
+            Status = status;
+            return Task.FromResult<string?>(previous);
+        }
+
+        public List<HistoryRecord> History { get; } = [];
+
+        public Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid submissionId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<HistoryRecord>>(History);
+
+        public ExportData Export { get; set; } = new([], new Dictionary<int, string>());
+
+        public Task<ExportData> GetExportDataAsync(SubmissionQuery query, CancellationToken cancellationToken)
+        {
+            LastQuery = query;
+            return Task.FromResult(Export);
+        }
+    }
+
+    private sealed class FakeEraseStore : ISubmissionEraseStore
+    {
+        public List<Guid> Deleted { get; } = [];
+
+        public List<DueSubmission> Due { get; } = [];
+
+        /// <summary>Réponses dont le statut a changé entre la liste et la suppression : non supprimées.</summary>
+        public HashSet<Guid> NoLongerDue { get; } = [];
+
+        public Task<IReadOnlyList<DueSubmission>> ListDueAsync(DateTimeOffset now, int max, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<DueSubmission>>(Due.Where(d => !Deleted.Contains(d.Id) && !NoLongerDue.Contains(d.Id)).Take(max).ToList());
+
+        public Task<IReadOnlyList<string>?> DeleteAsync(Guid submissionId, DateTimeOffset? dueAt, CancellationToken cancellationToken)
+        {
+            if ((dueAt is not null && NoLongerDue.Contains(submissionId)) || Deleted.Contains(submissionId))
+            {
+                return Task.FromResult<IReadOnlyList<string>?>(null);
+            }
+
+            Deleted.Add(submissionId);
+            return Task.FromResult<IReadOnlyList<string>?>([$"files/{submissionId}.bin"]);
+        }
     }
 
     private static readonly Guid PdfFileId = Guid.NewGuid();
 
-    private static BackOfficeService Service(FakeStore store, FakeAudit audit) => new(store, audit, new FakeVault(), TimeProvider.System);
+    private static BackOfficeService Service(FakeStore store, FakeAudit audit, FakeEraseStore? erase = null, FakeVault? vault = null)
+    {
+        vault ??= new FakeVault();
+        var eraser = new SubmissionEraser(erase ?? new FakeEraseStore(), vault, NullLogger<SubmissionEraser>.Instance);
+        return new(store, audit, vault, eraser, TimeProvider.System);
+    }
 
     private sealed class FakeVault : IFileVault
     {
+        public List<string> DeletedPaths { get; } = [];
+
         public Task<StoredFile> WriteAsync(Guid fileId, Guid submissionId, byte[] content, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public Task<byte[]> ReadAsync(string storagePath, Guid fileId, CancellationToken cancellationToken) =>
             Task.FromResult(fileId == PdfFileId ? "%PDF-fictif"u8.ToArray() : throw new InvalidOperationException());
 
-        public void Delete(string storagePath) => throw new NotSupportedException();
+        public void Delete(string storagePath) => DeletedPaths.Add(storagePath);
     }
 
     private sealed class FakeAudit : IAuditLog
     {
         public List<(string Action, Guid? UserId, string? Target)> Entries { get; } = [];
 
-        public Task RecordAsync(string action, Guid? userId, string? target, CancellationToken cancellationToken)
+        public List<string?> Details { get; } = [];
+
+        public Task RecordAsync(string action, Guid? userId, string? target, string? detail, CancellationToken cancellationToken)
         {
             Entries.Add((action, userId, target));
+            Details.Add(detail);
             return Task.CompletedTask;
         }
     }
@@ -230,5 +293,140 @@ public class BackOfficeServiceTests
 
         Assert.Equal(1, store.PdfRequests);
         Assert.Equal([AuditActions.AccessDenied, AuditActions.PdfRegenerationRequested], audit.Entries.Select(e => e.Action));
+    }
+
+    private static readonly CurrentUser Admin = new(Guid.NewGuid(), IsAdmin: true);
+
+    [Fact]
+    public async Task Status_change_is_audited_with_previous_and_new_status()
+    {
+        var store = new FakeStore(canAccess: true);
+        var audit = new FakeAudit();
+        var service = Service(store, audit);
+
+        Assert.Equal(StatusChangeOutcome.Changed, await service.ChangeStatusAsync(User, SubmissionId, " entered ", default));
+        Assert.Equal(StatusChangeOutcome.Unchanged, await service.ChangeStatusAsync(User, SubmissionId, "entered", default));
+
+        Assert.Equal("entered", store.Status);
+        Assert.Equal((AuditActions.SubmissionStatusChanged, (Guid?)User.Id, $"submission:{SubmissionId}"), Assert.Single(audit.Entries));
+        Assert.Equal("new>entered", Assert.Single(audit.Details));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("supprimee")]
+    public async Task Unknown_status_is_refused(string? status)
+    {
+        var store = new FakeStore(canAccess: true);
+        var audit = new FakeAudit();
+
+        Assert.Equal(StatusChangeOutcome.Invalid, await Service(store, audit).ChangeStatusAsync(User, SubmissionId, status, default));
+        Assert.Equal("new", store.Status);
+        Assert.Empty(audit.Entries);
+    }
+
+    [Fact]
+    public async Task Readers_and_users_without_right_cannot_change_status()
+    {
+        var audit = new FakeAudit();
+        var store = new FakeStore(canAccess: true);
+
+        Assert.Equal(StatusChangeOutcome.Forbidden, await Service(store, audit).ChangeStatusAsync(User with { IsReadOnly = true }, SubmissionId, "entered", default));
+        Assert.Equal(StatusChangeOutcome.NotFound, await Service(new FakeStore(canAccess: false), audit).ChangeStatusAsync(User, SubmissionId, "entered", default));
+
+        Assert.Equal("new", store.Status);
+        Assert.All(audit.Entries, e => Assert.Equal(AuditActions.AccessDenied, e.Action));
+    }
+
+    [Fact]
+    public async Task Deletion_is_reserved_to_admins()
+    {
+        var erase = new FakeEraseStore();
+        var audit = new FakeAudit();
+
+        var result = await Service(new FakeStore(canAccess: true), audit, erase).DeleteSubmissionAsync(User, SubmissionId, "TST-2026-0001", default);
+
+        Assert.Equal(DeletionOutcome.Forbidden, result.Outcome);
+        Assert.Empty(erase.Deleted);
+        Assert.Equal(AuditActions.AccessDenied, Assert.Single(audit.Entries).Action);
+    }
+
+    [Fact]
+    public async Task Deletion_requires_the_case_number_as_confirmation()
+    {
+        var erase = new FakeEraseStore();
+        var audit = new FakeAudit();
+
+        var result = await Service(new FakeStore(canAccess: true), audit, erase).DeleteSubmissionAsync(Admin, SubmissionId, "TST-2026-0002", default);
+
+        Assert.Equal(DeletionOutcome.NotConfirmed, result.Outcome);
+        Assert.Empty(erase.Deleted);
+        Assert.Empty(audit.Entries);
+    }
+
+    [Fact]
+    public async Task Deletion_erases_rows_and_files_and_keeps_the_case_number_in_audit()
+    {
+        var erase = new FakeEraseStore();
+        var vault = new FakeVault();
+        var audit = new FakeAudit();
+
+        var result = await Service(new FakeStore(canAccess: true), audit, erase, vault).DeleteSubmissionAsync(Admin, SubmissionId, " tst-2026-0001 ", default);
+
+        Assert.Equal(new DeletionResult(DeletionOutcome.Deleted, FormId), result);
+        Assert.Equal([SubmissionId], erase.Deleted);
+        Assert.Equal([$"files/{SubmissionId}.bin"], vault.DeletedPaths);
+        Assert.Equal((AuditActions.SubmissionDeleted, (Guid?)Admin.Id, $"submission:{SubmissionId}"), Assert.Single(audit.Entries));
+        Assert.Equal("TST-2026-0001", Assert.Single(audit.Details));
+    }
+
+    [Fact]
+    public async Task Export_is_refused_to_readers()
+    {
+        var audit = new FakeAudit();
+
+        var result = await Service(new FakeStore(canAccess: true), audit).ExportCsvAsync(User with { IsReadOnly = true }, FormId, new SubmissionFilter(), default);
+
+        Assert.Equal(ExportOutcome.Forbidden, result.Outcome);
+        Assert.Null(result.File);
+        Assert.Equal(AuditActions.AccessDenied, Assert.Single(audit.Entries).Action);
+    }
+
+    [Fact]
+    public async Task Export_uses_the_list_filters_and_is_audited_with_its_row_count()
+    {
+        var store = new FakeStore(canAccess: true)
+        {
+            Export = new ExportData(
+                [new ExportRow("TST-2026-0001", DateTimeOffset.UnixEpoch, "new", 1, """{"lieu":"Riom"}""")],
+                new Dictionary<int, string> { [1] = """{"sections":[{"id":"s","fields":[{"id":"lieu","type":"site","label":"Site"}]}]}""" }),
+        };
+        var audit = new FakeAudit();
+
+        var result = await Service(store, audit).ExportCsvAsync(User, FormId, new SubmissionFilter(Site: " Riom ", Page: 4), default);
+
+        Assert.Equal(ExportOutcome.Ok, result.Outcome);
+        Assert.StartsWith("f-reponses-", result.File!.FileName, StringComparison.Ordinal);
+        Assert.EndsWith(".csv", result.File.FileName, StringComparison.Ordinal);
+        Assert.Equal(1, result.File.RowCount);
+        Assert.Equal("Riom", store.LastQuery!.Site);
+        Assert.Equal((AuditActions.SubmissionsExported, (Guid?)User.Id, $"form:{FormId}"), Assert.Single(audit.Entries));
+        Assert.Equal("1", Assert.Single(audit.Details));
+    }
+
+    [Fact]
+    public async Task Detail_shows_history_with_reception_first_in_time()
+    {
+        var store = new FakeStore(canAccess: true);
+        store.History.Add(new HistoryRecord(DateTimeOffset.UnixEpoch.AddDays(2), AuditActions.SubmissionStatusChanged, "new>entered", "Élu fictif"));
+        store.History.Add(new HistoryRecord(DateTimeOffset.UnixEpoch.AddDays(1), "job.pdf.succeeded", null, null));
+
+        var detail = await Service(store, new FakeAudit()).GetSubmissionAsync(User, SubmissionId, default);
+
+        Assert.Equal(
+            ["Statut changé : « Nouvelle » vers « Saisie dans le logiciel CSE »", "PDF généré", "Réponse reçue"],
+            detail!.History.Select(h => h.Label));
+        Assert.Equal("Élu fictif", detail.History[0].Actor);
     }
 }

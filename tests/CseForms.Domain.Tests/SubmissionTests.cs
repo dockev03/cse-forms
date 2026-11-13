@@ -41,9 +41,50 @@ public class SubmissionTests
     {
         var submission = PublishedForm().CreateSubmission("INS-2026-0001", "{}", Now, 0);
 
-        submission.ChangeStatus(" entered ");
+        Assert.True(submission.ChangeStatus(" entered ", Now, null));
         Assert.Equal("entered", submission.Status);
+        Assert.False(submission.ChangeStatus("entered", Now, null));
 
-        Assert.Throws<DomainException>(() => submission.ChangeStatus(" "));
+        Assert.Throws<DomainException>(() => submission.ChangeStatus(" ", Now, null));
+        Assert.Throws<DomainException>(() => submission.ChangeStatus("archived", Now, 0));
+        Assert.Throws<DomainException>(() => submission.ChangeStatus("archived", new DateTimeOffset(2026, 10, 30, 8, 0, 0, TimeSpan.FromHours(1)), null));
+    }
+
+    [Fact]
+    public void Retention_starts_when_the_submission_is_processed()
+    {
+        var submission = PublishedForm().CreateSubmission("INS-2026-0001", "{}", Now, 0);
+        Assert.Null(submission.PurgeAt);
+
+        var entered = Now.AddDays(10);
+        submission.ChangeStatus("entered", entered, 180);
+        Assert.Equal(entered.AddDays(180), submission.PurgeAt);
+
+        // Archiver ensuite ne prolonge pas la conservation.
+        submission.ChangeStatus("archived", entered.AddDays(30), 180);
+        Assert.Equal(entered.AddDays(180), submission.PurgeAt);
+    }
+
+    [Fact]
+    public void Back_to_initial_status_cancels_the_purge()
+    {
+        var submission = PublishedForm().CreateSubmission("INS-2026-0001", "{}", Now, 0);
+        submission.ChangeStatus("entered", Now, 180);
+
+        submission.ChangeStatus(Submission.InitialStatus, Now.AddDays(1), 180);
+        Assert.Null(submission.PurgeAt);
+
+        submission.ChangeStatus("entered", Now.AddDays(2), 180);
+        Assert.Equal(Now.AddDays(182), submission.PurgeAt);
+    }
+
+    [Fact]
+    public void Without_retention_no_purge_is_scheduled()
+    {
+        var submission = PublishedForm().CreateSubmission("INS-2026-0001", "{}", Now, 0);
+
+        submission.ChangeStatus("archived", Now, null);
+
+        Assert.Null(submission.PurgeAt);
     }
 }

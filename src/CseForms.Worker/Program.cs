@@ -43,8 +43,13 @@ builder.Services.AddHangfireServer(options => options.WorkerCount = Math.Clamp(b
 
 builder.Services.AddScoped<PdfJob>();
 builder.Services.AddScoped<EmailJob>();
+builder.Services.AddScoped<PurgeJob>();
 builder.Services.AddHostedService<JobDispatcherService>();
 
 var host = builder.Build();
+
+// Purge automatique des réponses (durée de conservation de chaque formulaire, comptée à partir du traitement).
+PurgeJob.Schedule(host.Services.GetRequiredService<IRecurringJobManager>(), builder.Configuration);
+
 await host.RunAsync();
 return 0;

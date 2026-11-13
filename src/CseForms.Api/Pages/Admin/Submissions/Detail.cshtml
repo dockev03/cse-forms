@@ -8,6 +8,11 @@
 <p><a href="/admin/formulaires/@detail.FormId/reponses">@detail.FormTitle</a></p>
 <h1>Dossier @detail.CaseNumber</h1>
 
+@if (Model.StatusMessage == "modifie")
+{
+    <div class="notice" role="status"><p>Statut enregistré : @SubmissionStatuses.Label(detail.Status).</p></div>
+}
+
 <dl class="card meta">
     <div><dt>Reçu le</dt><dd>@Display.DateTime(detail.CreatedAt)</dd></div>
     <div><dt>Statut</dt><dd>@SubmissionStatuses.Label(detail.Status)</dd></div>
@@ -16,7 +21,34 @@
     {
         <div><dt>Suppression prévue le</dt><dd>@Display.Date(purgeAt)</dd></div>
     }
+    else if (detail.RetentionDays is { } days)
+    {
+        <div><dt>Conservation</dt><dd>@days jours à partir du traitement</dd></div>
+    }
 </dl>
+
+@if (Model.CanChangeStatus)
+{
+    <section class="card" aria-labelledby="status-title">
+        <h2 id="status-title">Traitement</h2>
+        <form method="post" asp-page-handler="Status" asp-route-id="@detail.Id" class="inline-form">
+            <div class="field">
+                <label for="status">Statut</label>
+                <select id="status" name="status">
+                    @foreach (var status in SubmissionStatuses.All)
+                    {
+                        <option value="@status" selected="@(status == detail.Status)">@SubmissionStatuses.Label(status)</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="primary">Enregistrer le statut</button>
+        </form>
+        @if (detail.RetentionDays is { } retention)
+        {
+            <p>Dès que la réponse quitte le statut « @SubmissionStatuses.Label(SubmissionStatuses.New) », elle est conservée @retention jours puis supprimée avec son PDF. Revenir à « @SubmissionStatuses.Label(SubmissionStatuses.New) » annule la suppression prévue.</p>
+        }
+    </section>
+}
 
 <section class="card" aria-labelledby="pdf-title">
     <h2 id="pdf-title">PDF</h2>
@@ -75,4 +107,27 @@
             }
         }
     </section>
+}
+
+<section class="card" aria-labelledby="history-title">
+    <h2 id="history-title">Historique</h2>
+    <ul class="history">
+        @foreach (var entry in detail.History)
+        {
+            <li>
+                <time datetime="@entry.At.ToString("o")">@Display.DateTime(entry.At)</time>
+                @entry.Label
+                @if (entry.Actor is not null)
+                {
+                    <span class="actor">par @entry.Actor</span>
+                }
+            </li>
+        }
+    </ul>
+    <p>Les consultations de la fiche figurent dans le journal d'audit, pas dans cet historique.</p>
+</section>
+
+@if (Model.CanDelete)
+{
+    <p><a href="/admin/reponses/@detail.Id/suppression">Supprimer définitivement cette réponse</a></p>
 }

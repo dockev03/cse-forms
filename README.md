@@ -11,7 +11,7 @@ Formulaires publics accessibles par QR code, back-office réservé aux élus, g�
 | `src/CseForms.Infrastructure` | Persistance EF Core et PostgreSQL, migrations |
 | `src/CseForms.Api` | API, formulaire public (`/f/{slug}`, fichiers dans `wwwroot`) et back-office |
 | `forms` | Fichiers de définition des formulaires, publiés avec `forms import` |
-| `src/CseForms.Worker` | Tâches de fond (Hangfire) : génération des PDF, notifications et accusés de réception par email ; purge à venir |
+| `src/CseForms.Worker` | Tâches de fond (Hangfire) : génération des PDF, notifications et accusés de réception par email, purge quotidienne des réponses |
 | `tests/CseForms.Testing` | Outils de test partagés (base PostgreSQL jetable, données fictives) |
 | `tests/*` | Tests xUnit |
 | `tests/CseForms.E2E.Tests` | Tests de bout en bout Playwright (navigateur réel) |
@@ -27,7 +27,7 @@ set -a; . ./.env; set +a        # charge les variables dans le shell
 dotnet tool restore
 dotnet ef database update -p src/CseForms.Infrastructure -s src/CseForms.Infrastructure
 dotnet run --project src/CseForms.Api
-dotnet run --project src/CseForms.Worker   # dans un autre terminal : PDF et emails
+dotnet run --project src/CseForms.Worker   # dans un autre terminal : PDF, emails et purge
 ```
 
 La clé de chiffrement des PDF se génère avec `openssl rand -base64 32` (variable `Storage__EncryptionKey`). Voir [`docs/back-office.md`](docs/back-office.md#pdf).
@@ -74,6 +74,10 @@ dotnet run --project src/CseForms.Api -- settings list
 ## Diffusion
 
 QR code (PNG, SVG), QR code par site et flyer PDF se produisent dans le back-office : `/admin/formulaires/{id}/diffusion`, rôles `admin` et `editor`. Voir [`docs/back-office.md`](docs/back-office.md#diffusion-qr-code-et-flyer). Prérequis : paramètre `app.publicBaseUrl` et, pour le flyer, `Gotenberg__Url` dans la configuration de l'API.
+
+## Conservation et purge
+
+Chaque formulaire fixe sa durée de conservation (`retentionDays`, 180 jours pour l'inscription). Elle court à partir du traitement de la réponse : dès qu'un élu la passe de « Nouvelle » à « Saisie dans le logiciel CSE » ou « Archivée ». Le Worker supprime chaque nuit (3 h 17, heure de Paris) les réponses échues avec leur PDF, et le trace dans le journal d'audit. Horaire modifiable par `Purge__Cron` (expression cron, heure de Paris). Voir [`docs/back-office.md`](docs/back-office.md#conservation-et-purge).
 
 ## Emails
 

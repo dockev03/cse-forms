@@ -45,13 +45,55 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
 
     public async Task<SubmissionPage> ListSubmissionsAsync(SubmissionQuery query, CancellationToken cancellationToken)
     {
-        var all = db.Submissions
+        var statuses = await OfForm(query.FormId).Select(s => s.Status).Distinct().OrderBy(s => s).ToListAsync(cancellationToken);
+        var filtered = Filter(query);
+
+        var total = await filtered.CountAsync(cancellationToken);
+        var pageCount = Math.Max(1, (int)Math.Ceiling(total / (double)SubmissionFilter.PageSize));
+        var page = Math.Min(query.Page, pageCount);
+
+        var rows = await Order(filtered, query.OldestFirst)
+            .Skip((page - 1) * SubmissionFilter.PageSize)
+            .Take(SubmissionFilter.PageSize)
+            .Select(s => new { s.Id, s.CaseNumber, s.CreatedAt, s.Status, s.DataJson })
+            .ToListAsync(cancellationToken);
+
+        var items = rows
+            .Select(r => new SubmissionListItem(r.Id, r.CaseNumber, r.CreatedAt, r.Status, SiteOf(r.DataJson, query.SiteFieldId)))
+            .ToList();
+
+        return new SubmissionPage(items, total, page, pageCount, statuses);
+    }
+
+    public async Task<ExportData> GetExportDataAsync(SubmissionQuery query, CancellationToken cancellationToken)
+    {
+        var rows = await (
+            from s in Order(Filter(query), query.OldestFirst)
+            join v in db.FormVersions on s.FormVersionId equals v.Id
+            select new ExportRow(s.CaseNumber, s.CreatedAt, s.Status, v.Number, s.DataJson))
+            .ToListAsync(cancellationToken);
+
+        var versions = rows.Select(r => r.VersionNumber).Distinct().ToList();
+        var schemas = await db.FormVersions.AsNoTracking()
+            .Where(v => v.FormId == query.FormId && versions.Contains(v.Number))
+            .ToDictionaryAsync(v => v.Number, v => v.SchemaJson, cancellationToken);
+
+        return new ExportData(rows, schemas);
+    }
+
+    private IQueryable<Submission> OfForm(Guid formId) =>
+        db.Submissions
             .AsNoTracking()
-            .Where(s => db.FormVersions.Any(v => v.Id == s.FormVersionId && v.FormId == query.FormId));
+            .Where(s => db.FormVersions.Any(v => v.Id == s.FormVersionId && v.FormId == formId));
 
-        var statuses = await all.Select(s => s.Status).Distinct().OrderBy(s => s).ToListAsync(cancellationToken);
+    private static IQueryable<Submission> Order(IQueryable<Submission> submissions, bool oldestFirst) =>
+        oldestFirst
+            ? submissions.OrderBy(s => s.CreatedAt).ThenBy(s => s.CaseNumber)
+            : submissions.OrderByDescending(s => s.CreatedAt).ThenByDescending(s => s.CaseNumber);
 
-        var filtered = all;
+    private IQueryable<Submission> Filter(SubmissionQuery query)
+    {
+        var filtered = OfForm(query.FormId);
         if (query.CaseNumberContains is { } search)
         {
             filtered = filtered.Where(s => s.CaseNumber.ToUpper().Contains(search));
@@ -79,25 +121,7 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
             filtered = filtered.Where(s => s.CreatedAt < to);
         }
 
-        var total = await filtered.CountAsync(cancellationToken);
-        var pageCount = Math.Max(1, (int)Math.Ceiling(total / (double)SubmissionFilter.PageSize));
-        var page = Math.Min(query.Page, pageCount);
-
-        var ordered = query.OldestFirst
-            ? filtered.OrderBy(s => s.CreatedAt).ThenBy(s => s.CaseNumber)
-            : filtered.OrderByDescending(s => s.CreatedAt).ThenByDescending(s => s.CaseNumber);
-
-        var rows = await ordered
-            .Skip((page - 1) * SubmissionFilter.PageSize)
-            .Take(SubmissionFilter.PageSize)
-            .Select(s => new { s.Id, s.CaseNumber, s.CreatedAt, s.Status, s.DataJson })
-            .ToListAsync(cancellationToken);
-
-        var items = rows
-            .Select(r => new SubmissionListItem(r.Id, r.CaseNumber, r.CreatedAt, r.Status, SiteOf(r.DataJson, query.SiteFieldId)))
-            .ToList();
-
-        return new SubmissionPage(items, total, page, pageCount, statuses);
+        return filtered;
     }
 
     public async Task<SubmissionRecord?> GetSubmissionAsync(Guid submissionId, CancellationToken cancellationToken) =>
@@ -107,7 +131,7 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
             join f in db.Forms on v.FormId equals f.Id
             where s.Id == submissionId
             select new SubmissionRecord(
-                s.Id, f.Id, f.Title, s.CaseNumber, v.Number, v.SchemaJson, s.DataJson, s.Status, s.CreatedAt, s.PurgeAt))
+                s.Id, f.Id, f.Title, s.CaseNumber, v.Number, v.SchemaJson, s.DataJson, s.Status, s.CreatedAt, s.PurgeAt, f.RetentionDays))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<PdfState> GetPdfStateAsync(Guid submissionId, CancellationToken cancellationToken)
@@ -151,6 +175,64 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public async Task<string?> ChangeStatusAsync(Guid submissionId, string status, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var row = await (
+            from s in db.Submissions
+            join v in db.FormVersions on s.FormVersionId equals v.Id
+            join f in db.Forms on v.FormId equals f.Id
+            where s.Id == submissionId
+            select new { Submission = s, f.RetentionDays })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (row is null)
+        {
+            return null;
+        }
+
+        var previous = row.Submission.Status;
+        if (!row.Submission.ChangeStatus(status, now, row.RetentionDays))
+        {
+            return null;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return previous;
+    }
+
+    public async Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid submissionId, CancellationToken cancellationToken)
+    {
+        var target = $"submission:{submissionId}";
+        var actions = await (
+            from a in db.AuditLog.AsNoTracking()
+            where a.Target == target && a.Action != AuditActions.SubmissionViewed
+            join u in db.Users on a.UserId equals u.Id into users
+            from u in users.DefaultIfEmpty()
+            orderby a.OccurredAt descending
+            select new HistoryRecord(a.OccurredAt, a.Action, a.Detail, u != null ? u.DisplayName : null))
+            .Take(HistoryLimit)
+            .ToListAsync(cancellationToken);
+
+        var jobs = await db.Jobs.AsNoTracking()
+            .Where(j => j.SubmissionId == submissionId && (j.Status == JobStatus.Succeeded || j.Status == JobStatus.Failed))
+            .OrderByDescending(j => j.UpdatedAt)
+            .Take(HistoryLimit)
+            .Select(j => new { j.UpdatedAt, j.Type, j.Status })
+            .ToListAsync(cancellationToken);
+
+        return actions
+            .Concat(jobs.Select(j => new HistoryRecord(
+                j.UpdatedAt,
+                $"{SubmissionHistory.JobPrefix}{j.Type.ToString().ToLowerInvariant()}.{j.Status.ToString().ToLowerInvariant()}",
+                null,
+                null)))
+            .OrderByDescending(r => r.At)
+            .Take(HistoryLimit)
+            .ToList();
+    }
+
+    private const int HistoryLimit = 100;
 
     private static string? SiteOf(string dataJson, string? siteFieldId)
     {

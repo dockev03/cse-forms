@@ -2,6 +2,7 @@
   "slug": "inscription",
   "title": "Fiche d'inscription au CSE",
   "caseNumberPrefix": "INS",
+  "retentionDays": 180,
   "access": { "mode": "pin" },
   "pdfTemplate": "inscription.pdf.html",
   "ui": {

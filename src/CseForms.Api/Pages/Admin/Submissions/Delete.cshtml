@@ -1,0 +1,27 @@
+@page "/admin/reponses/{id:guid}/suppression"
+@model CseForms.Api.Pages.Admin.Submissions.DeleteModel
+@{
+    ViewData["Title"] = $"Supprimer le dossier {Model.CaseNumber}";
+}
+
+<p><a href="/admin/formulaires/@Model.FormId/reponses">@Model.FormTitle</a> · <a href="/admin/reponses/@Model.SubmissionId">Dossier @Model.CaseNumber</a></p>
+<h1>Supprimer le dossier @Model.CaseNumber</h1>
+
+@if (Model.NotConfirmed)
+{
+    <div class="summary" role="alert"><p>Le numéro saisi ne correspond pas au dossier : rien n'a été supprimé.</p></div>
+}
+
+<section class="card narrow">
+    <p>La réponse et son PDF seront supprimés définitivement. Cette action ne peut pas être annulée ; elle est inscrite au journal d'audit.</p>
+    <form method="post" asp-route-id="@Model.SubmissionId">
+        <div class="field">
+            <label for="confirmation">Pour confirmer, saisissez le numéro de dossier (@Model.CaseNumber)</label>
+            <input id="confirmation" name="confirmation" autocomplete="off" maxlength="32" required>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="danger">Supprimer définitivement</button>
+            <a href="/admin/reponses/@Model.SubmissionId">Annuler</a>
+        </div>
+    </form>
+</section>

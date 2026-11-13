@@ -6,9 +6,9 @@ namespace CseForms.Infrastructure.BackOffice;
 
 internal sealed class AuditLog(CseFormsDbContext db, TimeProvider timeProvider) : IAuditLog
 {
-    public async Task RecordAsync(string action, Guid? userId, string? target, CancellationToken cancellationToken)
+    public async Task RecordAsync(string action, Guid? userId, string? target, string? detail, CancellationToken cancellationToken)
     {
-        db.AuditLog.Add(new AuditEntry(userId, action, target, timeProvider.GetUtcNow()));
+        db.AuditLog.Add(new AuditEntry(userId, action, target, timeProvider.GetUtcNow(), detail));
         await db.SaveChangesAsync(cancellationToken);
     }
 }

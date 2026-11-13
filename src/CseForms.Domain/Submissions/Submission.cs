@@ -23,8 +23,7 @@ public sealed class Submission
         Guid formVersionId,
         string caseNumber,
         string dataJson,
-        DateTimeOffset createdAt,
-        DateTimeOffset? purgeAt)
+        DateTimeOffset createdAt)
     {
         if (string.IsNullOrWhiteSpace(caseNumber) || caseNumber.Length > CaseNumberMaxLength)
         {
@@ -42,7 +41,6 @@ public sealed class Submission
         DataJson = dataJson;
         Status = InitialStatus;
         CreatedAt = Utc.Require(createdAt, nameof(createdAt));
-        PurgeAt = purgeAt;
     }
 
     public Guid Id { get; private set; }
@@ -60,9 +58,17 @@ public sealed class Submission
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>
+    /// Date de suppression automatique. La conservation court à partir du traitement de la réponse
+    /// (premier statut autre que <see cref="InitialStatus"/>) : une réponse jamais traitée n'est pas purgée.
+    /// </summary>
     public DateTimeOffset? PurgeAt { get; private set; }
 
-    public void ChangeStatus(string status)
+    /// <summary>
+    /// Change le statut et tient la date de purge à jour : la conservation démarre au premier traitement
+    /// et s'annule si la réponse revient au statut initial. Renvoie faux si le statut ne change pas.
+    /// </summary>
+    public bool ChangeStatus(string status, DateTimeOffset now, int? retentionDays)
     {
         var value = (status ?? string.Empty).Trim();
 
@@ -71,16 +77,29 @@ public sealed class Submission
             throw new DomainException("Statut invalide.");
         }
 
-        Status = value;
-    }
+        Utc.Require(now, nameof(now));
 
-    public void SchedulePurge(DateTimeOffset? purgeAt)
-    {
-        if (purgeAt is { } p)
+        if (retentionDays is <= 0)
         {
-            Utc.Require(p, nameof(purgeAt));
+            throw new DomainException("La durée de conservation doit être positive.");
         }
 
-        PurgeAt = purgeAt;
+        if (value == Status)
+        {
+            return false;
+        }
+
+        Status = value;
+
+        if (value == InitialStatus)
+        {
+            PurgeAt = null;
+        }
+        else if (PurgeAt is null && retentionDays is { } days)
+        {
+            PurgeAt = now.AddDays(days);
+        }
+
+        return true;
     }
 }
