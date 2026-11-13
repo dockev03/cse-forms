@@ -17,6 +17,7 @@ Les droits sont vérifiés côté serveur à chaque requête. Un compte sans dro
 - Compte bloqué 15 minutes après 5 échecs ; limitation de débit par IP sur la connexion.
 - Message d'échec identique, que le compte existe ou non.
 - Cookie de session `__Host-cse-session` : `Secure`, `HttpOnly`, `SameSite=Strict`, non persistant, expiré après 30 minutes d'inactivité.
+- HTTPS uniquement : une requête HTTP vers `/admin` reçoit un 400 explicite, sans redirection (elle bouclerait derrière un proxy non déclaré dans `ReverseProxy__KnownNetworks`).
 - Jeton anti-CSRF sur tous les formulaires (connexion, déconnexion) ; déconnexion uniquement en POST.
 - Redirection après connexion limitée aux adresses `/admin` : pas de redirection ouverte.
 - Pages jamais mises en cache (`no-store`) ni indexées ; CSP stricte, sans script.

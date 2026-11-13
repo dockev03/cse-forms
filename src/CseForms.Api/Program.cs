@@ -56,6 +56,7 @@ app.UseExceptionHandler(errorApp => errorApp.Run(context =>
 app.UseStatusCodePages(context => ErrorResponses.WriteIfEmpty(context.HttpContext));
 
 app.UseApiSecurityHeaders();
+app.UseBackOfficeHttpsGuard();
 app.UsePublicAssets();
 app.UseRouting();
 app.UseRateLimiter();

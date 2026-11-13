@@ -20,6 +20,34 @@ public partial class BackOfficeTests(ApiFactory factory) : IClassFixture<ApiFact
         HandleCookies = true,
     });
 
+    [Theory]
+    [InlineData("GET", "/admin/connexion")]
+    [InlineData("POST", "/admin/connexion")]
+    [InlineData("GET", "/admin")]
+    public async Task Back_office_over_plain_http_is_refused_with_400(string method, string path)
+    {
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("http://localhost"),
+            AllowAutoRedirect = false,
+        });
+
+        var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("HTTPS", await response.Content.ReadAsStringAsync());
+        Assert.DoesNotContain(response.Headers, h => h.Key == "Set-Cookie");
+    }
+
+    [Fact]
+    public async Task Public_pages_stay_available_over_http()
+    {
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost") });
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/public/challenge")).StatusCode);
+    }
+
     private async Task<int> RunCliAsync(string stdin, params string[] args)
     {
         var output = new StringWriter();
