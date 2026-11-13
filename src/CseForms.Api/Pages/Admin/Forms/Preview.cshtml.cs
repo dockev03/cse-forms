@@ -36,6 +36,7 @@ public sealed class PreviewModel(FormDraftService service) : PageModel
     public string? Message => Done switch
     {
         "brouillon" => "Brouillon enregistré, rien n'a été publié. Vérifiez le rendu ci-dessous, puis publiez-le.",
+        "copie" => "Formulaire dupliqué, hors ligne : la copie est en brouillon. Vérifiez le rendu ci-dessous, puis publiez-la.",
         _ => null,
     };
 

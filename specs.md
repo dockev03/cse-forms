@@ -104,6 +104,7 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
 - Génération du QR code (PNG et SVG haute définition) et d'un flyer PDF à imprimer : titre, QR code, URL lisible, code d'accès, contact CSE.
 - Statuts : brouillon, publié, fermé ; dates d'ouverture et de fermeture ; nombre maximal de réponses.
 - Aperçu avant publication (V1.1) : un fichier de formulaire peut être enregistré comme brouillon (un seul par formulaire, remplacé à chaque enregistrement), affiché dans le back-office en largeur mobile et ordinateur avec le moteur du formulaire public et l'envoi désactivé, puis publié (mêmes contrôles qu'un import) ou supprimé. Le brouillon n'est jamais servi au public ; réservé aux rôles admin et editor ayant le droit sur le formulaire.
+- Duplication (V1.1, administrateurs) : la version en ligne devient le brouillon d'un nouveau formulaire (nouvelle adresse, nouveau titre), avec la règle de notification, le filigrane et les comptes attribués ; ni réponses, ni dates, ni plafond, ni code d'accès (redemandé à la publication).
 - Contrôle d'accès au choix : public, code d'accès (PIN, 4 à 12 chiffres, stocké haché), lien à usage unique (V2). Un formulaire en mode code d'accès n'est jamais publié sans code.
 - Quotas par critère avec liste d'attente (V2).
 - Personnalisation : logo CSE, couleur principale, image de fond, texte de confirmation.
