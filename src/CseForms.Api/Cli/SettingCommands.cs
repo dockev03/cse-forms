@@ -11,8 +11,6 @@ namespace CseForms.Api.Cli;
 /// </summary>
 internal static class SettingCommands
 {
-    public const int ValueMaxLength = 4000;
-
     public static readonly string Usage = $"""
         Utilisation :
           settings set   --key <clé> --value <valeur>
@@ -55,17 +53,7 @@ internal static class SettingCommands
             return CliSupport.Fail(output, "Le logo se règle avec « settings logo --file <image> ».");
         }
 
-        var value = Normalize(options.TryGetValue("value", out var given) ? given : await input.ReadToEndAsync());
-
-        if (value.Length == 0 || value.Length > ValueMaxLength)
-        {
-            return CliSupport.Fail(output, $"Valeur vide ou trop longue ({ValueMaxLength} caractères au plus).");
-        }
-
-        if (key == SettingKeys.PublicBaseUrl)
-        {
-            value = value.TrimEnd('/');
-        }
+        var value = SettingKeys.Normalize(key, options.TryGetValue("value", out var given) ? given : await input.ReadToEndAsync());
 
         if (SettingKeys.Validate(key, value) is { } error)
         {
@@ -149,8 +137,4 @@ internal static class SettingCommands
         var key = CliSupport.Required(options, Usage, "key").Trim();
         return SettingKeys.IsKnown(key) ? key : throw new KeyNotFoundException($"Clé inconnue.{Environment.NewLine}{Usage}");
     }
-
-    /// <summary>Retours à la ligne unifiés, espaces de fin de ligne et lignes vides de début et de fin supprimés.</summary>
-    private static string Normalize(string value) =>
-        string.Join('\n', value.ReplaceLineEndings("\n").Split('\n').Select(line => line.TrimEnd())).Trim();
 }

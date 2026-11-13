@@ -41,7 +41,23 @@ public static class SettingKeys
         [AlertsEmail] = "Adresse qui reçoit les alertes d'échec définitif des tâches (PDF, emails)",
     };
 
+    /// <summary>Longueur maximale d'une valeur (hors logo).</summary>
+    public const int ValueMaxLength = 4000;
+
+    /// <summary>Paramètres saisis sur plusieurs lignes ; les autres tiennent sur une seule.</summary>
+    public static readonly IReadOnlySet<string> MultiLineKeys = new HashSet<string>(StringComparer.Ordinal) { CseAddress, CseOffice };
+
     public static bool IsKnown(string key) => Descriptions.ContainsKey(key);
+
+    /// <summary>
+    /// Retours à la ligne unifiés, espaces de fin de ligne et lignes vides de début et de fin supprimés ;
+    /// adresse publique sans barre finale. Une valeur vide signifie « paramètre non défini ».
+    /// </summary>
+    public static string Normalize(string key, string? value)
+    {
+        var normalized = string.Join('\n', (value ?? string.Empty).ReplaceLineEndings("\n").Split('\n').Select(line => line.TrimEnd())).Trim();
+        return key == PublicBaseUrl ? normalized.TrimEnd('/') : normalized;
+    }
 
     /// <summary>Adresse seule, sans nom affiché ni espace : rien qui puisse altérer un en-tête d'email.</summary>
     public static bool IsPlainEmail(string? value) =>
@@ -53,6 +69,16 @@ public static class SettingKeys
     /// <summary>Contrôle propre à certaines clés ; null si la valeur est acceptée.</summary>
     public static string? Validate(string key, string value)
     {
+        if (key != CseLogo && (value.Length == 0 || value.Length > ValueMaxLength))
+        {
+            return $"Valeur vide ou trop longue ({ValueMaxLength} caractères au plus).";
+        }
+
+        if (key != CseLogo && !MultiLineKeys.Contains(key) && value.Contains('\n', StringComparison.Ordinal))
+        {
+            return "Une seule ligne attendue.";
+        }
+
         if (key == PublicBaseUrl
             && (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
                 || uri.Scheme != Uri.UriSchemeHttps

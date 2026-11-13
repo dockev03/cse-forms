@@ -331,6 +331,8 @@ Les conteneurs ont un système de fichiers en lecture seule : un fichier fourni 
 
 ### 7.1 Identité du CSE
 
+Identité du CSE, logo, adresse publique et sites se règlent aussi dans le back-office, écran « Paramètres » (`/admin/parametres`), une fois connecté en administrateur. Les commandes ci-dessous font la même chose.
+
 ```bash
 cse settings set --key cse.name --value "CSE Exemple"
 ```
