@@ -9,7 +9,7 @@ namespace CseForms.Api.Pages.Admin.Forms;
 
 /// <summary>
 /// Réglages d'un formulaire : fermeture et réouverture, dates d'ouverture et de fermeture, nombre maximal
-/// de réponses, code d'accès. Rôles <c>admin</c> et <c>editor</c> ayant le droit sur le formulaire ;
+/// de réponses, code d'accès, filigrane du PDF. Rôles <c>admin</c> et <c>editor</c> ayant le droit sur le formulaire ;
 /// chaque action est un POST avec jeton anti-CSRF, journalisé.
 /// </summary>
 public sealed class SettingsModel(FormLifecycleService service) : PageModel
@@ -37,6 +37,8 @@ public sealed class SettingsModel(FormLifecycleService service) : PageModel
         "rouvert" => "Formulaire rouvert.",
         "calendrier" => "Dates et nombre maximal de réponses enregistrés.",
         "code" => "Code d'accès changé. Les flyers déjà imprimés portent l'ancien code : pensez à les remplacer.",
+        "filigrane" => "Filigrane activé : les PDF téléchargés porteront le nom de la personne et la date.",
+        "sans-filigrane" => "Filigrane désactivé.",
         _ => null,
     };
 
@@ -89,6 +91,13 @@ public sealed class SettingsModel(FormLifecycleService service) : PageModel
             formId,
             await service.ChangeAccessCodeAsync(User.ToCurrentUser(), formId, code, confirmation, cancellationToken),
             "code",
+            cancellationToken);
+
+    public async Task<IActionResult> OnPostWatermarkAsync(Guid formId, [FromForm] bool enabled, CancellationToken cancellationToken) =>
+        await RespondAsync(
+            formId,
+            await service.SetPdfWatermarkAsync(User.ToCurrentUser(), formId, enabled, cancellationToken),
+            enabled ? "filigrane" : "sans-filigrane",
             cancellationToken);
 
     public static string LocalInput(DateTimeOffset? utc) =>

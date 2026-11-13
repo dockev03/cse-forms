@@ -62,6 +62,34 @@ public class FormLifecycleTests
     }
 
     [Fact]
+    public async Task Watermark_is_switched_on_and_off_audited_once_per_change()
+    {
+        _store.Form = PublishedForm();
+        var service = Service();
+
+        Assert.False((await service.GetPageAsync(Editor, _store.Form.Id, CancellationToken.None)).Value!.PdfWatermark);
+        Assert.Equal(LifecycleStatus.Ok, (await service.SetPdfWatermarkAsync(Editor, _store.Form.Id, enabled: true, CancellationToken.None)).Status);
+        Assert.True(_store.Form.PdfWatermark);
+        Assert.True((await service.GetPageAsync(Editor, _store.Form.Id, CancellationToken.None)).Value!.PdfWatermark);
+        await service.SetPdfWatermarkAsync(Editor, _store.Form.Id, enabled: true, CancellationToken.None);
+        await service.SetPdfWatermarkAsync(Editor, _store.Form.Id, enabled: false, CancellationToken.None);
+
+        Assert.False(_store.Form.PdfWatermark);
+        Assert.Equal(2, _store.Saves);
+        Assert.Equal(["on", "off"], _audit.Entries.Where(e => e.Action == "form.pdf_watermark").Select(e => e.Detail));
+    }
+
+    [Fact]
+    public async Task Reader_cannot_change_the_watermark()
+    {
+        _store.Form = PublishedForm();
+
+        Assert.Equal(LifecycleStatus.Forbidden, (await Service().SetPdfWatermarkAsync(Reader, _store.Form.Id, enabled: true, CancellationToken.None)).Status);
+        Assert.False(_store.Form.PdfWatermark);
+        Assert.Equal(0, _store.Saves);
+    }
+
+    [Fact]
     public async Task Closing_twice_is_refused_with_a_message_and_nothing_saved()
     {
         _store.Form = PublishedForm();
@@ -295,6 +323,8 @@ public class FormLifecycleTests
         public Task<PdfState> GetPdfStateAsync(Guid submissionId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<StoredPdf?> GetPdfFileAsync(Guid submissionId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<bool> RequestPdfAsync(Guid submissionId, DateTimeOffset now, CancellationToken cancellationToken) => throw new NotSupportedException();
 

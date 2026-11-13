@@ -8,7 +8,7 @@ namespace CseForms.Application.FormAdministration;
 
 /// <summary>
 /// Cycle de vie d'un formulaire depuis le back-office : fermeture, réouverture, dates d'ouverture et de
-/// fermeture, nombre maximal de réponses, changement du code d'accès. Réservé aux administrateurs et aux
+/// fermeture, nombre maximal de réponses, changement du code d'accès, filigrane du PDF. Réservé aux administrateurs et aux
 /// éditeurs ayant le droit sur le formulaire ; chaque refus et chaque changement sont journalisés.
 /// La définition, elle, ne change que par une nouvelle version publiée.
 /// </summary>
@@ -39,7 +39,8 @@ public sealed class FormLifecycleService(
             form.MaxResponses,
             responseCount,
             form.AccessCodeHash is not null,
-            Availability(form, timeProvider.GetUtcNow(), responseCount)));
+            Availability(form, timeProvider.GetUtcNow(), responseCount),
+            form.PdfWatermark));
     }
 
     public Task<LifecycleResult> CloseAsync(CurrentUser user, Guid formId, CancellationToken cancellationToken) =>
@@ -139,6 +140,25 @@ public sealed class FormLifecycleService(
         form.SetAccessCodeHash(accessCodeHasher.Hash(accessCode!));
         await store.SaveChangesAsync(cancellationToken);
         await audit.RecordAsync(AuditActions.FormAccessCodeChanged, user.Id, Target(formId), cancellationToken);
+        return LifecycleResult.Ok;
+    }
+
+    /// <summary>Filigrane « Confidentiel CSE, téléchargé par X le JJ/MM/AAAA » sur les PDF téléchargés depuis le back-office.</summary>
+    public async Task<LifecycleResult> SetPdfWatermarkAsync(CurrentUser user, Guid formId, bool enabled, CancellationToken cancellationToken)
+    {
+        var (status, form) = await AuthorizeAsync(user, formId, cancellationToken);
+        if (status != LifecycleStatus.Ok)
+        {
+            return new(status);
+        }
+
+        if (form!.PdfWatermark != enabled)
+        {
+            form.SetPdfWatermark(enabled);
+            await store.SaveChangesAsync(cancellationToken);
+            await audit.RecordAsync(AuditActions.FormPdfWatermarkChanged, user.Id, Target(formId), enabled ? "on" : "off", cancellationToken);
+        }
+
         return LifecycleResult.Ok;
     }
 
@@ -264,4 +284,5 @@ public sealed record FormLifecyclePage(
     int? MaxResponses,
     int ResponseCount,
     bool RequiresAccessCode,
-    FormAvailability Availability);
+    FormAvailability Availability,
+    bool PdfWatermark = false);

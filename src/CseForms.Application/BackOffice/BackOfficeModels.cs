@@ -39,6 +39,7 @@ public static class AuditActions
     public const string FormReopened = "form.reopen";
     public const string FormScheduleChanged = "form.schedule";
     public const string FormAccessCodeChanged = "form.access_code";
+    public const string FormPdfWatermarkChanged = "form.pdf_watermark";
     public const string FormImported = "form.import";
     public const string FormMadePublic = "form.public";
     public const string FormNotificationsChanged = "form.notifications";
@@ -103,7 +104,8 @@ public sealed record SubmissionRecord(
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? PurgeAt,
-    int? RetentionDays = null);
+    int? RetentionDays = null,
+    bool PdfWatermark = false);
 
 public sealed record SubmissionDetail(
     Guid Id,

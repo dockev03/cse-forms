@@ -252,7 +252,7 @@ Aucune donnée personnelle ne circule par email : le PDF reste sur le serveur et
 - **Notification au CSE** : objet et corps génériques (« Nouvelle inscription n° INS-2026-0042, site Riom »), sans nom ni coordonnées, et un lien vers la réponse dans le back-office.
 - **Clic sur le lien** : si l'élu n'est pas connecté, il passe par l'écran de connexion (identifiant, mot de passe, et code 2FA s'il l'a activée), puis arrive directement sur la réponse. Le lien seul ne donne accès à rien.
 - **Habilitation** : seuls les comptes ayant le droit sur ce formulaire voient la réponse ; un refus est journalisé.
-- **Téléchargement du PDF** : depuis la fiche réponse, tracé dans le journal d'audit (qui, quand, quel dossier). Option : filigrane « Confidentiel CSE, téléchargé par X le JJ/MM/AAAA ».
+- **Téléchargement du PDF** : depuis la fiche réponse, tracé dans le journal d'audit (qui, quand, quel dossier). Option réglable par formulaire : filigrane « Confidentiel CSE, téléchargé par X le JJ/MM/AAAA » (X : nom affiché du compte), posé sur une copie à chaque téléchargement.
 - **Accusé au salarié** : numéro de dossier, date, contact CSE, rappel de communiquer tout changement d'état civil ; aucune donnée saisie.
 - **Session** : expiration après 30 minutes d'inactivité, déconnexion explicite, appareils de confiance pour 30 jours en option.
 
@@ -301,7 +301,7 @@ La réponse est enregistrée d'abord ; le PDF et les emails partent en tâche de
 | Schéma et validation | JSON Schema + extension maison pour l'affichage conditionnel | Schéma maison simple |
 | Base de données | PostgreSQL, réponses en JSONB | |
 | File de tâches | Hangfire (stockage PostgreSQL) | Worker .NET + table de tâches |
-| PDF | Gotenberg (HTML vers PDF via Chromium) | QuestPDF (licence à vérifier) |
+| PDF | Gotenberg (HTML vers PDF via Chromium) ; filigrane au téléchargement avec PDFsharp (MIT) | QuestPDF (licence à vérifier) |
 | Email | Mail API existante (MailKit) | SMTP direct |
 | QR code | QRCoder (.NET) | |
 | Anti-robot | Preuve de travail au format ALTCHA, implémentée dans le projet (sans dépendance) + code d'accès | Widget et bibliothèque ALTCHA |

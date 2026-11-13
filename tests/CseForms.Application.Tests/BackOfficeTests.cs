@@ -90,8 +90,13 @@ public class BackOfficeServiceTests
 
         public Task<SubmissionRecord?> GetSubmissionAsync(Guid submissionId, CancellationToken cancellationToken) =>
             Task.FromResult<SubmissionRecord?>(submissionId == SubmissionId
-                ? new SubmissionRecord(SubmissionId, FormId, "F", "TST-2026-0001", 1, """{"sections":[{"id":"s","fields":[{"id":"nom","type":"text","label":"Nom"}]}]}""", """{"nom":"DUPONT"}""", "new", DateTimeOffset.UnixEpoch, null)
+                ? new SubmissionRecord(SubmissionId, FormId, "F", "TST-2026-0001", 1, """{"sections":[{"id":"s","fields":[{"id":"nom","type":"text","label":"Nom"}]}]}""", """{"nom":"DUPONT"}""", "new", DateTimeOffset.UnixEpoch, null, PdfWatermark: Watermark)
                 : null);
+
+        public bool Watermark { get; set; }
+
+        public Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(userId == User.Id ? "Prénom Fictif" : null);
 
         public bool HasPdf { get; set; }
 
@@ -171,11 +176,27 @@ public class BackOfficeServiceTests
 
     private static readonly Guid PdfFileId = Guid.NewGuid();
 
-    private static BackOfficeService Service(FakeStore store, FakeAudit audit, FakeEraseStore? erase = null, FakeVault? vault = null)
+    private static BackOfficeService Service(FakeStore store, FakeAudit audit, FakeEraseStore? erase = null, FakeVault? vault = null, FakeWatermarker? watermarker = null)
     {
         vault ??= new FakeVault();
         var eraser = new SubmissionEraser(erase ?? new FakeEraseStore(), vault, NullLogger<SubmissionEraser>.Instance);
-        return new(store, audit, vault, eraser, TimeProvider.System);
+        return new(store, audit, vault, eraser, watermarker ?? new FakeWatermarker(), new FixedClock(new DateTimeOffset(2026, 12, 31, 23, 30, 0, TimeSpan.Zero)));
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class FakeWatermarker : IPdfWatermarker
+    {
+        public List<PdfWatermarkText> Applied { get; } = [];
+
+        public byte[] Apply(byte[] pdf, PdfWatermarkText text)
+        {
+            Applied.Add(text);
+            return [.. pdf, .. "+filigrane"u8.ToArray()];
+        }
     }
 
     private sealed class FakeVault : IFileVault
@@ -266,6 +287,33 @@ public class BackOfficeServiceTests
         Assert.NotNull(download);
         Assert.Equal("TST-2026-0001.pdf", download.FileName);
         Assert.Equal((AuditActions.SubmissionDownloaded, (Guid?)User.Id, $"submission:{SubmissionId}"), Assert.Single(audit.Entries));
+    }
+
+    [Fact]
+    public async Task Pdf_is_left_as_stored_when_the_form_has_no_watermark()
+    {
+        var watermarker = new FakeWatermarker();
+        var download = await Service(new FakeStore(canAccess: true) { HasPdf = true }, new FakeAudit(), watermarker: watermarker).DownloadPdfAsync(User, SubmissionId, default);
+
+        Assert.Equal("%PDF-fictif"u8.ToArray(), download!.Content);
+        Assert.Empty(watermarker.Applied);
+    }
+
+    [Fact]
+    public async Task Watermark_names_the_downloader_and_the_paris_date_and_is_audited()
+    {
+        var audit = new FakeAudit();
+        var watermarker = new FakeWatermarker();
+        var store = new FakeStore(canAccess: true) { HasPdf = true, Watermark = true };
+
+        var download = await Service(store, audit, watermarker: watermarker).DownloadPdfAsync(User, SubmissionId, default);
+
+        Assert.EndsWith("+filigrane", System.Text.Encoding.UTF8.GetString(download!.Content));
+        var text = Assert.Single(watermarker.Applied);
+        Assert.Equal("Confidentiel CSE", text.Title);
+        Assert.Equal("Téléchargé par Prénom Fictif le 01/01/2027", text.Detail); // 23h30 UTC le 31/12 : déjà le 1er janvier à Paris
+        Assert.Equal(AuditActions.SubmissionDownloaded, Assert.Single(audit.Entries).Action);
+        Assert.Equal("watermark", Assert.Single(audit.Details));
     }
 
     [Fact]

@@ -24,6 +24,8 @@ internal sealed class FormConfiguration : IEntityTypeConfiguration<Form>
             .HasDefaultValue(Form.DefaultCaseNumberPrefix)
             .IsRequired();
 
+        builder.Property(f => f.PdfWatermark).HasDefaultValue(false);
+
         builder.HasMany(f => f.Versions)
             .WithOne()
             .HasForeignKey(v => v.FormId)
