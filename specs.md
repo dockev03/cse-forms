@@ -256,7 +256,7 @@ Aucune donnée personnelle ne circule par email : le PDF reste sur le serveur et
 
 ### 5.4 Décisions à soumettre au CSE
 
-- [ ] Accepter la fiche dématérialisée à la place de l'original papier, qui conditionne aujourd'hui la participation ; mettre à jour les règles d'accès aux activités sociales et culturelles si elles le prévoient.
+- [x] Accepter la fiche dématérialisée à la place de l'original papier, qui conditionne aujourd'hui la participation ; mettre à jour les règles d'accès aux activités sociales et culturelles si elles le prévoient.
 - [ ] Valider la liste des champs (minimisation) et la durée de conservation.
 - [ ] Acter le principe retenu : notification sans donnée personnelle, PDF accessible aux seuls élus authentifiés et habilités, accusé de réception sans donnée au salarié.
 - [ ] Désigner les membres habilités à consulter les réponses.
