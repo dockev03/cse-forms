@@ -1,0 +1,87 @@
+@page "/admin/comptes/{id:guid}"
+@model CseForms.Api.Pages.Admin.Accounts.EditModel
+@{
+    ViewData["Title"] = Model.Account.DisplayName;
+}
+
+<p><a href="/admin/comptes">Comptes des élus</a></p>
+<h1>@Model.Account.DisplayName</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        @foreach (var error in Model.Errors)
+        {
+            <p>@error</p>
+        }
+    </div>
+}
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status"><p>@Model.Message</p></div>
+}
+
+@if (Model.TemporaryPassword is not null)
+{
+    <partial name="_TemporaryPassword" model="Model.TemporaryPassword" />
+}
+
+<dl class="meta card">
+    <div><dt>Adresse email</dt><dd>@Model.Account.Email</dd></div>
+    <div><dt>Créé le</dt><dd>@Display.Date(Model.Account.CreatedAt)</dd></div>
+    <div><dt>État</dt><dd>@(Model.Account.Disabled ? "Désactivé" : Model.Account.MustChangePassword ? "Mot de passe provisoire" : "Actif")</dd></div>
+    <div><dt>Double authentification</dt><dd>@(Model.Account.TwoFactorEnabled ? "Activée" : "Non activée")</dd></div>
+</dl>
+
+<section class="card">
+    <h2>Rôle et formulaires</h2>
+    <form method="post" asp-page-handler="Save" asp-route-id="@Model.Account.Id">
+        <partial name="_AccountFields" model="Model.Fields" />
+        <button type="submit" class="primary">Enregistrer</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Accès</h2>
+    @if (Model.IsSelf)
+    {
+        <p>Votre propre mot de passe se change depuis <a href="/admin/mot-de-passe">Mot de passe</a>.</p>
+    }
+    else
+    {
+        <h3>Mot de passe oublié</h3>
+        <p>Remplace le mot de passe par un mot de passe provisoire, affiché une seule fois, et débloque le compte s'il a été bloqué après trop d'essais.</p>
+        <form method="post" asp-page-handler="ResetPassword" asp-route-id="@Model.Account.Id">
+            <button type="submit">Réinitialiser le mot de passe</button>
+        </form>
+    }
+
+    @if (Model.Account.TwoFactorEnabled)
+    {
+        <h3>Téléphone perdu</h3>
+        <p>Désactive la double authentification si l'élu n'a plus son téléphone ni ses codes de secours. Il pourra la réactiver depuis « Sécurité du compte ».</p>
+        <form method="post" asp-page-handler="ResetTwoFactor" asp-route-id="@Model.Account.Id">
+            <button type="submit">Désactiver la double authentification</button>
+        </form>
+    }
+
+    @if (!Model.IsSelf)
+    {
+        @if (Model.Account.Disabled)
+        {
+            <h3>Réactiver</h3>
+            <form method="post" asp-page-handler="Enable" asp-route-id="@Model.Account.Id">
+                <button type="submit">Réactiver le compte</button>
+            </form>
+        }
+        else
+        {
+            <h3>Désactiver</h3>
+            <p>L'élu ne peut plus se connecter ; ses droits sont conservés pour une éventuelle réactivation. À utiliser au départ d'un élu.</p>
+            <form method="post" asp-page-handler="Disable" asp-route-id="@Model.Account.Id">
+                <button type="submit" class="danger">Désactiver le compte</button>
+            </form>
+        }
+    }
+</section>

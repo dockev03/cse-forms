@@ -43,6 +43,10 @@ x-api-environment: &api-environment
   RateLimiting__PublicRead__WindowSeconds: ${RateLimiting__PublicRead__WindowSeconds:-60}
   RateLimiting__Login__PermitLimit: ${RateLimiting__Login__PermitLimit:-20}
   RateLimiting__Login__WindowSeconds: ${RateLimiting__Login__WindowSeconds:-600}
+  # Administrateur initial : créé au démarrage uniquement si la base ne contient aucun compte.
+  BootstrapAdmin__Email: ${BootstrapAdmin__Email:-}
+  BootstrapAdmin__Name: ${BootstrapAdmin__Name:-}
+  BootstrapAdmin__Password: ${BootstrapAdmin__Password:-}
 
 services:
   postgres:

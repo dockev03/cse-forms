@@ -36,6 +36,9 @@ if (CliSupport.IsCommand(args))
     return await CliSupport.RunAsync(app.Services, args, Console.In, Console.Out, interactive: !Console.IsInputRedirected);
 }
 
+// Premier lancement : administrateur initial si la base ne contient aucun compte.
+await BootstrapAdmin.RunAsync(app.Services, app.Configuration, app.Logger);
+
 app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())

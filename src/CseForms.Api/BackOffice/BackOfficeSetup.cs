@@ -41,9 +41,17 @@ internal static class BackOfficeSetup
                 options.Lockout.AllowedForNewUsers = true;
 
                 options.User.RequireUniqueEmail = true;
+
+                // « Compte confirmé » = compte actif : un compte désactivé ne peut plus se connecter.
+                options.SignIn.RequireConfirmedAccount = true;
             })
             .AddEntityFrameworkStores<CseFormsDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddErrorDescriber<FrenchIdentityErrorDescriber>()
+            .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>()
+            .AddUserConfirmation<ActiveAccountConfirmation>();
+
+        services.AddScoped<AccountAdministration>();
 
         // Un compte désactivé ou dont le mot de passe change perd sa session rapidement.
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(5));
@@ -107,13 +115,15 @@ internal static class BackOfficeSetup
         // Accents affichés tels quels plutôt qu'en entités (&#xE9;) ; l'encodage HTML reste actif.
         services.Configure<WebEncoderOptions>(options => options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
-        services.AddRazorPages(options =>
-        {
-            options.Conventions.AuthorizeFolder("/Admin", Policy);
-            options.Conventions.AllowAnonymousToPage("/Admin/Login");
-            options.Conventions.AllowAnonymousToPage("/Admin/LoginCode");
-            options.Conventions.AllowAnonymousToPage("/Admin/AccessDenied");
-        });
+        services
+            .AddRazorPages(options =>
+            {
+                options.Conventions.AuthorizeFolder("/Admin", Policy);
+                options.Conventions.AllowAnonymousToPage("/Admin/Login");
+                options.Conventions.AllowAnonymousToPage("/Admin/LoginCode");
+                options.Conventions.AllowAnonymousToPage("/Admin/AccessDenied");
+            })
+            .AddMvcOptions(options => options.Filters.Add<PasswordChangeFilter>());
 
         return services;
     }
