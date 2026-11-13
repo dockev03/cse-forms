@@ -94,9 +94,9 @@ public partial class BackOfficeTests
         var status = await client.PostAsync($"/admin/reponses/{submissionId}?handler=Status", Post(page, ("status", "entered")));
         var export = await client.GetAsync($"/admin/formulaires/{form.Id}/export");
 
-        Assert.NotEqual(HttpStatusCode.OK, export.StatusCode);
-        Assert.NotEqual(HttpStatusCode.OK, (await client.GetAsync($"/admin/reponses/{submissionId}/suppression")).StatusCode);
-        Assert.NotEqual($"/admin/reponses/{submissionId}?statut=modifie", status.Headers.Location?.OriginalString);
+        Assert.Equal(BackOfficeAccessDenied, export.Headers.Location?.AbsolutePath);
+        Assert.Equal(BackOfficeAccessDenied, (await client.GetAsync($"/admin/reponses/{submissionId}/suppression")).Headers.Location?.AbsolutePath);
+        Assert.Equal(BackOfficeAccessDenied, status.Headers.Location?.AbsolutePath);
 
         await using var db = factory.Database.CreateContext();
         Assert.Equal("new", (await db.Submissions.SingleAsync(s => s.Id == submissionId)).Status);
@@ -167,8 +167,7 @@ public partial class BackOfficeTests
 
         var response = await client.PostAsync($"/admin/reponses/{submissionId}/suppression", Post(page, ("confirmation", "bo-suppr-editeur-0001")));
 
-        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
-        Assert.DoesNotContain("supprime=1", response.Headers.Location?.OriginalString ?? string.Empty, StringComparison.Ordinal);
+        Assert.Equal(BackOfficeAccessDenied, response.Headers.Location?.AbsolutePath);
         await using var db = factory.Database.CreateContext();
         Assert.True(await db.Submissions.AnyAsync(s => s.Id == submissionId));
     }

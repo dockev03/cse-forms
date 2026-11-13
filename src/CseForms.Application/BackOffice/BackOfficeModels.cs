@@ -181,6 +181,9 @@ public enum DeletionOutcome
 
 public sealed record DeletionResult(DeletionOutcome Outcome, Guid FormId = default);
 
+/// <summary>Réponse à confirmer avant suppression : numéro de dossier et formulaire, sans donnée saisie.</summary>
+public sealed record DeletionScreen(Guid Id, Guid FormId, string FormTitle, string CaseNumber);
+
 /// <summary>Ligne brute d'historique : action d'audit (avec l'auteur) ou tâche de fond terminée.</summary>
 public sealed record HistoryRecord(DateTimeOffset At, string Action, string? Detail, string? Actor);
 

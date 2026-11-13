@@ -2,6 +2,7 @@ using CseForms.Application.BackOffice;
 using CseForms.Infrastructure.Identity;
 using CseForms.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.WebEncoders;
@@ -18,6 +19,7 @@ internal static class BackOfficeSetup
 {
     public const string Policy = "back-office";
     public const string LoginPath = "/admin/connexion";
+    public const string AccessDeniedPath = "/admin/acces-refuse";
     public static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
     public static readonly TimeSpan TrustedDeviceDuration = TimeSpan.FromDays(30);
 
@@ -64,7 +66,8 @@ internal static class BackOfficeSetup
             options.SlidingExpiration = true;
             options.LoginPath = LoginPath;
             options.LogoutPath = "/admin/deconnexion";
-            options.AccessDeniedPath = LoginPath;
+            // Pas la page de connexion : elle renvoie un compte connecté vers la page refusée, en boucle.
+            options.AccessDeniedPath = AccessDeniedPath;
             options.ReturnUrlParameter = "returnUrl";
         });
 
@@ -107,6 +110,7 @@ internal static class BackOfficeSetup
 
         services.AddAuthorizationBuilder()
             .AddPolicy(Policy, policy => policy.RequireAuthenticatedUser().RequireRole(AppRoles.All));
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, AccessDeniedAuditHandler>();
 
         // Accents affichés tels quels plutôt qu'en entités (&#xE9;) ; l'encodage HTML reste actif.
         services.Configure<WebEncoderOptions>(options => options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
@@ -117,6 +121,7 @@ internal static class BackOfficeSetup
                 options.Conventions.AuthorizeFolder("/Admin", Policy);
                 options.Conventions.AllowAnonymousToPage("/Admin/Login");
                 options.Conventions.AllowAnonymousToPage("/Admin/LoginCode");
+                options.Conventions.AllowAnonymousToPage("/Admin/AccessDenied");
             })
             .AddMvcOptions(options => options.Filters.Add<PasswordChangeFilter>());
 

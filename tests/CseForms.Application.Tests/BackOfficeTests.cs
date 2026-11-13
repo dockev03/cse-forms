@@ -353,6 +353,28 @@ public class BackOfficeServiceTests
     }
 
     [Fact]
+    public async Task Deletion_screen_is_reserved_to_admins_and_refusal_is_audited()
+    {
+        var audit = new FakeAudit();
+
+        var refused = await Service(new FakeStore(canAccess: true), audit).GetDeletionScreenAsync(User, SubmissionId, default);
+        var hidden = await Service(new FakeStore(canAccess: false), audit).GetDeletionScreenAsync(Admin, SubmissionId, default);
+        var shown = await Service(new FakeStore(canAccess: true), audit).GetDeletionScreenAsync(Admin, SubmissionId, default);
+
+        Assert.Equal(DeletionOutcome.Forbidden, refused.Outcome);
+        Assert.Null(refused.Screen);
+        Assert.Equal(DeletionOutcome.NotFound, hidden.Outcome);
+        Assert.Null(hidden.Screen);
+        Assert.Equal(SubmissionId, shown.Screen!.Id);
+
+        // Un refus par rôle insuffisant, un par formulaire non attribué ; rien pour l'écran affiché.
+        Assert.Equal(
+            [(AuditActions.AccessDenied, User.Id), (AuditActions.AccessDenied, Admin.Id)],
+            audit.Entries.Select(e => (e.Action, e.UserId!.Value)));
+        Assert.All(audit.Entries, e => Assert.Equal($"submission:{SubmissionId}", e.Target));
+    }
+
+    [Fact]
     public async Task Deletion_requires_the_case_number_as_confirmation()
     {
         var erase = new FakeEraseStore();

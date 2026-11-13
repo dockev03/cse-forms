@@ -493,6 +493,7 @@ Dans le back-office : `/admin/formulaires/{id}/diffusion` (rôles `admin` et `ed
 | 8 | Lien de la notification | Passe par la connexion, puis ouvre la fiche |
 | 9 | PDF de la réponse | Généré, téléchargeable, logo et coordonnées du CSE corrects |
 | 10 | Compte `editor` sans droit sur le formulaire | 404 sur la réponse |
+| 10 bis | Compte `editor` avec droit, adresse `/admin/reponses/<id>/suppression` | Page « Accès refusé », sans boucle vers la connexion |
 | 11 | 5 mauvais mots de passe | Compte bloqué 15 minutes |
 | 12 | Double authentification | Activation, connexion avec code, code de secours |
 | 13 | Export CSV | Fichier conforme ; ouvrir hors de tout poste partagé |

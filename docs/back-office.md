@@ -9,7 +9,11 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 | `admin` | Tous les formulaires et toutes les réponses |
 | `editor`, `reader` | Uniquement les formulaires attribués (écran « Comptes » ou `users grant`) |
 
-Les droits sont vérifiés côté serveur à chaque requête. Un compte sans droit sur un formulaire reçoit un 404, comme pour une ressource inexistante, et le refus est journalisé.
+Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
+
+- **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte ou ouvre la diffusion, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
 
@@ -54,6 +58,7 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/securite` : double authentification du compte connecté.
 - `/admin/mot-de-passe` : changement de son mot de passe (mot de passe actuel, nouveau, confirmation).
 - `/admin/comptes`, `/admin/comptes/nouveau`, `/admin/comptes/{id}` : [comptes](#comptes), rôle `admin` uniquement.
+- `/admin/acces-refuse` : page « Accès refusé » (403), cible des refus pour rôle insuffisant.
 - `/admin/formulaires/{id}/reponses` : liste paginée (25 par page) ; recherche par numéro de dossier, filtres statut, site et période, tri par date. Seuls le numéro, la date, le site et le statut sont affichés.
 - `/admin/reponses/{id}` : fiche avec les libellés de la version remplie, dates au format JJ/MM/AAAA, groupes répétables en tableau. Lien profond utilisable dans les notifications. Le bloc PDF indique si le PDF est disponible, en cours de génération ou en échec.
 - `/admin/reponses/{id}/pdf` : téléchargement du PDF déchiffré, après contrôle des droits, jamais mis en cache.
@@ -152,7 +157,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` |
 | `submission.pdf.regenerate` | `submission:{id}` |
-| `access.denied` | `submission:{id}` ou `form:{id}` |
+| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 | `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
