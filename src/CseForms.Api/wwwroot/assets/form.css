@@ -31,6 +31,9 @@ body {
   padding: 1rem;
 }
 
+.brand { margin-bottom: 0.5rem; }
+.cse-logo { display: block; max-width: 12rem; max-height: 4.5rem; width: auto; height: auto; }
+
 h1 { font-size: 1.5rem; line-height: 1.25; margin: 0.5rem 0 1rem; }
 h2 { font-size: 1.2rem; margin: 0 0 0.75rem; }
 

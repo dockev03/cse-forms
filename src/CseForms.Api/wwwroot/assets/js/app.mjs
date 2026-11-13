@@ -4,6 +4,15 @@ import { createProofSource } from './pow.mjs';
 
 const root = document.getElementById('app');
 
+// Logo du CSE : l'en-tête reste masqué s'il n'y en a pas (404) ou s'il ne se charge pas.
+const brand = document.querySelector('.brand');
+const logo = brand?.querySelector('img');
+if (logo) {
+  const show = () => { brand.hidden = false; };
+  if (logo.complete && logo.naturalWidth > 0) show();
+  else logo.addEventListener('load', show, { once: true });
+}
+
 function showMessage(title, text) {
   const heading = document.createElement('h1');
   heading.textContent = title;

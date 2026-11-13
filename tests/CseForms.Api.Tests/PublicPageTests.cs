@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using CseForms.Domain.Settings;
 using CseForms.Domain.Sites;
 using CseForms.Testing;
 
@@ -49,6 +50,66 @@ public class PublicPageTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Stylesheet_is_served() =>
         Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync("/assets/form.css")).StatusCode);
+
+    [Fact]
+    public async Task Theme_stylesheet_is_linked_and_follows_settings_with_revalidation()
+    {
+        var client = factory.CreateClient();
+        Assert.Contains("<link rel=\"stylesheet\" href=\"/theme.css\">", await client.GetStringAsync("/f/inscription"));
+
+        await using (var db = factory.Database.CreateContext())
+        {
+            db.Settings.RemoveRange(db.Settings.Where(s => s.Key.StartsWith("theme.")));
+            db.Settings.Add(new Setting("theme.primaryColor", "#a3004c"));
+            db.Settings.Add(new Setting("theme.background", "data:image/png;base64,iVBORw0KGgoAAQ=="));
+            await db.SaveChangesAsync();
+        }
+
+        var response = await client.GetAsync("/theme.css");
+        var css = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/css", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("no-cache", response.Headers.CacheControl!.ToString());
+        Assert.Contains("--primary: #a3004c;", css);
+        Assert.Contains("url(\"data:image/png;base64,iVBORw0KGgoAAQ==\")", css);
+        Assert.DoesNotContain("http", css);
+
+        using var again = new HttpRequestMessage(HttpMethod.Get, "/theme.css");
+        again.Headers.IfNoneMatch.Add(response.Headers.ETag!);
+        Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(again)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Logo_is_shown_from_the_site_itself_only_when_defined()
+    {
+        var client = factory.CreateClient();
+        Assert.Contains("<img class=\"cse-logo\" src=\"/logo\" alt=\"Logo du CSE\">", await client.GetStringAsync("/f/inscription"));
+
+        await using (var db = factory.Database.CreateContext())
+        {
+            db.Settings.RemoveRange(db.Settings.Where(s => s.Key == "cse.logo"));
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/logo")).StatusCode);
+
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
+        await using (var db = factory.Database.CreateContext())
+        {
+            db.Settings.Add(new Setting("cse.logo", "data:image/png;base64," + Convert.ToBase64String(png)));
+            await db.SaveChangesAsync();
+        }
+
+        var response = await client.GetAsync("/logo");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal(png, await response.Content.ReadAsByteArrayAsync());
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+
+        using var again = new HttpRequestMessage(HttpMethod.Get, "/logo");
+        again.Headers.IfNoneMatch.Add(response.Headers.ETag!);
+        Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(again)).StatusCode);
+    }
 
     [Theory]
     [InlineData("/form.html")]

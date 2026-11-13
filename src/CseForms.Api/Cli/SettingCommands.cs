@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace CseForms.Api.Cli;
 
 /// <summary>
-/// Paramètres de l'application (coordonnées, bureau et logo du CSE, adresse publique) :
-/// <c>settings set|logo|unset|list</c>. Seules les clés connues sont acceptées.
+/// Paramètres de l'application (coordonnées, bureau et logo du CSE, adresse publique, apparence) :
+/// <c>settings set|logo|background|unset|list</c>. Seules les clés connues sont acceptées.
 /// </summary>
 internal static class SettingCommands
 {
@@ -16,6 +16,7 @@ internal static class SettingCommands
           settings set   --key <clé> --value <valeur>
           settings set   --key <clé> < fichier.txt     valeur sur plusieurs lignes, lue sur l'entrée standard
           settings logo  --file <image>              logo du CSE : {CseLogo.Rule}
+          settings background --file <image>         fond du formulaire public : {BackgroundImage.Rule}
           settings unset --key <clé>
           settings list
         Clés :
@@ -33,7 +34,8 @@ internal static class SettingCommands
             return args.ElementAtOrDefault(1) switch
             {
                 "set" => await SetAsync(db, options, input, output),
-                "logo" => await LogoAsync(db, options, output),
+                "logo" => await ImageAsync(db, SettingKeys.CseLogo, "Logo refusé", "Logo du CSE enregistré.", options, output),
+                "background" => await ImageAsync(db, SettingKeys.ThemeBackground, "Image de fond refusée", "Image de fond enregistrée.", options, output),
                 "unset" => await UnsetAsync(db, KnownKey(options), output),
                 "list" => await ListAsync(db, output),
                 _ => CliSupport.Fail(output, Usage),
@@ -53,6 +55,11 @@ internal static class SettingCommands
             return CliSupport.Fail(output, "Le logo se règle avec « settings logo --file <image> ».");
         }
 
+        if (key == SettingKeys.ThemeBackground)
+        {
+            return CliSupport.Fail(output, "L'image de fond se règle avec « settings background --file <image> ».");
+        }
+
         var value = SettingKeys.Normalize(key, options.TryGetValue("value", out var given) ? given : await input.ReadToEndAsync());
 
         if (SettingKeys.Validate(key, value) is { } error)
@@ -65,8 +72,9 @@ internal static class SettingCommands
         return 0;
     }
 
-    private static async Task<int> LogoAsync(CseFormsDbContext db, Dictionary<string, string> options, TextWriter output)
+    private static async Task<int> ImageAsync(CseFormsDbContext db, string key, string refusal, string saved, Dictionary<string, string> options, TextWriter output)
     {
+        var image = SettingKeys.ImageKeys[key];
         var path = CliSupport.Required(options, Usage, "file");
         if (!File.Exists(path))
         {
@@ -74,19 +82,14 @@ internal static class SettingCommands
         }
 
         // Taille contrôlée avant lecture : un gros fichier n'est jamais chargé en mémoire.
-        if (new FileInfo(path).Length > CseLogo.MaxBytes)
-        {
-            return CliSupport.Fail(output, $"Logo refusé : {CseLogo.Rule}.");
-        }
-
-        var dataUri = CseLogo.ToDataUri(await File.ReadAllBytesAsync(path));
+        var dataUri = new FileInfo(path).Length > image.MaxBytes ? null : image.ToDataUri(await File.ReadAllBytesAsync(path));
         if (dataUri is null)
         {
-            return CliSupport.Fail(output, $"Logo refusé : {CseLogo.Rule}.");
+            return CliSupport.Fail(output, $"{refusal} : {image.Rule}.");
         }
 
-        await SaveAsync(db, SettingKeys.CseLogo, dataUri);
-        await output.WriteLineAsync("Logo du CSE enregistré.");
+        await SaveAsync(db, key, dataUri);
+        await output.WriteLineAsync(saved);
         return 0;
     }
 
@@ -124,7 +127,7 @@ internal static class SettingCommands
         foreach (var key in SettingKeys.Descriptions.Keys)
         {
             var value = !values.TryGetValue(key, out var v) ? "(non défini)"
-                : key == SettingKeys.CseLogo ? $"(image, {Math.Max(1, CseLogo.DecodedSize(v) / 1024)} Ko)"
+                : SettingKeys.ImageKeys.ContainsKey(key) ? $"(image, {Math.Max(1, SettingImage.DecodedSize(v) / 1024)} Ko)"
                 : v.Replace("\n", " / ", StringComparison.Ordinal);
             await output.WriteLineAsync($"{key} | {value}");
         }

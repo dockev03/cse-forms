@@ -8,12 +8,12 @@ namespace CseForms.Application.Settings;
 
 /// <summary>
 /// Paramètres de l'application dans le back-office, réservés aux administrateurs : coordonnées et bureau du CSE,
-/// logo, adresse publique, adresse d'alerte, liste des sites. Mêmes contrôles que la commande <c>settings</c>.
+/// logo, adresse publique, adresse d'alerte, apparence du formulaire public, liste des sites. Mêmes contrôles que la commande <c>settings</c>.
 /// Le journal garde le nom des paramètres modifiés, jamais leur valeur.
 /// </summary>
 public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminStore store, IAuditLog audit)
 {
-    /// <summary>Paramètres modifiables depuis l'écran, dans l'ordre d'affichage. Le logo a son propre envoi.</summary>
+    /// <summary>Paramètres modifiables depuis l'écran, dans l'ordre d'affichage. Les images ont leur propre envoi.</summary>
     public static readonly IReadOnlyList<string> EditableKeys =
     [
         SettingKeys.CseName,
@@ -23,6 +23,7 @@ public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminSt
         SettingKeys.CseOffice,
         SettingKeys.PublicBaseUrl,
         SettingKeys.AlertsEmail,
+        SettingKeys.ThemePrimaryColor,
     ];
 
     public async Task<SettingsResult<SettingsPage>> GetPageAsync(CurrentUser user, CancellationToken cancellationToken)
@@ -33,10 +34,10 @@ public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminSt
         }
 
         var values = await reader.GetAllAsync(cancellationToken);
-        var logo = values.TryGetValue(SettingKeys.CseLogo, out var l) && CseLogo.IsValid(l) ? l : null;
         return new(SettingsStatus.Ok, new SettingsPage(
             EditableKeys.ToDictionary(k => k, k => values.TryGetValue(k, out var v) ? v : null),
-            logo,
+            ValidImage(values, SettingKeys.CseLogo),
+            ValidImage(values, SettingKeys.ThemeBackground),
             await store.ListSitesAsync(cancellationToken)));
     }
 
@@ -103,49 +104,18 @@ public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminSt
     }
 
     /// <summary>Logo du CSE : contenu du fichier envoyé, contrôlé sur ses premiers octets (PNG ou JPEG), pas sur son nom.</summary>
-    public async Task<SettingsResult> SaveLogoAsync(CurrentUser user, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
-    {
-        if (await DenyAsync(user, cancellationToken))
-        {
-            return new(SettingsStatus.Forbidden);
-        }
+    public Task<SettingsResult> SaveLogoAsync(CurrentUser user, ReadOnlyMemory<byte> content, CancellationToken cancellationToken) =>
+        SaveImageAsync(user, SettingKeys.CseLogo, "Logo refusé", content, cancellationToken);
 
-        if (CseLogo.ToDataUri(content.Span) is not { } dataUri)
-        {
-            return SettingsResult.Invalid(SettingKeys.CseLogo, $"Logo refusé : {CseLogo.Rule}.");
-        }
+    public Task<SettingsResult> RemoveLogoAsync(CurrentUser user, CancellationToken cancellationToken) =>
+        RemoveImageAsync(user, SettingKeys.CseLogo, cancellationToken);
 
-        var setting = await store.FindAsync(SettingKeys.CseLogo, cancellationToken);
-        if (setting is null)
-        {
-            store.Add(new Setting(SettingKeys.CseLogo, dataUri));
-        }
-        else
-        {
-            setting.Update(dataUri);
-        }
+    /// <summary>Image de fond du formulaire public, mêmes contrôles que le logo.</summary>
+    public Task<SettingsResult> SaveBackgroundAsync(CurrentUser user, ReadOnlyMemory<byte> content, CancellationToken cancellationToken) =>
+        SaveImageAsync(user, SettingKeys.ThemeBackground, "Image de fond refusée", content, cancellationToken);
 
-        await store.SaveChangesAsync(cancellationToken);
-        await audit.RecordAsync(AuditActions.SettingsChanged, user.Id, "settings", SettingKeys.CseLogo, cancellationToken);
-        return SettingsResult.Ok;
-    }
-
-    public async Task<SettingsResult> RemoveLogoAsync(CurrentUser user, CancellationToken cancellationToken)
-    {
-        if (await DenyAsync(user, cancellationToken))
-        {
-            return new(SettingsStatus.Forbidden);
-        }
-
-        if (await store.FindAsync(SettingKeys.CseLogo, cancellationToken) is { } setting)
-        {
-            store.Remove(setting);
-            await store.SaveChangesAsync(cancellationToken);
-            await audit.RecordAsync(AuditActions.SettingsChanged, user.Id, "settings", SettingKeys.CseLogo, cancellationToken);
-        }
-
-        return SettingsResult.Ok;
-    }
+    public Task<SettingsResult> RemoveBackgroundAsync(CurrentUser user, CancellationToken cancellationToken) =>
+        RemoveImageAsync(user, SettingKeys.ThemeBackground, cancellationToken);
 
     /// <summary>Nouveau site, actif. Deux sites ne peuvent porter le même libellé, majuscules comprises.</summary>
     public async Task<SettingsResult> AddSiteAsync(CurrentUser user, string? label, CancellationToken cancellationToken)
@@ -211,6 +181,54 @@ public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminSt
         return SettingsResult.Ok;
     }
 
+    private async Task<SettingsResult> SaveImageAsync(CurrentUser user, string key, string refusal, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+    {
+        if (await DenyAsync(user, cancellationToken))
+        {
+            return new(SettingsStatus.Forbidden);
+        }
+
+        var image = SettingKeys.ImageKeys[key];
+        if (image.ToDataUri(content.Span) is not { } dataUri)
+        {
+            return SettingsResult.Invalid(key, $"{refusal} : {image.Rule}.");
+        }
+
+        var setting = await store.FindAsync(key, cancellationToken);
+        if (setting is null)
+        {
+            store.Add(new Setting(key, dataUri));
+        }
+        else
+        {
+            setting.Update(dataUri);
+        }
+
+        await store.SaveChangesAsync(cancellationToken);
+        await audit.RecordAsync(AuditActions.SettingsChanged, user.Id, "settings", key, cancellationToken);
+        return SettingsResult.Ok;
+    }
+
+    private async Task<SettingsResult> RemoveImageAsync(CurrentUser user, string key, CancellationToken cancellationToken)
+    {
+        if (await DenyAsync(user, cancellationToken))
+        {
+            return new(SettingsStatus.Forbidden);
+        }
+
+        if (await store.FindAsync(key, cancellationToken) is { } setting)
+        {
+            store.Remove(setting);
+            await store.SaveChangesAsync(cancellationToken);
+            await audit.RecordAsync(AuditActions.SettingsChanged, user.Id, "settings", key, cancellationToken);
+        }
+
+        return SettingsResult.Ok;
+    }
+
+    private static string? ValidImage(IReadOnlyDictionary<string, string> values, string key) =>
+        values.TryGetValue(key, out var value) && SettingKeys.ImageKeys[key].IsValid(value) ? value : null;
+
     /// <summary>Nom du champ d'erreur pour l'ajout d'un site.</summary>
     public const string SiteField = "site";
 
@@ -255,7 +273,8 @@ public sealed record SiteView(Guid Id, string Label, bool IsActive);
 
 /// <param name="Values">Valeur de chaque paramètre de <see cref="SettingsAdminService.EditableKeys"/> ; null s'il n'est pas défini.</param>
 /// <param name="Logo">Adresse <c>data:</c> du logo ; null s'il n'est pas défini.</param>
-public sealed record SettingsPage(IReadOnlyDictionary<string, string?> Values, string? Logo, IReadOnlyList<SiteView> Sites);
+/// <param name="Background">Adresse <c>data:</c> de l'image de fond du formulaire public ; null si elle n'est pas définie.</param>
+public sealed record SettingsPage(IReadOnlyDictionary<string, string?> Values, string? Logo, string? Background, IReadOnlyList<SiteView> Sites);
 
 public enum SettingsStatus
 {

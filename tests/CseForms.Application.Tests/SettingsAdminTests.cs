@@ -86,6 +86,51 @@ public class SettingsAdminTests
     }
 
     [Fact]
+    public async Task Too_light_color_is_refused_and_nothing_is_saved()
+    {
+        var result = await Service().SaveAsync(Admin, new Dictionary<string, string?> { [SettingKeys.ThemePrimaryColor] = "#FFCC00" }, CancellationToken.None);
+
+        Assert.Equal(SettingsStatus.Invalid, result.Status);
+        Assert.Contains("Contraste insuffisant", result.Errors![SettingKeys.ThemePrimaryColor]);
+        Assert.Empty(_store.Settings);
+        Assert.Empty(_audit.Entries);
+    }
+
+    [Fact]
+    public async Task Color_is_saved_normalized_and_audited_without_its_value()
+    {
+        var result = await Service().SaveAsync(Admin, new Dictionary<string, string?> { [SettingKeys.ThemePrimaryColor] = " #A3004C " }, CancellationToken.None);
+
+        Assert.Equal(SettingsStatus.Ok, result.Status);
+        Assert.Equal("#a3004c", _store.Settings[SettingKeys.ThemePrimaryColor].Value);
+        Assert.Equal([("settings.change", "settings", "theme.primaryColor")], _audit.Entries);
+    }
+
+    [Fact]
+    public async Task Background_is_checked_on_its_content_saved_and_removed()
+    {
+        var service = Service();
+
+        var refused = await service.SaveBackgroundAsync(Admin, "<svg onload=\"alert(1)\"/>"u8.ToArray(), CancellationToken.None);
+        Assert.Equal(SettingsStatus.Invalid, refused.Status);
+        Assert.Contains("512 Ko", refused.Errors![SettingKeys.ThemeBackground]);
+        Assert.Equal(SettingsStatus.Invalid, (await service.SaveBackgroundAsync(Admin, new byte[BackgroundImage.MaxBytes + 1], CancellationToken.None)).Status);
+        Assert.Empty(_store.Settings);
+
+        Assert.Equal(SettingsStatus.Ok, (await service.SaveBackgroundAsync(Admin, Png, CancellationToken.None)).Status);
+        Assert.StartsWith("data:image/png;base64,", _store.Settings[SettingKeys.ThemeBackground].Value);
+        var page = (await service.GetPageAsync(Admin, CancellationToken.None)).Value!;
+        Assert.NotNull(page.Background);
+        Assert.Null(page.Logo);
+
+        Assert.Equal(SettingsStatus.Ok, (await service.RemoveBackgroundAsync(Admin, CancellationToken.None)).Status);
+        Assert.Empty(_store.Settings);
+        Assert.Equal(
+            [("settings.change", "settings", "theme.background"), ("settings.change", "settings", "theme.background")],
+            _audit.Entries);
+    }
+
+    [Fact]
     public async Task Logo_is_checked_on_its_content_saved_and_removed()
     {
         var service = Service();
@@ -145,6 +190,8 @@ public class SettingsAdminTests
         Assert.Equal(SettingsStatus.Forbidden, (await service.SaveAsync(Editor, new Dictionary<string, string?> { [SettingKeys.CseName] = "Pirate" }, CancellationToken.None)).Status);
         Assert.Equal(SettingsStatus.Forbidden, (await service.SaveLogoAsync(Editor, Png, CancellationToken.None)).Status);
         Assert.Equal(SettingsStatus.Forbidden, (await service.RemoveLogoAsync(Editor, CancellationToken.None)).Status);
+        Assert.Equal(SettingsStatus.Forbidden, (await service.SaveBackgroundAsync(Editor, Png, CancellationToken.None)).Status);
+        Assert.Equal(SettingsStatus.Forbidden, (await service.RemoveBackgroundAsync(Editor, CancellationToken.None)).Status);
         Assert.Equal(SettingsStatus.Forbidden, (await service.AddSiteAsync(Editor, "Autre", CancellationToken.None)).Status);
         Assert.Equal(SettingsStatus.Forbidden, (await service.SetSiteActiveAsync(Editor, _store.Sites[0].Id, active: false, CancellationToken.None)).Status);
 
@@ -153,7 +200,7 @@ public class SettingsAdminTests
         Assert.True(_store.Sites[0].IsActive);
         Assert.Equal(0, _store.Saves);
         Assert.All(_audit.Entries, e => Assert.Equal(("access.denied", "settings"), (e.Action, e.Target)));
-        Assert.Equal(6, _audit.Entries.Count);
+        Assert.Equal(8, _audit.Entries.Count);
     }
 
     private sealed class FakeStore : ISettingsAdminStore, ISettingReader
