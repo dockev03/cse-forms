@@ -17,7 +17,7 @@ Le registre est tenu par finalité, pas par logiciel. Deux choix possibles pour 
 | Rubrique | Contenu |
 | --- | --- |
 | Date de création / mise à jour | [À COMPLÉTER : date de validation en plénière] / — |
-| Responsable du traitement | CSE NSE, [À COMPLÉTER : adresse], représenté par [À COMPLÉTER : secrétaire du CSE] |
+| Responsable du traitement | CSE NSE, rue de l'Ambène, 63200 Riom, représenté par [À COMPLÉTER : secrétaire du CSE] |
 | Référent RGPD | [À COMPLÉTER] (pas de DPO désigné) |
 | Nom du traitement | Inscription au CSE en ligne (formulaire `inscription`) |
 | Finalité principale | Enregistrer les salariés et leur foyer pour l'accès aux activités sociales et culturelles |

@@ -20,9 +20,9 @@ La notice apparaît alors sur `/donnees-personnelles`, et chaque formulaire publ
 
 ## Mention courte affichée dans le formulaire
 
-Proposition pour remplacer le texte du champ `rgpdNotice` de [`forms/inscription.json`](../../forms/inscription.json). La version actuelle affirme que les données ne sont transmises à aucun tiers, ce qui n'est pas exact (hébergeur, éditeur du logiciel CSE), et ne donne ni la durée ni le contact.
+Texte du champ `rgpdNotice` de [`forms/inscription.json`](../../forms/inscription.json). Il ne cite pas la notice complète : le lien « Vos données personnelles » est en bas de chaque page du formulaire. Il reprend la durée de 180 jours de `retentionDays` : les deux valeurs doivent changer ensemble.
 
-> Le CSE NSE, responsable du traitement, utilise ces informations pour gérer votre accès aux activités sociales et culturelles. Seuls les membres du CSE habilités les consultent ; elles ne sont jamais transmises à l'employeur. Elles sont ensuite saisies dans le logiciel du CSE, puis la fiche en ligne est supprimée 180 jours après ce traitement. Vous pouvez accéder à vos données, les faire rectifier ou effacer en écrivant à [contact], et saisir la CNIL. Détails dans la notice complète.
+> Le CSE NSE (rue de l'Ambène, 63200 Riom), responsable du traitement, utilise ces informations pour gérer votre accès aux activités sociales et culturelles. Seuls les membres du CSE habilités les consultent ; elles ne sont jamais transmises à l'employeur. Elles sont ensuite saisies dans le logiciel du CSE, puis la fiche en ligne est supprimée 180 jours après ce traitement. Vous pouvez accéder à vos données, les faire rectifier ou effacer en écrivant au CSE à cette adresse, et saisir la CNIL.
 
 ---
 
@@ -30,7 +30,7 @@ Proposition pour remplacer le texte du champ `rgpdNotice` de [`forms/inscription
 
 | Point | Pour qui | Remarque |
 | --- | --- | --- |
-| Identité, adresse et contact RGPD du CSE | Bureau | Prévoir une boîte fonctionnelle, pas une adresse personnelle d'élu |
+| Contact RGPD du CSE (email) | Bureau | Prévoir une boîte fonctionnelle, pas une adresse personnelle d'élu |
 | Référent RGPD | Plénière | Désignation à acter au PV |
 | Base légale | Bureau | Voir la discussion dans le registre |
 | Élus habilités | Plénière | Décision déjà listée en specs § 5.4 |
