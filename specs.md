@@ -241,7 +241,7 @@ Le formulaire collecte des données personnelles sur le salarié, son conjoint e
 - PDF stockés hors de la racine web, servis uniquement après authentification et contrôle des droits.
 - Protection CSRF sur le back-office, cookies `Secure`, `HttpOnly`, `SameSite=Strict`.
 - Hachage des mots de passe et du code d'accès (algorithme adapté, pas de stockage en clair).
-- Analyse des dépendances (Trivy) dans la CI GitHub Actions à chaque push ; analyse des images Docker à ajouter avec les Dockerfile.
+- Analyse des dépendances et des images Docker (Trivy) dans la CI GitHub Actions à chaque push.
 
 ### 5.3 Notifications et accès aux PDF
 
