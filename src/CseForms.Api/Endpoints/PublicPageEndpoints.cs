@@ -38,7 +38,7 @@ internal static class PublicPageEndpoints
                 : Results.Text(css, "text/css; charset=utf-8");
         });
 
-        // Logo du CSE, déjà affiché sur le flyer : rien de personnel. 404 s'il n'est pas défini, la page le masque alors.
+        // Logo du CSE, déjà affiché sur le flyer : rien de personnel. 404 s'il n'est pas défini ; la page ne le demande alors pas (« logo » de l'API du formulaire).
         app.MapGet("/logo", async (HttpContext context, ISettingReader settings, CancellationToken cancellationToken) =>
         {
             var values = await settings.GetAllAsync(cancellationToken);

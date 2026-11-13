@@ -83,14 +83,16 @@ public class PublicPageTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Logo_is_shown_from_the_site_itself_only_when_defined()
     {
         var client = factory.CreateClient();
-        Assert.Contains("<img class=\"cse-logo\" src=\"/logo\" alt=\"Logo du CSE\">", await client.GetStringAsync("/f/inscription"));
+        Assert.Contains("<header class=\"brand\" hidden></header>", await client.GetStringAsync("/f/inscription"));
 
         await using (var db = factory.Database.CreateContext())
         {
             db.Settings.RemoveRange(db.Settings.Where(s => s.Key == "cse.logo"));
             await db.SaveChangesAsync();
+            await TestData.AddPublishedFormAsync(db, "page-logo");
         }
 
+        Assert.False(JsonNode.Parse(await client.GetStringAsync("/api/public/forms/page-logo"))!["logo"]!.GetValue<bool>());
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/logo")).StatusCode);
 
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
@@ -100,6 +102,7 @@ public class PublicPageTests(ApiFactory factory) : IClassFixture<ApiFactory>
             await db.SaveChangesAsync();
         }
 
+        Assert.True(JsonNode.Parse(await client.GetStringAsync("/api/public/forms/page-logo"))!["logo"]!.GetValue<bool>());
         var response = await client.GetAsync("/logo");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType!.MediaType);
