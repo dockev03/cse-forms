@@ -12,7 +12,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
-- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages ou l'import, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages, les notifications ou l'import, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
 - **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
@@ -69,6 +69,7 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/reponses/{id}/suppression` : [suppression définitive](#suppression-unitaire), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/diffusion` : [diffusion](#diffusion-qr-code-et-flyer), réservée aux rôles `admin` et `editor` ayant le droit sur le formulaire.
 - `/admin/formulaires/{id}/reglages` : [réglages du formulaire](#réglages-dun-formulaire), réservés aux rôles `admin` et `editor` ayant le droit sur le formulaire.
+- `/admin/formulaires/{id}/notifications` : [notifications au CSE](#notifications-au-cse), rôles `admin` et `editor` ayant le droit sur le formulaire.
 - `/admin/formulaires/import` : [import d'un fichier de formulaire](#import-dun-formulaire), rôles `admin` (création et nouvelle version) et `editor` (nouvelle version d'un formulaire attribué).
 
 ## Réglages d'un formulaire
@@ -155,10 +156,21 @@ Envoyés par le Worker (SMTP direct, MailKit), en texte brut, jamais avec une pi
 
 - Aucune donnée saisie dans les messages : le nom, les coordonnées et les autres réponses restent dans le back-office. Le lien seul ne donne accès à rien : il passe par la connexion et le contrôle des droits.
 - L'accusé de réception répond au contact du CSE (`Reply-To` : `cse.email`).
-- Règle de notification modifiable sans publier de version (`notifications set`) ; elle s'applique aux envois suivants.
+- Règle de notification modifiable sans publier de version, dans le back-office ([notifications](#notifications-au-cse)) ou par `notifications set` ; elle s'applique aux envois suivants.
 - Réglages : `smtp.host`, `smtp.port` (587 par défaut), `smtp.security` (`starttls` par défaut, `ssl`, `none`), `smtp.from`, nom affiché `cse.name`, adresse publique `app.publicBaseUrl` pour les liens. Identifiants en variables d'environnement du Worker (`Smtp__Username`, `Smtp__Password`) ; pas d'authentification sans chiffrement.
 - Test des réglages : `mail test --to <adresse>` sur le Worker (voir le README), avec sa configuration et ses identifiants.
 - 3 essais au plus, comme pour le PDF ; seul le type d'erreur est conservé et journalisé (un message SMTP peut citer une adresse). Un envoi réussi clôt la tâche aussitôt, pour ne pas renvoyer le message.
+
+### Notifications au CSE
+
+Écran `/admin/formulaires/{id}/notifications`, lié depuis les réglages du formulaire.
+
+- **Destinataires** : une adresse par ligne (virgule et point-virgule acceptés), 1 à 20, mises en minuscules et dédoublonnées. Une boîte du CSE est préférable à des adresses personnelles.
+- **Objet et corps** facultatifs, avec les variables `{formulaire}`, `{numero}`, `{date}`, `{site}`, `{lien}` ; une variable inconnue (par exemple `{nom}`) est refusée, ce qui empêche d'y mettre une donnée saisie. L'objet tient sur une ligne. Sans `{lien}` dans le corps, le lien vers la réponse est ajouté à la fin. Vides : message par défaut.
+- **Aperçu** : la règle enregistrée, rendue par le même code que l'envoi réel, sur un dossier fictif (numéro `PRÉFIXE-AAAA-0042`, site « Site d'exemple »).
+- **Désactiver** : supprime la règle ; plus aucun message au CSE pour ce formulaire. L'accusé de réception au répondant ne change pas (il se règle dans le fichier de formulaire).
+- Sans `app.publicBaseUrl`, l'écran prévient que chaque notification échouera (lien impossible).
+- Le journal garde le nombre de destinataires, jamais les adresses.
 
 ### Alerte d'échec définitif
 
@@ -192,5 +204,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.access_code` | `form:{id}`, sans le code |
 | `form.import` | `form:{id}`, détail : `create;v1` à la création, `v{n}` pour une nouvelle version ; rien si le fichier n'a pas changé |
 | `form.public` | `form:{id}` : formulaire protégé passé en accès public par import |
+| `form.notifications` | `form:{id}`, détail : `recipients={nombre}`, sans les adresses |
+| `form.notifications.remove` | `form:{id}` |
 
 Chaque entrée porte l'id du compte (absent pour un identifiant inconnu ou une action automatique), l'horodatage UTC et, au besoin, un détail technique (`detail`). Aucune donnée saisie, aucun email ni nom.

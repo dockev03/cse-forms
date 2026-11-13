@@ -1,0 +1,74 @@
+@page "/admin/formulaires/{formId:guid}/notifications"
+@model CseForms.Api.Pages.Admin.Forms.NotificationsModel
+@using CseForms.Application.Notifications
+@using CseForms.Domain.Notifications
+@{
+    var notif = Model.Notifications;
+    ViewData["Title"] = $"Notifications : {notif.Title}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@notif.FormId/reponses">Réponses</a> · <a href="/admin/formulaires/@notif.FormId/reglages">Réglages</a></p>
+<h1>Notifications : @notif.Title</h1>
+
+@if (Model.Error is not null)
+{
+    <div class="summary" role="alert"><p>@Model.Error</p></div>
+}
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status"><p>@Model.Message</p></div>
+}
+
+@if (notif.MissingBaseUrl)
+{
+    <p class="error-text">L'adresse publique du site n'est pas définie (paramètre <code>app.publicBaseUrl</code>) : le lien vers la réponse est impossible et chaque notification échouera.</p>
+}
+
+<section class="card" aria-labelledby="regle">
+    <h2 id="regle">Message au CSE</h2>
+    <p>
+        @(notif.Rule is null
+            ? "Aucune notification n'est envoyée pour ce formulaire."
+            : "Un message part vers ces adresses à chaque réponse, sans aucune donnée saisie : seulement le formulaire, le numéro de dossier, la date, le site et un lien vers la réponse, qui exige une connexion.")
+        L'accusé de réception au répondant se règle dans le fichier de formulaire (<code>receipt</code>).
+    </p>
+    <form method="post" asp-page-handler="Save" asp-route-formId="@notif.FormId">
+        <div class="field">
+            <label for="recipients">Destinataires</label>
+            <p class="help" id="recipients-aide">Une adresse par ligne, @NotificationRule.MaxRecipients au plus. Préférez une boîte du CSE à des adresses personnelles.</p>
+            <textarea id="recipients" name="recipients" rows="4" required aria-describedby="recipients-aide">@Model.RecipientsInput</textarea>
+        </div>
+        <div class="field">
+            <label for="subject">Objet (facultatif)</label>
+            <p class="help" id="subject-aide">Vide : « @NotificationTemplate.DefaultSubject ». Variables : @NotificationsModel.Variables.</p>
+            <input id="subject" name="subject" maxlength="@NotificationRule.SubjectMaxLength" value="@Model.SubjectInput" aria-describedby="subject-aide">
+        </div>
+        <div class="field">
+            <label for="body">Corps (facultatif)</label>
+            <p class="help" id="body-aide">Vide : message par défaut. Mêmes variables ; sans <code>{lien}</code>, le lien vers la réponse est ajouté à la fin.</p>
+            <textarea id="body" name="body" rows="8" maxlength="@NotificationRule.BodyMaxLength" aria-describedby="body-aide">@Model.BodyInput</textarea>
+        </div>
+        <button type="submit" class="primary">Enregistrer</button>
+    </form>
+</section>
+
+@if (notif.Preview is { } preview)
+{
+    <section class="card" aria-labelledby="apercu">
+        <h2 id="apercu">Aperçu</h2>
+        <p>Message enregistré, sur un dossier fictif.</p>
+        <dl class="values">
+            <div><dt>Objet</dt><dd>@preview.Subject</dd></div>
+            <div><dt>Corps</dt><dd><pre class="mail-preview">@preview.Body</pre></dd></div>
+        </dl>
+    </section>
+
+    <section class="card" aria-labelledby="desactiver">
+        <h2 id="desactiver">Désactiver</h2>
+        <p>Plus aucun message au CSE pour ce formulaire. Les réponses restent visibles dans le back-office.</p>
+        <form method="post" asp-page-handler="Remove" asp-route-formId="@notif.FormId">
+            <button type="submit" class="danger">Désactiver les notifications</button>
+        </form>
+    </section>
+}

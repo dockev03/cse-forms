@@ -59,7 +59,7 @@ h3 { font-size: 1.05rem; margin: 1rem 0 0.5rem; }
 .field { margin-bottom: 1rem; }
 label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
 
-input, select {
+input, select, textarea {
   display: block;
   width: 100%;
   min-height: 40px;
@@ -130,3 +130,4 @@ button.danger { background: var(--error); border-color: var(--error); color: #ff
 .key, .codes { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
 .key { font-size: 1.1rem; letter-spacing: 0.05em; overflow-wrap: anywhere; }
 .codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.25rem 1rem; padding-left: 1.5rem; }
+.mail-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }

@@ -7,7 +7,7 @@
     ViewData["Title"] = $"Réglages : {form.Title}";
 }
 
-<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@form.FormId/reponses">Réponses</a> · <a href="/admin/formulaires/@form.FormId/diffusion">Diffusion</a></p>
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@form.FormId/reponses">Réponses</a> · <a href="/admin/formulaires/@form.FormId/diffusion">Diffusion</a> · <a href="/admin/formulaires/@form.FormId/notifications">Notifications</a></p>
 <h1>Réglages : @form.Title</h1>
 
 @if (Model.Error is not null)
@@ -52,6 +52,11 @@
 <section class="card" aria-labelledby="version">
     <h2 id="version">Définition</h2>
     <p>Les champs, la présentation, la durée de conservation et le modèle PDF viennent du fichier de formulaire. Pour les modifier, <a href="/admin/formulaires/import">importez une nouvelle version</a> : les réponses déjà reçues restent rattachées à leur version.</p>
+</section>
+
+<section class="card" aria-labelledby="notifications">
+    <h2 id="notifications">Notifications</h2>
+    <p>Destinataires, objet et corps du message envoyé au CSE à chaque réponse : <a href="/admin/formulaires/@form.FormId/notifications">régler les notifications</a>.</p>
 </section>
 
 <section class="card" aria-labelledby="calendrier">

@@ -129,7 +129,7 @@ dotnet run --project src/CseForms.Worker -- mail test --to admin@example.test
 L'email de test rappelle le serveur, le port, le chiffrement et l'expéditeur, sans identifiant. En cas d'échec, la commande affiche la cause (serveur injoignable, authentification refusée...) et rend un code d'erreur.
 
 - Identifiant et mot de passe SMTP : variables `Smtp__Username` et `Smtp__Password` du Worker, jamais en base. Sans chiffrement (`smtp.security` à `none`), l'authentification est refusée.
-- `notifications set` remplace la règle du formulaire ; `--body-file` donne un corps personnalisé. Variables : `{formulaire}`, `{numero}`, `{date}`, `{site}`, `{lien}` ; une variable inconnue est refusée. `notifications remove` coupe les notifications du formulaire.
+- Les notifications se règlent dans le back-office, écran « Notifications » du formulaire ([détail](docs/back-office.md#notifications-au-cse)), ou en ligne de commande : `notifications set` remplace la règle du formulaire ; `--body-file` donne un corps personnalisé. Variables : `{formulaire}`, `{numero}`, `{date}`, `{site}`, `{lien}` ; une variable inconnue est refusée. `notifications remove` coupe les notifications du formulaire.
 - L'accusé de réception se règle dans le fichier du formulaire (`receipt`, voir le [format](docs/format-definition.md#accusé-de-réception)).
 
 ## Tests
