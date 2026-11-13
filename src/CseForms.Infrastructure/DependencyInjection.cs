@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddSingleton<IAccessCodeHasher, AccessCodeHasher>();
         services.AddScoped<IBackOfficeStore, BackOfficeStore>();
         services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<CseForms.Application.Retention.ISubmissionEraseStore, Retention.SubmissionEraseStore>();
         services.AddScoped<IFormAdminStore, FormAdminStore>();
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
         services.AddScoped<PendingJobDispatcher>();

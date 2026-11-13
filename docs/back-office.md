@@ -31,7 +31,41 @@ Avec `SameSite=Strict`, un lien ouvert depuis un webmail arrive sans cookie : l'
 - `/admin/reponses/{id}` : fiche avec les libellés de la version remplie, dates au format JJ/MM/AAAA, groupes répétables en tableau. Lien profond utilisable dans les notifications. Le bloc PDF indique si le PDF est disponible, en cours de génération ou en échec.
 - `/admin/reponses/{id}/pdf` : téléchargement du PDF déchiffré, après contrôle des droits, jamais mis en cache.
 - Régénération du PDF : bouton de la fiche (POST avec jeton anti-CSRF), réservé aux rôles `admin` et `editor` ; ignorée si une génération est déjà en cours.
+- [Statut de traitement](#statuts-de-traitement) : liste et bouton de la fiche, rôles `admin` et `editor`.
+- Historique : bas de la fiche, visible de tous les rôles ayant le droit sur le formulaire. Réception, changements de statut (avec l'auteur), téléchargements, demandes de régénération, refus d'accès, PDF généré, notification et accusé envoyés ou en échec. Les consultations restent dans le journal d'audit sans être affichées.
+- `/admin/formulaires/{id}/export` : [export CSV](#export-csv) des réponses filtrées, rôles `admin` et `editor`.
+- `/admin/reponses/{id}/suppression` : [suppression définitive](#suppression-unitaire), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/diffusion` : [diffusion](#diffusion-qr-code-et-flyer), réservée aux rôles `admin` et `editor` ayant le droit sur le formulaire.
+
+## Statuts de traitement
+
+| Code | Libellé |
+| --- | --- |
+| `new` | Nouvelle (à la réception) |
+| `entered` | Saisie dans le logiciel CSE |
+| `archived` | Archivée |
+
+Statuts communs à tous les formulaires pour l'instant. Un statut inconnu est refusé. Chaque changement est journalisé (`submission.status`, détail `ancien>nouveau`) et visible dans l'historique de la fiche.
+
+## Conservation et purge
+
+La durée de conservation d'un formulaire (`retentionDays`, 180 jours pour l'inscription) court à partir du traitement : le premier passage à un statut autre que « Nouvelle » fixe la date de suppression, affichée sur la fiche. Passer ensuite de « Saisie » à « Archivée » ne la repousse pas ; revenir à « Nouvelle » l'annule. Une réponse jamais traitée n'est jamais purgée.
+
+Le Worker exécute la purge chaque nuit (tâche Hangfire récurrente `purge-reponses`, 3 h 17 heure de Paris, `Purge__Cron` pour changer l'horaire) : réponse, PDF chiffré et tâches associées sont supprimés. La date est revérifiée au moment de supprimer, sous verrou : une réponse revenue à « Nouvelle » entre-temps est conservée. Chaque purge est tracée (`submission.purge`, sans compte, détail : numéro de dossier).
+
+## Suppression unitaire
+
+Suppression unitaire réservée au rôle `admin`, depuis la fiche : l'écran de confirmation demande de ressaisir le numéro de dossier. La réponse, son PDF chiffré et ses tâches sont supprimés définitivement, sans corbeille. Trace `submission.delete` avec le numéro de dossier. Un fichier chiffré qui ne peut pas être effacé est signalé dans les journaux (identifiant de la réponse uniquement) ; sa ligne étant supprimée, il n'est plus servi.
+
+## Export CSV
+
+Lien « Exporter » de la liste, rôles `admin` et `editor` : toutes les réponses correspondant aux filtres en cours (toutes les pages), triées comme la liste. Le fichier, jamais mis en cache, est prévu pour Excel en français : séparateur point-virgule, UTF-8 avec BOM, dates JJ/MM/AAAA, heure de Paris.
+
+- Colonnes fixes : dossier, date de réception, statut, version du formulaire.
+- Puis une colonne par champ, avec les libellés de la version la plus récente ; les champs retirés d'anciennes versions sont ajoutés à la fin. Pas de textes d'information ni de champs de confirmation.
+- Adresse : voie, code postal et ville en trois colonnes. Groupe répétable : une colonne par sous-champ et par ligne (« Enfants 1 - Prénom »).
+- Une valeur commençant par `=`, `+`, `-` ou `@` est préfixée d'une apostrophe, pour qu'un tableur ne l'exécute pas comme formule (un téléphone `+33...` apparaît donc `'+33...`).
+- Chaque export est journalisé (`form.export`, détail : nombre de lignes). Le fichier contient des données personnelles : il reste au CSE.
 
 ## Diffusion : QR code et flyer
 
@@ -86,5 +120,9 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `access.denied` | `submission:{id}` ou `form:{id}` |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
+| `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
+| `submission.delete` | `submission:{id}`, détail : numéro de dossier |
+| `submission.purge` | `submission:{id}`, sans compte, détail : numéro de dossier |
+| `form.export` | `form:{id}`, détail : nombre de lignes |
 
-Chaque entrée porte l'id du compte (absent pour un identifiant inconnu) et l'horodatage UTC. Aucune donnée saisie, aucun email ni nom.
+Chaque entrée porte l'id du compte (absent pour un identifiant inconnu ou une action automatique), l'horodatage UTC et, au besoin, un détail technique (`detail`). Aucune donnée saisie, aucun email ni nom.

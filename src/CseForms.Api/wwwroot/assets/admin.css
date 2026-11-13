@@ -109,3 +109,14 @@ dd { margin: 0; overflow-wrap: anywhere; }
   .values div { grid-template-columns: 1fr; gap: 0; }
 }
 .error-text { color: var(--error); font-weight: 600; }
+
+button.danger { background: var(--error); border-color: var(--error); color: #fff; }
+.notice { background: #e8f3ec; border: 2px solid #1e6b3a; border-radius: var(--radius); padding: 0.5rem 1rem; margin-bottom: 1rem; }
+.notice p { margin: 0.25rem 0; color: #1e6b3a; font-weight: 600; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
+.inline-form .field { margin-bottom: 0; }
+.history { list-style: none; margin: 0; padding: 0; }
+.history li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.history li:last-child { border-bottom: 0; }
+.history time { font-weight: 600; margin-right: 0.5rem; }
+.history .actor { color: var(--muted); }

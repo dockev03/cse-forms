@@ -31,7 +31,7 @@ public class BackOfficeStoreTests(PostgresFixture fixture) : IClassFixture<Postg
                 i - 1);
             if (i % 3 == 0)
             {
-                submission.ChangeStatus("entered");
+                submission.ChangeStatus("entered", Day.AddDays(i), null);
             }
 
             db.Submissions.Add(submission);
@@ -126,7 +126,7 @@ public class BackOfficeStoreTests(PostgresFixture fixture) : IClassFixture<Postg
         var userId = Guid.NewGuid();
         await using (var db = fixture.CreateContext())
         {
-            await new AuditLog(db, TimeProvider.System).RecordAsync(AuditActions.SubmissionViewed, userId, "submission:x", default);
+            await ((IAuditLog)new AuditLog(db, TimeProvider.System)).RecordAsync(AuditActions.SubmissionViewed, userId, "submission:x", default);
         }
 
         await using (var db = fixture.CreateContext())

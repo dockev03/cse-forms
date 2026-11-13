@@ -200,6 +200,12 @@ public class DistributionServiceTests
         public Task<StoredPdf?> GetPdfFileAsync(Guid submissionId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<bool> RequestPdfAsync(Guid submissionId, DateTimeOffset now, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<string?> ChangeStatusAsync(Guid submissionId, string status, DateTimeOffset now, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid submissionId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<ExportData> GetExportDataAsync(SubmissionQuery query, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class FakeStore : IDistributionStore
@@ -218,7 +224,7 @@ public class DistributionServiceTests
     {
         public List<(string Action, string? Target)> Entries { get; } = [];
 
-        public Task RecordAsync(string action, Guid? userId, string? target, CancellationToken cancellationToken)
+        public Task RecordAsync(string action, Guid? userId, string? target, string? detail, CancellationToken cancellationToken)
         {
             Entries.Add((action, target));
             return Task.CompletedTask;

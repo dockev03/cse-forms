@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using CseForms.Domain.Submissions;
 
 namespace CseForms.Application.BackOffice;
 
@@ -24,6 +25,10 @@ public static class AuditActions
     public const string QrCodeDownloaded = "form.qrcode";
     public const string FlyerGenerated = "form.flyer";
     public const string FlyerCodeRejected = "form.flyer.code_rejected";
+    public const string SubmissionStatusChanged = "submission.status";
+    public const string SubmissionDeleted = "submission.delete";
+    public const string SubmissionPurged = "submission.purge";
+    public const string SubmissionsExported = "form.export";
 }
 
 /// <summary>Utilisateur connecté, tel que vu par les cas d'usage. Un lecteur ne déclenche aucune action.</summary>
@@ -72,7 +77,8 @@ public sealed record SubmissionRecord(
     string DataJson,
     string Status,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? PurgeAt);
+    DateTimeOffset? PurgeAt,
+    int? RetentionDays = null);
 
 public sealed record SubmissionDetail(
     Guid Id,
@@ -84,7 +90,9 @@ public sealed record SubmissionDetail(
     DateTimeOffset CreatedAt,
     DateTimeOffset? PurgeAt,
     IReadOnlyList<PresentedSection> Sections,
-    PdfState Pdf);
+    PdfState Pdf,
+    IReadOnlyList<HistoryEntry> History,
+    int? RetentionDays);
 
 /// <summary>
 /// État du PDF d'une réponse : date du PDF disponible, génération en cours (première ou régénération),
@@ -116,17 +124,71 @@ public sealed record PresentedValue(string Label, string Value) : PresentedItem(
 
 public sealed record PresentedTable(string Label, IReadOnlyList<string> Headers, IReadOnlyList<IReadOnlyList<string>> Rows) : PresentedItem(Label);
 
+/// <summary>
+/// Statuts de traitement, communs à tous les formulaires pour l'instant. Quitter « Nouvelle »
+/// fait courir la durée de conservation du formulaire (voir <see cref="Submission.ChangeStatus"/>).
+/// </summary>
 public static class SubmissionStatuses
 {
-    /// <summary>Libellé affiché d'un statut ; les statuts paramétrables par formulaire viendront avec leur gestion.</summary>
+    public const string New = Submission.InitialStatus;
+    public const string Entered = "entered";
+    public const string Archived = "archived";
+
+    public static readonly IReadOnlyList<string> All = [New, Entered, Archived];
+
+    public static bool IsKnown(string? status) => status is not null && All.Contains(status);
+
     public static string Label(string status) => status switch
     {
-        "new" => "Nouvelle",
-        "entered" => "Saisie dans le logiciel CSE",
-        "archived" => "Archivée",
+        New => "Nouvelle",
+        Entered => "Saisie dans le logiciel CSE",
+        Archived => "Archivée",
         _ => status,
     };
 }
+
+public enum StatusChangeOutcome
+{
+    Changed,
+    Unchanged,
+    Invalid,
+    NotFound,
+    Forbidden,
+}
+
+public enum DeletionOutcome
+{
+    Deleted,
+
+    /// <summary>Le numéro de dossier saisi pour confirmer ne correspond pas.</summary>
+    NotConfirmed,
+    NotFound,
+    Forbidden,
+}
+
+public sealed record DeletionResult(DeletionOutcome Outcome, Guid FormId = default);
+
+/// <summary>Ligne brute d'historique : action d'audit (avec l'auteur) ou tâche de fond terminée.</summary>
+public sealed record HistoryRecord(DateTimeOffset At, string Action, string? Detail, string? Actor);
+
+/// <summary>Ligne affichée sur la fiche : date, libellé de l'action, auteur (absent pour une action automatique).</summary>
+public sealed record HistoryEntry(DateTimeOffset At, string Label, string? Actor);
+
+/// <summary>Réponse à exporter : version remplie et données, interprétées avec la définition de cette version.</summary>
+public sealed record ExportRow(string CaseNumber, DateTimeOffset CreatedAt, string Status, int VersionNumber, string DataJson);
+
+public sealed record ExportData(IReadOnlyList<ExportRow> Rows, IReadOnlyDictionary<int, string> SchemasByVersion);
+
+public sealed record ExportFile(string FileName, byte[] Content, int RowCount);
+
+public enum ExportOutcome
+{
+    Ok,
+    NotFound,
+    Forbidden,
+}
+
+public sealed record ExportResult(ExportOutcome Outcome, ExportFile? File = null);
 
 internal static class JsonData
 {

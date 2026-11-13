@@ -13,9 +13,13 @@ internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEn
         builder.Property(a => a.Id).ValueGeneratedNever();
         builder.Property(a => a.Action).HasMaxLength(AuditEntry.ActionMaxLength).IsRequired();
         builder.Property(a => a.Target).HasMaxLength(AuditEntry.TargetMaxLength);
+        builder.Property(a => a.Detail).HasMaxLength(AuditEntry.DetailMaxLength);
 
         // Pas de clé étrangère vers app_user : la trace survit à la suppression du compte.
         builder.HasIndex(a => a.UserId);
         builder.HasIndex(a => a.OccurredAt);
+
+        // Historique d'une réponse sur sa fiche.
+        builder.HasIndex(a => a.Target);
     }
 }

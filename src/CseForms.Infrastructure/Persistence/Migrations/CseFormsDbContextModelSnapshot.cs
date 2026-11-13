@@ -35,6 +35,11 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("action");
 
+                    b.Property<string>("Detail")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("detail");
+
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("occurred_at");
@@ -53,6 +58,9 @@ namespace CseForms.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("ix_audit_log_occurred_at");
+
+                    b.HasIndex("Target")
+                        .HasDatabaseName("ix_audit_log_target");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_audit_log_user_id");

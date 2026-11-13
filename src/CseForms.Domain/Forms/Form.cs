@@ -49,6 +49,7 @@ public sealed partial class Form
 
     public int? MaxResponses { get; private set; }
 
+    /// <summary>Conservation des réponses en jours, comptée à partir de leur traitement ; null : pas de purge.</summary>
     public int? RetentionDays { get; private set; }
 
     /// <summary>Préfixe des numéros de dossier, par exemple <c>INS</c> pour <c>INS-2026-0042</c>.</summary>
@@ -181,9 +182,8 @@ public sealed partial class Form
             throw new DomainException("La version remplie n'est plus la version publiée.");
         }
 
-        var purgeAt = RetentionDays is { } days ? now.AddDays(days) : (DateTimeOffset?)null;
-
-        return new Submission(CurrentVersionId!.Value, caseNumber, dataJson, now, purgeAt);
+        // La conservation ne court qu'à partir du traitement de la réponse (voir Submission.ChangeStatus).
+        return new Submission(CurrentVersionId!.Value, caseNumber, dataJson, now);
     }
 
     private static string NormalizeSlug(string slug)

@@ -99,7 +99,7 @@ Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.js
 | `slug` | URL publique `/f/{slug}` (obligatoire) | non |
 | `title` | Titre affiché (obligatoire) | oui |
 | `caseNumberPrefix` | Préfixe des numéros de dossier, 2 à 6 lettres (`DOS` par défaut) | non |
-| `retentionDays` | Conservation des réponses en jours ; absente : non définie | non |
+| `retentionDays` | Conservation des réponses en jours, comptée à partir de leur traitement (premier statut autre que « Nouvelle ») ; absente : pas de purge. Inscription : 180 | non |
 | `access` | `{ "mode": "public" }` ou `{ "mode": "pin" }` (obligatoire) | non |
 | `ui` | Présentation, stockée dans `ui_json` | oui |
 | `pdfTemplate` | Nom du fichier HTML du [modèle PDF](#modèle-pdf), placé dans le même dossier ; absent : modèle générique | oui (`pdf_template_html`) |
