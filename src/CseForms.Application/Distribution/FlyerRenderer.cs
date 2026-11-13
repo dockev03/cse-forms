@@ -79,7 +79,7 @@ public static class FlyerRenderer
             html.Append("<div class=\"code\"><span>Code d'accès</span><strong>").Append(Encode(content.AccessCode)).Append("</strong></div>");
         }
 
-        html.Append("<p class=\"rgpd\">Vos réponses sont consultées uniquement par les membres habilités du CSE. Elles ne sont transmises ni à l'employeur ni à des tiers.</p>");
+        html.Append("<p class=\"rgpd\">Vos réponses sont consultées uniquement par les membres habilités du CSE et ne sont jamais transmises à l'employeur. Le formulaire vous informe sur l'usage de vos données et sur vos droits.</p>");
         var contact = new[] { Setting(SettingKeys.CseEmail), Setting(SettingKeys.CsePhone) }.Where(c => c is not null).ToList();
         if (contact.Count > 0)
         {

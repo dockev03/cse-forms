@@ -13,7 +13,7 @@ Les passages `[À COMPLÉTER : …]` dépendent d'une décision ou d'une informa
 
 ### Qui traite vos données ?
 
-Le **Comité social et économique (CSE) NSE**, [À COMPLÉTER : adresse postale du CSE], est responsable du traitement.
+Le **Comité social et économique (CSE) NSE**, rue de l'Ambène, 63200 Riom, est responsable du traitement.
 
 Contact pour toute question sur vos données : [À COMPLÉTER : adresse email dédiée du CSE, par ex. une boîte « rgpd » ou la boîte du secrétariat], ou par courrier à l'adresse ci-dessus.
 
@@ -94,9 +94,9 @@ Accès réservé aux élus habilités par compte nominatif, double authentificat
 
 ## Mention courte affichée dans le formulaire
 
-Proposition pour remplacer le texte du champ `rgpdNotice` de [`forms/inscription.json`](../../forms/inscription.json). La version actuelle affirme que les données ne sont transmises à aucun tiers, ce qui n'est pas exact (hébergeur, éditeur du logiciel CSE), et ne donne ni la durée ni le contact.
+Texte du champ `rgpdNotice` de [`forms/inscription.json`](../../forms/inscription.json). Il ne renvoie pas encore à la notice complète, faute de page publique pour la publier (voir « Points ouverts »). Il reprend la durée de 180 jours de `retentionDays` : les deux valeurs doivent changer ensemble.
 
-> Le CSE NSE, responsable du traitement, utilise ces informations pour gérer votre accès aux activités sociales et culturelles. Seuls les membres du CSE habilités les consultent ; elles ne sont jamais transmises à l'employeur. Elles sont ensuite saisies dans le logiciel du CSE, puis la fiche en ligne est supprimée 180 jours après ce traitement. Vous pouvez accéder à vos données, les faire rectifier ou effacer en écrivant à [contact], et saisir la CNIL. Détails dans la notice complète.
+> Le CSE NSE (rue de l'Ambène, 63200 Riom), responsable du traitement, utilise ces informations pour gérer votre accès aux activités sociales et culturelles. Seuls les membres du CSE habilités les consultent ; elles ne sont jamais transmises à l'employeur. Elles sont ensuite saisies dans le logiciel du CSE, puis la fiche en ligne est supprimée 180 jours après ce traitement. Vous pouvez accéder à vos données, les faire rectifier ou effacer en écrivant au CSE à cette adresse, et saisir la CNIL.
 
 ---
 
@@ -104,7 +104,7 @@ Proposition pour remplacer le texte du champ `rgpdNotice` de [`forms/inscription
 
 | Point | Pour qui | Remarque |
 | --- | --- | --- |
-| Identité, adresse et contact RGPD du CSE | Bureau | Prévoir une boîte fonctionnelle, pas une adresse personnelle d'élu |
+| Contact RGPD du CSE (email) | Bureau | Prévoir une boîte fonctionnelle, pas une adresse personnelle d'élu |
 | Référent RGPD | Plénière | Désignation à acter au PV |
 | Base légale | Bureau | Voir la discussion dans le registre |
 | Élus habilités | Plénière | Décision déjà listée en specs § 5.4 |
