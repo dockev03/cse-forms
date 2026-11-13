@@ -18,6 +18,7 @@ internal static class BackOfficeSetup
 {
     public const string Policy = "back-office";
     public const string LoginPath = "/admin/connexion";
+    public const string AccessDeniedPath = "/admin/acces-refuse";
     public static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
     public static readonly TimeSpan TrustedDeviceDuration = TimeSpan.FromDays(30);
 
@@ -56,7 +57,8 @@ internal static class BackOfficeSetup
             options.SlidingExpiration = true;
             options.LoginPath = LoginPath;
             options.LogoutPath = "/admin/deconnexion";
-            options.AccessDeniedPath = LoginPath;
+            // Pas la page de connexion : elle renvoie un compte connecté vers la page refusée, en boucle.
+            options.AccessDeniedPath = AccessDeniedPath;
             options.ReturnUrlParameter = "returnUrl";
         });
 
@@ -108,6 +110,7 @@ internal static class BackOfficeSetup
             options.Conventions.AuthorizeFolder("/Admin", Policy);
             options.Conventions.AllowAnonymousToPage("/Admin/Login");
             options.Conventions.AllowAnonymousToPage("/Admin/LoginCode");
+            options.Conventions.AllowAnonymousToPage("/Admin/AccessDenied");
         });
 
         return services;

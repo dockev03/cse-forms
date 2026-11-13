@@ -146,8 +146,8 @@ public partial class BackOfficeTests
         var readerClient = Client();
         await LoginAsync(readerClient, reader, Password);
         Assert.DoesNotContain("/diffusion", await readerClient.GetStringAsync("/admin"));
-        Assert.NotEqual(HttpStatusCode.OK, (await readerClient.GetAsync($"/admin/formulaires/{form.Id}/diffusion")).StatusCode);
-        Assert.NotEqual(HttpStatusCode.OK, (await readerClient.GetAsync($"/admin/formulaires/{form.Id}/diffusion?handler=Qr&format=png")).StatusCode);
+        Assert.Equal(BackOfficeAccessDenied, (await readerClient.GetAsync($"/admin/formulaires/{form.Id}/diffusion")).Headers.Location?.AbsolutePath);
+        Assert.Equal(BackOfficeAccessDenied, (await readerClient.GetAsync($"/admin/formulaires/{form.Id}/diffusion?handler=Qr&format=png")).Headers.Location?.AbsolutePath);
 
         var outsider = await CreateUserAsync("editor");
         var outsiderClient = Client();
