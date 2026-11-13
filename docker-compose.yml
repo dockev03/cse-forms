@@ -1,0 +1,154 @@
+# Production : API, Worker, PostgreSQL et Gotenberg. Aucun proxy ici : le reverse proxy existant
+# (hors projet) termine le TLS et transmet les requêtes au port HTTP de l'API, seul port publié.
+# Usage : cp .env.production.example .env, renseigner les valeurs, puis
+#   docker compose up -d --build
+#
+# Réseaux :
+#   - backend (interne, sans accès extérieur) : PostgreSQL, Gotenberg, API, Worker ;
+#   - frontend : port publié de l'API ;
+#   - egress : sortie du Worker vers le serveur SMTP.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+# API et Worker : système de fichiers en lecture seule (sauf /tmp et volumes), aucun privilège.
+x-dotnet: &dotnet
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  logging: *logging
+
+x-database: &database
+  ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:?POSTGRES_DB absent};Username=${POSTGRES_USER:?POSTGRES_USER absent};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent}
+
+x-api-environment: &api-environment
+  <<: *database
+  Gotenberg__Url: http://gotenberg:3000
+  Storage__EncryptionKey: ${Storage__EncryptionKey:?Storage__EncryptionKey absent}
+  ProofOfWork__HmacKey: ${ProofOfWork__HmacKey:?ProofOfWork__HmacKey absent}
+  ProofOfWork__MaxNumber: ${ProofOfWork__MaxNumber:-50000}
+  ProofOfWork__ExpiresMinutes: ${ProofOfWork__ExpiresMinutes:-20}
+  ReverseProxy__KnownNetworks: ${ReverseProxy__KnownNetworks:?ReverseProxy__KnownNetworks absent}
+  RateLimiting__PublicSubmit__PermitLimit: ${RateLimiting__PublicSubmit__PermitLimit:-30}
+  RateLimiting__PublicSubmit__WindowSeconds: ${RateLimiting__PublicSubmit__WindowSeconds:-600}
+  RateLimiting__PublicRead__PermitLimit: ${RateLimiting__PublicRead__PermitLimit:-120}
+  RateLimiting__PublicRead__WindowSeconds: ${RateLimiting__PublicRead__WindowSeconds:-60}
+  RateLimiting__Login__PermitLimit: ${RateLimiting__Login__PermitLimit:-20}
+  RateLimiting__Login__WindowSeconds: ${RateLimiting__Login__WindowSeconds:-600}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB absent}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER absent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
+  gotenberg:
+    image: gotenberg/gotenberg:8.38.1
+    restart: unless-stopped
+    # Pas de téléchargement de ressources externes pendant la conversion ; aucune donnée conservée.
+    command:
+      - gotenberg
+      - --chromium-deny-list=^(?!file:///tmp/).*
+      - --api-timeout=60s
+    networks:
+      - backend
+    logging: *logging
+
+  # Mise à jour du schéma à chaque démarrage, avant l'API et le Worker ; sans effet si la base est à jour.
+  migrate:
+    <<: *dotnet
+    image: cse-forms-api
+    build:
+      context: .
+      target: api
+    restart: "no"
+    command: ["db", "migrate"]
+    environment: *api-environment
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *dotnet
+    image: cse-forms-api
+    build:
+      context: .
+      target: api
+    environment: *api-environment
+    volumes:
+      - keys:/var/lib/cse-forms/keys
+      - files:/var/lib/cse-forms/files
+    ports:
+      # Seul le reverse proxy doit joindre ce port : restreindre API_BIND ou filtrer au pare-feu.
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-8080}:8080"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      gotenberg:
+        condition: service_started
+
+  worker:
+    <<: *dotnet
+    image: cse-forms-worker
+    build:
+      context: .
+      target: worker
+    environment:
+      <<: *database
+      Gotenberg__Url: http://gotenberg:3000
+      Storage__EncryptionKey: ${Storage__EncryptionKey:?Storage__EncryptionKey absent}
+      Jobs__PollSeconds: ${Jobs__PollSeconds:-5}
+      Jobs__WorkerCount: ${Jobs__WorkerCount:-2}
+      Purge__Cron: ${Purge__Cron:-17 3 * * *}
+      Smtp__Username: ${Smtp__Username:-}
+      Smtp__Password: ${Smtp__Password:-}
+      Smtp__TimeoutSeconds: ${Smtp__TimeoutSeconds:-30}
+    volumes:
+      - files:/var/lib/cse-forms/files
+    networks:
+      - backend
+      - egress
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      gotenberg:
+        condition: service_started
+
+networks:
+  backend:
+    internal: true
+  frontend:
+  egress:
+
+volumes:
+  postgres-data:
+  # Clés de protection des cookies du back-office : les perdre déconnecte les élus, sans perte de données.
+  keys:
+  # PDF chiffrés des réponses : à sauvegarder avec la base ; la clé Storage__EncryptionKey, à part.
+  files:

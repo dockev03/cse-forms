@@ -45,8 +45,19 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
         Assert.True(CliSupport.IsCommand(["settings", "list"]));
         Assert.True(CliSupport.IsCommand(["users", "list"]));
         Assert.True(CliSupport.IsCommand(["notifications", "show"]));
+        Assert.True(CliSupport.IsCommand(["db", "migrate"]));
         Assert.False(CliSupport.IsCommand([]));
         Assert.False(CliSupport.IsCommand(["--urls", "https://127.0.0.1"]));
+    }
+
+    [Fact]
+    public async Task Db_migrate_leaves_an_up_to_date_database_unchanged()
+    {
+        Assert.Equal(0, await RunAsync(string.Empty, "db", "migrate"));
+        Assert.Contains("Base à jour", LastOutput);
+
+        Assert.Equal(1, await RunAsync(string.Empty, "db"));
+        Assert.Contains("db migrate", LastOutput);
     }
 
     [Fact]

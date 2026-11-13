@@ -36,6 +36,22 @@ Le back-office (`/admin`) exige HTTPS : ses cookies sont `Secure`. En local, lan
 
 Points de santé : `/health/live` (processus) et `/health/ready` (base joignable). API publique : voir [`docs/api-publique.md`](docs/api-publique.md).
 
+## Déploiement en production
+
+`docker-compose.yml` lance PostgreSQL, Gotenberg, l'API et le Worker. Il n'y a pas de proxy dans le projet : le reverse proxy existant termine le TLS et transmet les requêtes au port HTTP de l'API, seul port publié.
+
+```bash
+cp .env.production.example .env   # puis remplacer chaque « a-remplacer » ; chmod 600 .env
+docker compose up -d --build
+```
+
+- **Démarrage** : le service `migrate` (`dotnet CseForms.Api.dll db migrate`) met le schéma à jour puis s'arrête ; l'API et le Worker ne démarrent qu'ensuite. Une mise à jour se fait par `git pull` puis la même commande.
+- **Reverse proxy** : il cible `http://<hôte>:${API_PORT}` et transmet `X-Forwarded-For` et `X-Forwarded-Proto: https`. Son adresse, vue par l'API, va dans `ReverseProxy__KnownNetworks` ; sans elle, le back-office refuse les connexions (cookies `Secure`). Points de santé : `/health/live`, `/health/ready`.
+- **Exposition** : seul le reverse proxy doit joindre le port de l'API (`API_BIND` ou pare-feu). PostgreSQL et Gotenberg sont sur un réseau interne sans accès extérieur ; seul le Worker sort, vers le serveur SMTP.
+- **Conteneurs** : API et Worker tournent sans root, système de fichiers en lecture seule, sans privilège. Journaux Docker limités à 5 × 10 Mo par service.
+- **Données** : volumes `postgres-data` (base), `files` (PDF chiffrés) et `keys` (clés des cookies du back-office). Sauvegarder base et `files` ensemble, et la clé `Storage__EncryptionKey` à part.
+- **Administration** : les commandes ci-dessous se lancent dans le conteneur, par exemple `docker compose exec api dotnet CseForms.Api.dll users list`. Les définitions du dépôt sont dans l'image : `forms import --file /app/forms/inscription.json`.
+
 ## Comptes du back-office
 
 Aucun compte n'existe par défaut. Les comptes se gèrent en ligne de commande, le mot de passe (12 caractères minimum) étant saisi au terminal :

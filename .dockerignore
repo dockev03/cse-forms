@@ -1,0 +1,15 @@
+# Contexte de construction réduit au strict nécessaire : jamais de secret ni de donnée locale.
+**/bin/
+**/obj/
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+.env
+.env.*
+storage/
+TestResults/
+tests/
+docs/
+**/*.pdf

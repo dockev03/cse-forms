@@ -30,7 +30,7 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Administration en ligne de commande : `dotnet CseForms.Api.dll users|forms|sites|settings ...`.
+// Administration en ligne de commande : `dotnet CseForms.Api.dll users|forms|sites|settings|notifications|db ...`.
 if (CliSupport.IsCommand(args))
 {
     return await CliSupport.RunAsync(app.Services, args, Console.In, Console.Out, interactive: !Console.IsInputRedirected);

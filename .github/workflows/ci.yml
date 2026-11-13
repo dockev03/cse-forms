@@ -1,4 +1,4 @@
-# Intégration continue : compilation, tests xUnit et JS, tests de bout en bout, analyse Trivy.
+# Intégration continue : compilation, tests xUnit et JS, tests de bout en bout, images Docker, analyses Trivy.
 # Aucun secret réel : PostgreSQL est un conteneur jetable propre au job.
 name: CI
 
@@ -87,6 +87,34 @@ jobs:
           --exit-code 1
           --skip-dirs /src/.git
           /src
+
+  docker:
+    name: Images Docker (construction, Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Valeurs d'exemple uniquement : vérifie la syntaxe et les variables obligatoires du fichier de production.
+      - name: Vérifier docker-compose.yml
+        run: docker compose --env-file .env.production.example config --quiet
+
+      - name: Construire les images
+        run: |
+          docker build --target api -t cse-forms-api:ci .
+          docker build --target worker -t cse-forms-worker:ci .
+
+      - name: Analyser les images (Trivy)
+        run: |
+          for image in cse-forms-api:ci cse-forms-worker:ci; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro \
+              aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c image \
+              --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image"
+          done
 
   js:
     name: Moteur client (Node)

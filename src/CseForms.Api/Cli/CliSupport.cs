@@ -6,7 +6,7 @@ namespace CseForms.Api.Cli;
 /// </summary>
 internal static class CliSupport
 {
-    private static readonly string[] Commands = ["users", "forms", "sites", "settings", "notifications"];
+    private static readonly string[] Commands = ["users", "forms", "sites", "settings", "notifications", "db"];
 
     public static bool IsCommand(string[] args) => args.Length > 0 && Commands.Contains(args[0]);
 
@@ -17,6 +17,7 @@ internal static class CliSupport
             "forms" => FormCommands.RunAsync(services, args, input, output, interactive),
             "sites" => SiteCommands.RunAsync(services, args, output),
             "notifications" => NotificationCommands.RunAsync(services, args, output),
+            "db" => DatabaseCommands.RunAsync(services, args, output),
             _ => SettingCommands.RunAsync(services, args, input, output),
         };
 
