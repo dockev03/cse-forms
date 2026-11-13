@@ -576,6 +576,27 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                     b.ToTable("case_number_counter", (string)null);
                 });
 
+            modelBuilder.Entity("CseForms.Infrastructure.ProofOfWork.UsedProofOfWork", b =>
+                {
+                    b.Property<string>("Challenge")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("challenge")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.HasKey("Challenge")
+                        .HasName("pk_proof_of_work_used");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_proof_of_work_used_expires_at");
+
+                    b.ToTable("proof_of_work_used", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")

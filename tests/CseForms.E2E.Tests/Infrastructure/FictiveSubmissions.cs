@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using CseForms.Testing;
 
 namespace CseForms.E2E.Tests.Infrastructure;
 
@@ -37,7 +38,7 @@ public static class FictiveSubmissions
             },
         };
 
-        var response = await http.PostAsJsonAsync($"/api/public/forms/{E2EEnvironment.FormSlug}/submissions", payload);
+        var response = await http.PostWithProofAsync($"/api/public/forms/{E2EEnvironment.FormSlug}/submissions", payload);
         var body = await response.Content.ReadFromJsonAsync<JsonObject>();
         return response.IsSuccessStatusCode
             ? body!["caseNumber"]!.GetValue<string>()

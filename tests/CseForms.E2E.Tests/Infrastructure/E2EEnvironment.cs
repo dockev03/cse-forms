@@ -86,6 +86,7 @@ public sealed class E2EEnvironment : IAsyncLifetime
             ["ConnectionStrings__Default"] = _database.ConnectionString,
             ["Storage__Path"] = TempDirectory("files"),
             ["Storage__EncryptionKey"] = TestData.StorageKey,
+            ["ProofOfWork__HmacKey"] = ProofOfWorkClient.TestKey,
             ["DataProtection__KeysPath"] = TempDirectory("keys"),
             ["RateLimiting__PublicSubmit__PermitLimit"] = "1000",
             ["RateLimiting__PublicRead__PermitLimit"] = "1000",

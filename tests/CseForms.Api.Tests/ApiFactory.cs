@@ -29,6 +29,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("RateLimiting:Login:PermitLimit", "1000");
         builder.UseSetting("Storage:Path", StoragePath);
         builder.UseSetting("Storage:EncryptionKey", TestData.StorageKey);
+        builder.UseSetting("ProofOfWork:HmacKey", ProofOfWorkClient.TestKey);
+        builder.UseSetting("ProofOfWork:MaxNumber", "1000");
         builder.UseSetting("Gotenberg:Url", "http://127.0.0.1:9");
         builder.ConfigureTestServices(services =>
         {
