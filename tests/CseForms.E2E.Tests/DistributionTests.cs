@@ -11,7 +11,9 @@ public sealed class DistributionTests(E2EEnvironment app) : E2ETestBase(app)
     public Task Admin_downloads_a_site_qr_code_and_a_flyer_with_the_access_code() => RunAsync(Desktop, async page =>
     {
         await LoginAsync(page, App.Admin);
-        await page.GetByRole(AriaRole.Link, new() { Name = "QR code et flyer" }).ClickAsync();
+        // Ligne du formulaire d'inscription : d'autres scénarios ajoutent des formulaires à l'environnement partagé.
+        await page.GetByRole(AriaRole.Row).Filter(new() { HasText = "Fiche d'inscription au CSE" })
+            .GetByRole(AriaRole.Link, new() { Name = "QR code et flyer" }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Heading, new() { Level = 1 })).ToContainTextAsync("Diffusion");
         await Expect(page.GetByText($"{E2EEnvironment.PublicBaseUrl}/f/{E2EEnvironment.FormSlug}", new() { Exact = true })).ToBeVisibleAsync();
 
