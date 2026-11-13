@@ -1,6 +1,6 @@
 # Back-office
 
-Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (Razor Pages), sans JavaScript (seul le cadre de l'[aperçu d'un brouillon](#brouillon-et-aperçu-avant-publication) exécute le moteur du formulaire public).
+Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (Razor Pages), sans JavaScript, à deux exceptions : le cadre de l'[aperçu d'un brouillon](#brouillon-et-aperçu-avant-publication), qui exécute le moteur du formulaire public, et l'[éditeur visuel](#éditeur-visuel), qui reste utilisable sans script (édition du JSON). Scripts du même site uniquement, sans dépendance tierce : la CSP n'est pas élargie.
 
 ## Accès
 
@@ -89,11 +89,12 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/formulaires/import` : [import d'un fichier de formulaire](#import-dun-formulaire), rôles `admin` (création et nouvelle version) et `editor` (nouvelle version d'un formulaire attribué).
 - `/admin/formulaires/{id}/duplication` : [duplication d'un formulaire](#duplication-dun-formulaire), rôle `admin` uniquement.
 - `/admin/formulaires/modeles`, `/admin/formulaires/modeles/{modèle}`, `/admin/formulaires/modeles/{id}/suppression`, `/admin/formulaires/{id}/modele` : [modèles de formulaires](#modèles-de-formulaires), rôle `admin` uniquement.
+- `/admin/formulaires/nouveau`, `/admin/formulaires/{id}/editeur` : [éditeur visuel](#éditeur-visuel), rôles `admin` (création et modification) et `editor` (modification d'un formulaire attribué).
 - `/admin/formulaires/{id}/apercu` : [aperçu du brouillon](#brouillon-et-aperçu-avant-publication), publication et suppression, rôles `admin` et `editor` ayant le droit sur le formulaire.
 
 ## Réglages d'un formulaire
 
-Écran `/admin/formulaires/{id}/reglages`, lié depuis la liste des formulaires et depuis la diffusion. Chaque action est un POST avec jeton anti-CSRF, journalisé. La définition, elle, ne change que par l'import d'une nouvelle version.
+Écran `/admin/formulaires/{id}/reglages`, lié depuis la liste des formulaires et depuis la diffusion. Chaque action est un POST avec jeton anti-CSRF, journalisé. La définition, elle, ne change que par l'[éditeur visuel](#éditeur-visuel) ou l'import d'une nouvelle version, toujours en passant par un brouillon pour l'éditeur.
 
 - **État** : adresse publique, version publiée, état effectif (ouvert, fermé, pas encore ouvert, date de fermeture passée, nombre maximal atteint) et nombre de réponses reçues.
 - **Fermer** : refuse immédiatement toute nouvelle réponse, quelles que soient les dates ; les réponses reçues sont conservées. **Rouvrir** remet le formulaire en ligne, dans la limite des dates et du nombre maximal. Importer une nouvelle version ne rouvre jamais un formulaire fermé.
@@ -114,11 +115,26 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - La version garde l'auteur de l'import (`user:{id}`, sans email ni nom ; `cli` en ligne de commande).
 - **Importer et publier** met la version en ligne aussitôt ; **Enregistrer comme brouillon** ne publie rien et ouvre l'[aperçu](#brouillon-et-aperçu-avant-publication).
 
+## Éditeur visuel
+
+Pour créer ou modifier un formulaire sans écrire de JSON : sections et champs, propriétés, réordonnancement, conditions d'affichage. L'éditeur ne fait que produire le fichier de formulaire ([format](format-definition.md#fichier-de-formulaire)) : il n'a aucune règle de contrôle propre, et le serveur contrôle ce fichier exactement comme un import.
+
+- **Ouverture** : « Créer un formulaire » sur la liste (`/admin/formulaires/nouveau`, administrateurs, fichier vierge avec une conservation de 180 jours proposée) ; « ouvrez l'éditeur » dans les réglages et « Modifier dans l'éditeur » dans l'aperçu (`/admin/formulaires/{id}/editeur`). L'éditeur reprend le brouillon s'il existe, sinon la version en ligne.
+- **Enregistrement** : « Enregistrer le brouillon et voir l'aperçu » enregistre un [brouillon](#brouillon-et-aperçu-avant-publication), avec les mêmes contrôles et les mêmes droits que « Enregistrer comme brouillon » à l'import, puis ouvre l'aperçu, d'où il se publie. L'éditeur ne publie jamais directement et ne demande jamais le code d'accès (demandé à la publication).
+- **Erreurs** : en cas de refus, la page liste les erreurs du contrôle avec leur chemin (`$.sections[0].fields[2].label`) ; l'éditeur signale chaque section ou champ concerné, et le bouton « Afficher » l'ouvre. Le fichier envoyé est conservé.
+- **Structure** : à gauche, réglages du formulaire, sections et champs ; à droite, propriétés de l'élément choisi. Ajouter un champ (13 types), une section ; dupliquer, supprimer (avec confirmation, et rappel des conditions qui citent le champ). Réordonner par glisser-déposer, ou au clavier avec les flèches ↑ et ↓ (un champ passe d'une section à la voisine) et le choix de la section. Un groupe répétable ne peut pas en contenir un autre.
+- **Identifiants** : proposés à partir du libellé pour un champ ajouté (« Date de naissance » donne `dateDeNaissance`), modifiables ensuite. Renommer un champ met à jour les conditions, les règles et l'accusé de réception qui le citent ; renommer un champ de la version en ligne est signalé (les réponses déjà reçues gardent l'ancien identifiant). Le modèle PDF n'est pas modifié par l'éditeur : un champ qu'il cite ne peut être ni supprimé ni renommé (refus du contrôle).
+- **Conditions d'affichage** : toujours affiché, une comparaison, ou plusieurs comparaisons combinées par « et » ou « ou » ; champ cité (ceux de la même ligne d'un groupe d'abord), opérateur, valeur choisie parmi les options du champ cité. Une condition plus complexe (combinaisons imbriquées) se modifie en JSON dans l'éditeur.
+- **Réglages du formulaire** : titre, adresse (figée pour un formulaire existant : pour en changer, dupliquer), préfixe des dossiers, conservation, mode d'accès, une section par étape, texte de confirmation, accusé de réception. Le modèle PDF existant est conservé tel quel.
+- **JSON** : « Modifier le JSON (avancé) » affiche le fichier complet, modifiable ; les propriétés que l'éditeur ne présente pas sont conservées. Sans JavaScript, la page présente directement ce JSON.
+- **Droits et journal** : mêmes règles que l'aperçu (404 pour un formulaire non attribué, « Accès refusé » pour un lecteur ou un éditeur qui tente une création) ; refus journalisés (`access.denied`, détail `form-editor`). Un fichier qui vise une autre adresse que celle du formulaire est refusé ; une création ne remplace jamais le brouillon d'un formulaire existant. Le brouillon enregistré est journalisé `form.draft.save` avec le détail `editor`.
+- **Page** : POST avec jeton anti-CSRF, 256 Ko au plus, jamais en cache ; script `/assets/js/editor.mjs` (modèle `editor-model.mjs`, testé par `node --test`), sans style ni script en ligne.
+
 ## Brouillon et aperçu avant publication
 
 Pour vérifier le rendu d'une version sur smartphone et sur ordinateur avant de la mettre en ligne.
 
-- **Enregistrement** : depuis l'import, bouton « Enregistrer comme brouillon », mêmes fichiers, mêmes contrôles et mêmes droits que l'import (créer un formulaire reste réservé aux administrateurs). Un seul brouillon par formulaire (table `form_draft`), remplacé à chaque enregistrement. Pour un `slug` nouveau, le formulaire est créé en statut brouillon, sans version : il reste hors ligne (404 sur le lien public). Le code d'accès et la confirmation d'un passage en public ne sont pas demandés à ce stade.
+- **Enregistrement** : depuis l'[éditeur visuel](#éditeur-visuel), ou depuis l'import, bouton « Enregistrer comme brouillon », mêmes fichiers, mêmes contrôles et mêmes droits que l'import (créer un formulaire reste réservé aux administrateurs). Un seul brouillon par formulaire (table `form_draft`), remplacé à chaque enregistrement. Pour un `slug` nouveau, le formulaire est créé en statut brouillon, sans version : il reste hors ligne (404 sur le lien public). Le code d'accès et la confirmation d'un passage en public ne sont pas demandés à ce stade.
 - **Aperçu** (`/admin/formulaires/{id}/apercu`, lié depuis les réglages) : boutons « Mobile » (cadre de 390 px, les règles CSS du smartphone s'appliquent) et « Ordinateur ». Le cadre (`/apercu/cadre`) charge la même page, les mêmes styles (`/theme.css`, logo) et le même moteur que le formulaire public, en lisant le brouillon par `/apercu/donnees` (format de l'API publique, plus `preview: true`). Les contrôles de saisie fonctionnent ; l'envoi est simulé dans le navigateur : aucune requête, rien n'est enregistré, aucun email ni PDF. Un bandeau le rappelle. Tout code d'accès est accepté.
 - **Publication** : bouton « Publier ce brouillon », équivalent à l'import du même fichier (nouvelle version, code d'accès demandé si le formulaire protégé n'en a pas, confirmation d'un passage en public, formulaire fermé laissé fermé). Le brouillon est supprimé une fois publié, ou s'il est identique à la version en ligne (rien n'est alors publié) ; il est conservé si la publication est refusée.
 - **Suppression** : définitive ; la version en ligne et les réponses ne changent pas. Un formulaire créé par un brouillon puis supprimé reste dans la liste, en statut brouillon et sans version.
@@ -247,7 +263,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` ; détail `watermark` si la copie est filigranée |
 | `submission.pdf.regenerate` | `submission:{id}` |
-| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé, `form-draft` pour un brouillon refusé, `form-duplicate` pour une duplication refusée (sans cible si le formulaire n'existe pas), `form-template` pour un écran des modèles refusé (cible `form:{id}` ou `template:{id}` quand il y en a une) |
+| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé, `form-draft` pour un brouillon refusé, `form-editor` pour l'éditeur refusé (sans cible pour une création), `form-duplicate` pour une duplication refusée (sans cible si le formulaire n'existe pas), `form-template` pour un écran des modèles refusé (cible `form:{id}` ou `template:{id}` quand il y en a une) |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 | `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
@@ -260,7 +276,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.pdf_watermark` | `form:{id}`, détail `on` ou `off` |
 | `form.import` | `form:{id}`, détail : `create;v1` à la création, `v{n}` pour une nouvelle version ; rien si le fichier n'a pas changé |
 | `form.public` | `form:{id}` : formulaire protégé passé en accès public par import |
-| `form.draft.save` | `form:{id}`, détail `create` si le brouillon a créé le formulaire ; publication d'un brouillon : `form.import` avec le détail `v{n};draft` |
+| `form.draft.save` | `form:{id}`, détail `create` si le brouillon a créé le formulaire, `editor` s'il vient de l'éditeur visuel (`create;editor` pour les deux) ; publication d'un brouillon : `form.import` avec le détail `v{n};draft` |
 | `form.draft.delete` | `form:{id}` |
 | `form.duplicate` | `form:{id}` de la copie, détail `from=form:{source};v{n};access={comptes attribués}` |
 | `form.template.use` | `form:{id}` du formulaire créé, détail `template={code}` (modèle livré) ou `template=template:{id}` (modèle enregistré) |

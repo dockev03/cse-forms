@@ -20,7 +20,16 @@ public sealed class FormDraftService(
     TimeProvider timeProvider)
 {
     /// <summary>Enregistre (ou remplace) le brouillon du formulaire désigné par le <c>slug</c> du fichier.</summary>
-    public async Task<DraftSaveResult> SaveAsync(CurrentUser user, string definitionJson, string? pdfTemplateHtml, CancellationToken cancellationToken)
+    public Task<DraftSaveResult> SaveAsync(CurrentUser user, string definitionJson, string? pdfTemplateHtml, CancellationToken cancellationToken) =>
+        SaveAsync(user, definitionJson, pdfTemplateHtml, fromEditor: false, cancellationToken);
+
+    /// <param name="fromEditor">Brouillon produit par l'éditeur visuel, signalé dans le journal (<c>editor</c>).</param>
+    public async Task<DraftSaveResult> SaveAsync(
+        CurrentUser user,
+        string definitionJson,
+        string? pdfTemplateHtml,
+        bool fromEditor,
+        CancellationToken cancellationToken)
     {
         if (user.IsReadOnly)
         {
@@ -75,7 +84,14 @@ public sealed class FormDraftService(
         }
 
         await store.SaveChangesAsync(cancellationToken);
-        await audit.RecordAsync(AuditActions.FormDraftSaved, user.Id, Target(form.Id), created ? "create" : null, cancellationToken);
+        var detail = (created, fromEditor) switch
+        {
+            (true, true) => "create;editor",
+            (true, false) => "create",
+            (false, true) => "editor",
+            _ => null,
+        };
+        await audit.RecordAsync(AuditActions.FormDraftSaved, user.Id, Target(form.Id), detail, cancellationToken);
         return new DraftSaveResult.Saved(form.Id, form.Slug, created);
     }
 

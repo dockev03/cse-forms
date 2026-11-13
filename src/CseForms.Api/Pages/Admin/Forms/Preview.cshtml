@@ -6,7 +6,7 @@
     ViewData["Title"] = draft is null ? "Aperçu" : $"Aperçu : {draft.Title}";
 }
 
-<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@Model.FormId/reglages">Réglages</a></p>
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@Model.FormId/reglages">Réglages</a> · <a href="/admin/formulaires/@Model.FormId/editeur">Modifier dans l'éditeur</a></p>
 <h1>@ViewData["Title"]</h1>
 
 @if (Model.Errors.Count > 0)
@@ -30,7 +30,7 @@
 @if (draft is null)
 {
     <section class="card">
-        <p>Ce formulaire n'a pas de brouillon. Pour en créer un, <a href="/admin/formulaires/import">importez son fichier de formulaire</a> et choisissez « Enregistrer comme brouillon ».</p>
+        <p>Ce formulaire n'a pas de brouillon. Pour en créer un, <a href="/admin/formulaires/@Model.FormId/editeur">modifiez-le dans l'éditeur</a>, ou <a href="/admin/formulaires/import">importez son fichier de formulaire</a> et choisissez « Enregistrer comme brouillon ».</p>
     </section>
     return;
 }

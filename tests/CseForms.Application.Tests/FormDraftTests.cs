@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace CseForms.Application.Tests;
 
 /// <summary>Brouillon d'un formulaire : enregistrement sans publication, aperçu, publication, suppression, droits.</summary>
-public class FormDraftTests
+public partial class FormDraftTests
 {
     private static readonly CurrentUser Admin = new(Guid.NewGuid(), IsAdmin: true);
     private static readonly CurrentUser Editor = new(Guid.NewGuid(), IsAdmin: false);
