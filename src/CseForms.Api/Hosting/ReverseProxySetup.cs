@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 namespace CseForms.Api.Hosting;
 
 /// <summary>
-/// Derrière Traefik, l'IP du client vient de <c>X-Forwarded-For</c>. Cet en-tête n'est accepté que
+/// Derrière le reverse proxy, l'IP du client vient de <c>X-Forwarded-For</c>. Cet en-tête n'est accepté que
 /// depuis les réseaux déclarés dans <c>ReverseProxy:KnownNetworks</c> (CIDR séparés par des virgules),
 /// sinon n'importe qui pourrait contourner la limitation de débit en le forgeant.
 /// </summary>
