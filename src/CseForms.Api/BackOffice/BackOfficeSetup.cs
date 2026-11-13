@@ -2,6 +2,7 @@ using CseForms.Application.BackOffice;
 using CseForms.Infrastructure.Identity;
 using CseForms.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.WebEncoders;
@@ -101,6 +102,7 @@ internal static class BackOfficeSetup
 
         services.AddAuthorizationBuilder()
             .AddPolicy(Policy, policy => policy.RequireAuthenticatedUser().RequireRole(AppRoles.All));
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, AccessDeniedAuditHandler>();
 
         // Accents affichés tels quels plutôt qu'en entités (&#xE9;) ; l'encodage HTML reste actif.
         services.Configure<WebEncoderOptions>(options => options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));

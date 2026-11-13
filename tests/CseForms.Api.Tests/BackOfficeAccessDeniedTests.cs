@@ -1,5 +1,9 @@
 using System.Net;
 using CseForms.Application.BackOffice;
+using CseForms.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CseForms.Api.Tests;
 
@@ -120,5 +124,31 @@ public partial class BackOfficeTests
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Contains("Accès refusé", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Account_without_role_gets_access_denied_page_and_refusal_is_audited_once()
+    {
+        // La ligne de commande impose un rôle : compte créé directement, comme un rôle retiré à la main en base.
+        var email = $"sans-role-{Guid.NewGuid():N}@example.test";
+        Guid userId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            var user = new AppUser { Email = email, UserName = email, EmailConfirmed = true, DisplayName = "Élu fictif", CreatedAt = DateTimeOffset.UtcNow };
+            Assert.True((await users.CreateAsync(user, Password)).Succeeded);
+            userId = user.Id;
+        }
+
+        var client = Client();
+        await LoginAsync(client, email, Password);
+
+        var (final, hops) = await FollowAsync(client, new HttpRequestMessage(HttpMethod.Get, "/admin"));
+
+        await AssertAccessDeniedPageAsync(final, hops);
+        await using var db = factory.Database.CreateContext();
+        var entry = Assert.Single(await db.AuditLog.Where(a => a.UserId == userId && a.Action == AuditActions.AccessDenied).ToListAsync());
+        Assert.Null(entry.Target);
+        Assert.Equal("no-role", entry.Detail);
     }
 }

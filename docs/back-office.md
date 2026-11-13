@@ -13,6 +13,7 @@ Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus 
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
 - **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte ou ouvre la diffusion, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
 
@@ -137,7 +138,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` |
 | `submission.pdf.regenerate` | `submission:{id}` |
-| `access.denied` | `submission:{id}` ou `form:{id}` |
+| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 | `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
