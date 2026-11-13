@@ -38,6 +38,8 @@ Points de santé : `/health/live` (processus) et `/health/ready` (base joignable
 
 ## Déploiement en production
 
+Guide complet (installation, configuration, reverse proxy, sauvegarde, mises à jour, dépannage) : [`docs/mise-en-service.md`](docs/mise-en-service.md).
+
 `docker-compose.yml` lance PostgreSQL, Gotenberg, l'API et le Worker. Il n'y a pas de proxy dans le projet : le reverse proxy existant termine le TLS et transmet les requêtes au port HTTP de l'API, seul port publié.
 
 ```bash
