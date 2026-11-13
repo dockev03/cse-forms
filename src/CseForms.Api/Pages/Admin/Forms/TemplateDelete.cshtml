@@ -1,0 +1,18 @@
+@page "/admin/formulaires/modeles/{templateId:guid}/suppression"
+@model CseForms.Api.Pages.Admin.Forms.TemplateDeleteModel
+@{
+    ViewData["Title"] = $"Supprimer le modèle : {Model.Template.Name}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/modeles">Modèles</a></p>
+<h1>Supprimer le modèle : @Model.Template.Name</h1>
+
+<section class="card narrow">
+    <p>Le modèle sera supprimé définitivement. Les formulaires déjà créés à partir de lui, leurs brouillons et leurs réponses ne changent pas. Cette action est inscrite au journal d'audit.</p>
+    <form method="post" asp-route-templateId="@Model.Template.Key">
+        <div class="filter-actions">
+            <button type="submit" class="danger">Supprimer le modèle</button>
+            <a href="/admin/formulaires/modeles">Annuler</a>
+        </div>
+    </form>
+</section>

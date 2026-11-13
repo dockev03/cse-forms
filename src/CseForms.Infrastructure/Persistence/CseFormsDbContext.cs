@@ -21,6 +21,8 @@ public sealed class CseFormsDbContext(DbContextOptions<CseFormsDbContext> option
 
     public DbSet<FormDraft> FormDrafts => Set<FormDraft>();
 
+    public DbSet<FormTemplate> FormTemplates => Set<FormTemplate>();
+
     public DbSet<Submission> Submissions => Set<Submission>();
 
     public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();

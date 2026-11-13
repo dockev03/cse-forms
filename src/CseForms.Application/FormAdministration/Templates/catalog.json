@@ -1,0 +1,17 @@
+[
+  {
+    "code": "inscription",
+    "name": "Inscription au CSE",
+    "description": "Fiche d'inscription générique : identité, contrat, lieu de travail, coordonnées, enfants et information sur les données personnelles. Accusé de réception par email."
+  },
+  {
+    "code": "satisfaction",
+    "name": "Questionnaire de satisfaction",
+    "description": "Évaluation d'une sortie, d'une prestation ou de la permanence, sans nom ni coordonnées : appréciations, points forts, suggestions."
+  },
+  {
+    "code": "evenement",
+    "name": "Inscription à un événement",
+    "description": "Sortie, spectacle ou arbre de Noël : participant, accompagnants, régimes alimentaires et remarques. Accusé de réception par email."
+  }
+]

@@ -1,0 +1,93 @@
+{
+  "slug": "modele-inscription",
+  "title": "Fiche d'inscription au CSE",
+  "caseNumberPrefix": "INS",
+  "retentionDays": 180,
+  "access": { "mode": "public" },
+  "ui": {
+    "multiStep": true,
+    "confirmationText": "Votre fiche a bien été transmise au CSE. Si vous avez indiqué votre email, un accusé de réception vous est envoyé."
+  },
+  "receipt": {
+    "emailField": "email",
+    "message": "Toute modification de votre situation doit être communiquée au CSE."
+  },
+  "sections": [
+    {
+      "id": "identite",
+      "title": "Identité",
+      "fields": [
+        { "id": "civilite", "type": "choice", "label": "Civilité", "required": true, "options": ["M.", "Mme"], "display": "radio" },
+        { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+        { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 }
+      ]
+    },
+    {
+      "id": "pro",
+      "title": "Informations professionnelles",
+      "fields": [
+        { "id": "contrat", "type": "choice", "label": "Type de contrat", "required": true, "options": ["CDI", "CDD", "Apprentissage", "Stage"], "display": "radio" },
+        { "id": "dateEmbauche", "type": "date", "label": "Date d'embauche", "required": true, "rules": [{ "op": "notAfter", "value": "today+6M" }] },
+        {
+          "id": "dateFin",
+          "type": "date",
+          "label": "Date de fin de contrat",
+          "required": true,
+          "visibleIf": { "field": "contrat", "op": "notEquals", "value": "CDI" },
+          "rules": [{ "op": "after", "field": "dateEmbauche" }]
+        },
+        { "id": "site", "type": "site", "label": "Lieu de travail", "required": true, "prefill": "url" }
+      ]
+    },
+    {
+      "id": "coordonnees",
+      "title": "Coordonnées",
+      "fields": [
+        { "id": "adresse", "type": "address", "label": "Adresse", "required": true },
+        { "id": "email", "type": "email", "label": "Email personnel", "help": "Il sert à l'envoi de l'accusé de réception.", "required": true },
+        {
+          "id": "emailConfirmation",
+          "type": "email",
+          "label": "Confirmation de l'email personnel",
+          "required": true,
+          "persist": false,
+          "rules": [{ "op": "sameAs", "field": "email" }]
+        },
+        { "id": "telephone", "type": "phone", "label": "Téléphone" }
+      ]
+    },
+    {
+      "id": "enfants",
+      "title": "Enfants (facultatif)",
+      "fields": [
+        {
+          "id": "enfants",
+          "type": "repeat",
+          "label": "Enfant",
+          "min": 0,
+          "max": 10,
+          "addLabel": "Ajouter un enfant",
+          "fields": [
+            { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+            { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 },
+            { "id": "naissance", "type": "date", "label": "Date de naissance", "required": true, "rules": [{ "op": "past" }] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "validation",
+      "title": "Validation",
+      "fields": [
+        {
+          "id": "rgpdNotice",
+          "type": "info",
+          "label": "Information sur vos données personnelles",
+          "text": "Le CSE, responsable du traitement, utilise ces informations pour gérer votre accès aux activités sociales et culturelles. Seuls les membres du CSE habilités les consultent ; elles ne sont jamais transmises à l'employeur. La fiche en ligne est supprimée 180 jours après son traitement. Vous pouvez accéder à vos données, les faire rectifier ou effacer en écrivant au CSE, et saisir la CNIL. Le détail figure dans la notice « Vos données personnelles »."
+        },
+        { "id": "rgpdLu", "type": "consent", "label": "J'ai lu l'information sur mes données personnelles", "required": true },
+        { "id": "attestation", "type": "consent", "label": "J'atteste l'exactitude des informations", "required": true }
+      ]
+    }
+  ]
+}

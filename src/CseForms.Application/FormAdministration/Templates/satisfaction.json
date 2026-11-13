@@ -1,0 +1,69 @@
+{
+  "slug": "modele-satisfaction",
+  "title": "Questionnaire de satisfaction",
+  "caseNumberPrefix": "SAT",
+  "retentionDays": 90,
+  "access": { "mode": "public" },
+  "ui": {
+    "confirmationText": "Merci pour votre avis : il aide le CSE à améliorer ses activités."
+  },
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Votre avis",
+      "fields": [
+        {
+          "id": "anonymat",
+          "type": "info",
+          "label": "Questionnaire sans nom",
+          "text": "Ce questionnaire ne demande ni votre nom ni vos coordonnées. Merci de ne pas en indiquer dans les zones de texte libre."
+        },
+        { "id": "site", "type": "site", "label": "Lieu de travail", "help": "Facultatif : il permet de comparer les avis par site." }
+      ]
+    },
+    {
+      "id": "appreciation",
+      "title": "Appréciation",
+      "fields": [
+        {
+          "id": "satisfactionGenerale",
+          "type": "choice",
+          "label": "Dans l'ensemble, êtes-vous satisfait ?",
+          "required": true,
+          "options": ["Très satisfait", "Satisfait", "Peu satisfait", "Pas satisfait"],
+          "display": "radio"
+        },
+        {
+          "id": "organisation",
+          "type": "choice",
+          "label": "Organisation (information, horaires, accueil)",
+          "options": ["Très satisfait", "Satisfait", "Peu satisfait", "Pas satisfait", "Sans avis"],
+          "display": "radio"
+        },
+        {
+          "id": "qualitePrix",
+          "type": "choice",
+          "label": "Rapport qualité-prix",
+          "options": ["Très satisfait", "Satisfait", "Peu satisfait", "Pas satisfait", "Sans avis"],
+          "display": "radio"
+        },
+        {
+          "id": "recommandation",
+          "type": "choice",
+          "label": "Recommanderiez-vous cette activité à un collègue ?",
+          "options": ["Oui", "Non", "Je ne sais pas"],
+          "display": "radio"
+        }
+      ]
+    },
+    {
+      "id": "commentaires",
+      "title": "Commentaires",
+      "fields": [
+        { "id": "pointsForts", "type": "textarea", "label": "Ce que vous avez apprécié", "maxLength": 2000 },
+        { "id": "ameliorations", "type": "textarea", "label": "Ce qui pourrait être amélioré", "maxLength": 2000 },
+        { "id": "suggestions", "type": "textarea", "label": "Vos idées pour les prochaines activités du CSE", "maxLength": 2000 }
+      ]
+    }
+  ]
+}

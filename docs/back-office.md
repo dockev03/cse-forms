@@ -12,7 +12,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
-- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages, les notifications, l'import ou l'aperçu d'un brouillon, un `editor` qui supprime une réponse ou duplique un formulaire) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages, les notifications, l'import ou l'aperçu d'un brouillon, un `editor` qui supprime une réponse, duplique un formulaire ou ouvre les modèles) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
 - **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
@@ -88,6 +88,7 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/formulaires/{id}/notifications` : [notifications au CSE](#notifications-au-cse), rôles `admin` et `editor` ayant le droit sur le formulaire.
 - `/admin/formulaires/import` : [import d'un fichier de formulaire](#import-dun-formulaire), rôles `admin` (création et nouvelle version) et `editor` (nouvelle version d'un formulaire attribué).
 - `/admin/formulaires/{id}/duplication` : [duplication d'un formulaire](#duplication-dun-formulaire), rôle `admin` uniquement.
+- `/admin/formulaires/modeles`, `/admin/formulaires/modeles/{modèle}`, `/admin/formulaires/modeles/{id}/suppression`, `/admin/formulaires/{id}/modele` : [modèles de formulaires](#modèles-de-formulaires), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/apercu` : [aperçu du brouillon](#brouillon-et-aperçu-avant-publication), publication et suppression, rôles `admin` et `editor` ayant le droit sur le formulaire.
 
 ## Réglages d'un formulaire
@@ -134,6 +135,16 @@ Pour réutiliser un formulaire, par exemple l'arbre de Noël d'une année sur l'
 - **Copié** : définition, présentation, accusé de réception, modèle PDF, préfixe des dossiers (les deux éditions partagent donc le compteur `PRÉFIXE-AAAA-NNNN`), durée de conservation et mode d'accès, reconstruits en fichier de formulaire et contrôlés comme un import ; la règle de notification au CSE ; le réglage du filigrane ; les comptes attribués au formulaire (éditeurs et lecteurs, y compris désactivés).
 - **Non copié** : réponses, PDF et historique ; dates d'ouverture et de fermeture et nombre maximal de réponses, propres à chaque édition ; code d'accès (stocké haché) : pour une source protégée, un nouveau code est demandé à la publication.
 - **Résultat** : le nouveau formulaire est créé hors ligne, en statut brouillon, sans version ; la copie est son [brouillon](#brouillon-et-aperçu-avant-publication) et l'aperçu s'ouvre. Il se publie depuis l'aperçu, ou se corrige d'abord par un import. Préfixe, conservation et mode d'accès s'appliquent au formulaire à sa publication. Tout est enregistré en une fois.
+
+## Modèles de formulaires
+
+Pour créer un formulaire sans partir de zéro. Catalogue `/admin/formulaires/modeles`, lié depuis la liste des formulaires (« Partir d'un modèle ») ; réservé au rôle `admin`, comme la création d'un formulaire. Les autres rôles reçoivent la page « Accès refusé » sur tous ces écrans, refus journalisé (`access.denied`, détail `form-template`).
+
+- **Modèles livrés** avec l'application, en lecture seule : « Inscription au CSE » (fiche générique, sans modèle PDF propre), « Questionnaire de satisfaction » (aucun nom ni coordonnée, pas d'accusé de réception) et « Inscription à un événement » (participant, accompagnants, régimes alimentaires). Tous en accès public. Ce sont des fichiers de formulaire embarqués dans l'application (`src/CseForms.Application/FormAdministration/Templates`, index `catalog.json`) ; un test vérifie qu'ils passent les contrôles d'un import.
+- **Modèles enregistrés** (table `form_template`) : depuis les réglages d'un formulaire publié, « Enregistrer comme modèle » (`/admin/formulaires/{id}/modele`), avec un nom (100 caractères, unique parmi tous les modèles, majuscules comprises) et une description facultative (500 caractères). Le modèle reprend la version en ligne : définition, présentation, accusé de réception, modèle PDF, préfixe des dossiers, durée de conservation et mode d'accès. Il ne reprend jamais les réponses, la règle de notification, les comptes attribués, le filigrane, les dates, le nombre maximal de réponses ni le code d'accès. Il n'est pas modifiable : on le supprime et on en enregistre un autre.
+- **Partir d'un modèle** (`/admin/formulaires/modeles/{modèle}`, code d'un modèle livré ou identifiant d'un modèle enregistré) : l'écran résume le contenu (sections et nombre de questions, accès, accusé de réception, PDF), puis demande l'adresse (`slug`, unique) et le titre. Le formulaire est créé hors ligne, en statut brouillon, sans version : le modèle, à la nouvelle adresse et au nouveau titre, devient son [brouillon](#brouillon-et-aperçu-avant-publication), contrôlé comme un import, et l'aperçu s'ouvre. Pour un modèle en mode code d'accès, le code est demandé à la publication. Notifications et comptes attribués se règlent ensuite. Un modèle enregistré qui ne passe plus les contrôles est signalé et ne peut pas servir.
+- **Suppression d'un modèle enregistré** (`/admin/formulaires/modeles/{id}/suppression`) : après confirmation, définitive. Les formulaires déjà créés à partir de lui, leurs brouillons et leurs réponses ne changent pas. Les modèles livrés ne se suppriment pas.
+- Un modèle ne contient aucune réponse ; nom et description ne doivent pas contenir de donnée personnelle.
 
 ## Statuts de traitement
 
@@ -236,7 +247,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` ; détail `watermark` si la copie est filigranée |
 | `submission.pdf.regenerate` | `submission:{id}` |
-| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé, `form-draft` pour un brouillon refusé, `form-duplicate` pour une duplication refusée (sans cible si le formulaire n'existe pas) |
+| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé, `form-draft` pour un brouillon refusé, `form-duplicate` pour une duplication refusée (sans cible si le formulaire n'existe pas), `form-template` pour un écran des modèles refusé (cible `form:{id}` ou `template:{id}` quand il y en a une) |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 | `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
@@ -252,6 +263,9 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.draft.save` | `form:{id}`, détail `create` si le brouillon a créé le formulaire ; publication d'un brouillon : `form.import` avec le détail `v{n};draft` |
 | `form.draft.delete` | `form:{id}` |
 | `form.duplicate` | `form:{id}` de la copie, détail `from=form:{source};v{n};access={comptes attribués}` |
+| `form.template.use` | `form:{id}` du formulaire créé, détail `template={code}` (modèle livré) ou `template=template:{id}` (modèle enregistré) |
+| `form.template.save` | `template:{id}`, détail `from=form:{source};v{n}` |
+| `form.template.delete` | `template:{id}` |
 | `form.notifications` | `form:{id}`, détail : `recipients={nombre}`, sans les adresses |
 | `form.notifications.remove` | `form:{id}` |
 | `settings.change` | `settings`, détail : noms des paramètres modifiés (`cse.name,cse.logo`...), sans les valeurs |

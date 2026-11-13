@@ -9,6 +9,11 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Modèles de formulaires livrés avec l'application : embarqués, donc présents dans les images Docker. -->
+    <EmbeddedResource Include="FormAdministration\Templates\*.json" LogicalName="CseForms.Templates.%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

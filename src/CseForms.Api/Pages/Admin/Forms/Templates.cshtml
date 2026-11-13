@@ -1,0 +1,41 @@
+@page "/admin/formulaires/modeles"
+@model CseForms.Api.Pages.Admin.Forms.TemplatesModel
+@{
+    ViewData["Title"] = "Modèles de formulaires";
+}
+
+<p><a href="/admin">Formulaires</a></p>
+<h1>Modèles de formulaires</h1>
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status"><p>@Model.Message</p></div>
+}
+
+<p>Partir d'un modèle crée un nouveau formulaire, hors ligne : le modèle devient son brouillon, à vérifier dans l'aperçu puis à publier. Un modèle ne contient ni réponse, ni notification, ni compte attribué, ni code d'accès.</p>
+<p>Pour ajouter un modèle, ouvrez les réglages d'un formulaire publié et choisissez « Enregistrer comme modèle ».</p>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th scope="col">Modèle</th><th scope="col">Description</th><th scope="col">Origine</th><th scope="col">Actions</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var template in Model.Templates)
+            {
+                <tr>
+                    <td>@template.Name</td>
+                    <td>@template.Description</td>
+                    <td>@(template.CreatedAt is { } createdAt ? $"Enregistré le {Display.Date(createdAt)}" : "Fourni avec l'application")</td>
+                    <td>
+                        <a href="/admin/formulaires/modeles/@template.Key">Utiliser</a>
+                        @if (!template.BuiltIn)
+                        {
+                            <text> · <a href="/admin/formulaires/modeles/@template.Key/suppression">Supprimer</a></text>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IFormLifecycleStore, FormLifecycleStore>();
         services.AddScoped<IFormDraftStore, FormDraftStore>();
         services.AddScoped<IFormDuplicationStore, FormDuplicationStore>();
+        services.AddScoped<IFormTemplateStore, FormTemplateStore>();
         services.AddScoped<INotificationRuleStore, NotificationRuleStore>();
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
         services.AddSingleton<IPdfWatermarker, PdfSharpWatermarker>();

@@ -1,0 +1,73 @@
+@page "/admin/formulaires/modeles/{key:maxlength(64)}"
+@model CseForms.Api.Pages.Admin.Forms.TemplateUseModel
+@using CseForms.Application.FormAdministration
+@{
+    var template = Model.Template;
+    ViewData["Title"] = $"Partir du modèle : {template.Name}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/modeles">Modèles</a></p>
+<h1>Partir du modèle : @template.Name</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        <p>Création refusée :</p>
+        <ul>
+            @foreach (var error in Model.Errors)
+            {
+                <li>@error.Message</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (template.Errors.Count > 0)
+{
+    <section class="card">
+        <p>Ce modèle ne passe plus les contrôles d'un import et ne peut pas servir :</p>
+        <ul>
+            @foreach (var error in template.Errors)
+            {
+                <li>@error.Path : @error.Message</li>
+            }
+        </ul>
+    </section>
+    return;
+}
+
+<section class="card" aria-labelledby="contenu">
+    <h2 id="contenu">Contenu du modèle</h2>
+    @if (template.Description is not null)
+    {
+        <p>@template.Description</p>
+    }
+    <ul>
+        @foreach (var part in template.Sections)
+        {
+            <li>@(part.Title ?? "Section sans titre") : @part.FieldCount @(part.FieldCount > 1 ? "questions" : "question")</li>
+        }
+    </ul>
+    <p>
+        Accès : @(template.AccessMode == AccessMode.Pin ? "par code d'accès, demandé à la publication" : "public, pour toute personne ayant le lien").
+        Accusé de réception par email : @(template.HasReceipt ? "oui" : "non").
+        PDF : @(template.HasPdfTemplate ? "mise en page propre au modèle" : "mise en page générique").
+    </p>
+    <p>Le nouveau formulaire est créé hors ligne, en brouillon : l'aperçu s'ouvre pour le vérifier, puis le publier. Pour changer les questions, importez ensuite un fichier corrigé. Les notifications au CSE et les comptes attribués se règlent après la création.</p>
+</section>
+
+<section class="card narrow" aria-labelledby="nouveau">
+    <h2 id="nouveau">Nouveau formulaire</h2>
+    <form method="post" asp-route-key="@template.Key">
+        <div class="field">
+            <label for="slug">Adresse publique</label>
+            <p class="help" id="slug-aide">Lettres minuscules, chiffres et tirets : le lien sera /f/<em>adresse</em>.</p>
+            <input id="slug" name="slug" required maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" aria-describedby="slug-aide" value="@Model.SlugInput">
+        </div>
+        <div class="field">
+            <label for="title">Titre</label>
+            <input id="title" name="title" required maxlength="200" autocomplete="off" value="@Model.TitleInput">
+        </div>
+        <button type="submit" class="primary">Créer le formulaire</button>
+    </form>
+</section>
