@@ -23,6 +23,7 @@ public static class SettingKeys
     public const string SmtpSecurity = "smtp.security";
     public const string SmtpFrom = "smtp.from";
     public const string AlertsEmail = "alerts.email";
+    public const string RgpdNotice = "rgpd.notice";
 
     /// <summary>Modes de chiffrement SMTP acceptés.</summary>
     public static readonly IReadOnlyList<string> SmtpSecurityModes = ["starttls", "ssl", "none"];
@@ -43,6 +44,7 @@ public static class SettingKeys
         [ThemePrimaryColor] = "Couleur principale du formulaire public, #rrggbb (contraste 4,5:1 au moins avec le blanc, RGAA)",
         [ThemeBackground] = "Image de fond du formulaire public : se règle avec « settings background --file <image> »",
         [AlertsEmail] = "Adresse qui reçoit les alertes d'échec définitif des tâches (PDF, emails)",
+        [RgpdNotice] = "Notice complète sur les données personnelles, publiée sur " + PrivacyNotice.PublicPath + " (Markdown restreint, plusieurs lignes)",
     };
 
     /// <summary>Paramètres image, stockés en adresse <c>data:</c> et réglés par envoi de fichier.</summary>
@@ -52,11 +54,14 @@ public static class SettingKeys
         [ThemeBackground] = BackgroundImage.Image,
     };
 
-    /// <summary>Longueur maximale d'une valeur (hors images).</summary>
+    /// <summary>Longueur maximale d'une valeur (hors images et notice RGPD).</summary>
     public const int ValueMaxLength = 4000;
 
+    /// <summary>Longueur maximale de la valeur d'une clé (hors images).</summary>
+    public static int MaxLength(string key) => key == RgpdNotice ? PrivacyNotice.MaxLength : ValueMaxLength;
+
     /// <summary>Paramètres saisis sur plusieurs lignes ; les autres tiennent sur une seule.</summary>
-    public static readonly IReadOnlySet<string> MultiLineKeys = new HashSet<string>(StringComparer.Ordinal) { CseAddress, CseOffice };
+    public static readonly IReadOnlySet<string> MultiLineKeys = new HashSet<string>(StringComparer.Ordinal) { CseAddress, CseOffice, RgpdNotice };
 
     public static bool IsKnown(string key) => Descriptions.ContainsKey(key);
 
@@ -90,9 +95,10 @@ public static class SettingKeys
             return image.IsValid(value) ? null : $"Image attendue : {image.Rule}.";
         }
 
-        if ((value.Length == 0 || value.Length > ValueMaxLength))
+        var maxLength = MaxLength(key);
+        if (value.Length == 0 || value.Length > maxLength)
         {
-            return $"Valeur vide ou trop longue ({ValueMaxLength} caractères au plus).";
+            return $"Valeur vide ou trop longue ({maxLength} caractères au plus).";
         }
 
         if (!MultiLineKeys.Contains(key) && value.Contains('\n', StringComparison.Ordinal))
@@ -108,6 +114,11 @@ public static class SettingKeys
                 || uri.AbsolutePath != "/"))
         {
             return "Adresse HTTPS attendue, sans chemin ni paramètre : https://formulaires.example.test";
+        }
+
+        if (key == RgpdNotice && PrivacyNotice.Validate(value) is { } noticeError)
+        {
+            return noticeError;
         }
 
         if (key == ThemePrimaryColor && ThemeColor.Validate(value) is { } colorError)

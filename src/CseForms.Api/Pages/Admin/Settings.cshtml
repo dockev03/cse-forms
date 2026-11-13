@@ -63,6 +63,32 @@
     </form>
 </section>
 
+<section class="card" aria-labelledby="notice-rgpd">
+    <h2 id="notice-rgpd">Notice sur les données personnelles</h2>
+    @{
+        var noticeKey = SettingKeys.RgpdNotice;
+        var noticeError = Model.Errors.GetValueOrDefault(noticeKey);
+        var noticeDescribedBy = noticeError is null ? "p-notice-aide" : "p-notice-aide p-notice-erreur";
+    }
+    <p>
+        Notice complète destinée aux salariés, commune à tous les formulaires. Publiée sur
+        <a href="@PrivacyNotice.PublicPath">@PrivacyNotice.PublicPath</a> et liée en bas de chaque formulaire public.
+        Vide : ni page ni lien.
+    </p>
+    <form method="post" asp-page-handler="Save">
+        <div class="field">
+            <label for="p-notice">Texte de la notice</label>
+            <p class="help" id="p-notice-aide">Mise en forme acceptée : @PrivacyNotice.Syntax. Tout autre balisage s'affiche tel quel. @PrivacyNotice.MaxLength caractères au plus.</p>
+            @if (noticeError is not null)
+            {
+                <p class="error-text" id="p-notice-erreur">@noticeError</p>
+            }
+            <textarea id="p-notice" name="@noticeKey" rows="20" maxlength="@PrivacyNotice.MaxLength" spellcheck="true" aria-describedby="@noticeDescribedBy" aria-invalid="@(noticeError is null ? null : "true")">@Model.Inputs.GetValueOrDefault(noticeKey)</textarea>
+        </div>
+        <button type="submit" class="primary">Enregistrer la notice</button>
+    </form>
+</section>
+
 <section class="card" aria-labelledby="logo">
     <h2 id="logo">Logo du CSE</h2>
     @if (settings.Logo is not null)

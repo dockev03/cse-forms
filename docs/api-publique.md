@@ -24,11 +24,13 @@ Accessible sans authentification. Toutes les erreurs ont la forme `{ "code": "..
   "requiresAccessCode": true,
   "definition": { "sections": [] },
   "ui": null,
-  "sites": ["Abrest", "Riom"]
+  "sites": ["Abrest", "Riom"],
+  "logo": true,
+  "privacyNotice": true
 }
 ```
 
-`sites` liste les libellés des sites actifs, pour les champs de type `site`. `definition`, `ui` et `sites` sont vides quand le formulaire n'accepte pas de réponse (fermé, hors période d'ouverture, nombre maximal atteint). Le haché du code d'accès n'est jamais renvoyé.
+`sites` liste les libellés des sites actifs, pour les champs de type `site`. `definition`, `ui` et `sites` sont vides quand le formulaire n'accepte pas de réponse (fermé, hors période d'ouverture, nombre maximal atteint). Le haché du code d'accès n'est jamais renvoyé. `logo` et `privacyNotice` indiquent si le logo du CSE (`/logo`) et la notice complète sur les données personnelles (`/donnees-personnelles`) sont définis : la page ne demande ou ne lie que ce qui existe.
 
 ## Obtenir un défi anti-robot
 

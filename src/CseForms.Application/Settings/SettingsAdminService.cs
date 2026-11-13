@@ -8,7 +8,7 @@ namespace CseForms.Application.Settings;
 
 /// <summary>
 /// Paramètres de l'application dans le back-office, réservés aux administrateurs : coordonnées et bureau du CSE,
-/// logo, adresse publique, adresse d'alerte, apparence du formulaire public, liste des sites. Mêmes contrôles que la commande <c>settings</c>.
+/// logo, adresse publique, adresse d'alerte, apparence du formulaire public, notice RGPD, liste des sites. Mêmes contrôles que la commande <c>settings</c>.
 /// Le journal garde le nom des paramètres modifiés, jamais leur valeur.
 /// </summary>
 public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminStore store, IAuditLog audit)
@@ -24,6 +24,7 @@ public sealed class SettingsAdminService(ISettingReader reader, ISettingsAdminSt
         SettingKeys.PublicBaseUrl,
         SettingKeys.AlertsEmail,
         SettingKeys.ThemePrimaryColor,
+        SettingKeys.RgpdNotice,
     ];
 
     public async Task<SettingsResult<SettingsPage>> GetPageAsync(CurrentUser user, CancellationToken cancellationToken)
