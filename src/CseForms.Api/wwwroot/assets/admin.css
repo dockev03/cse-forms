@@ -134,3 +134,20 @@ button.danger { background: var(--error); border-color: var(--error); color: #ff
 .logo-preview { display: block; max-width: 12rem; max-height: 8rem; border: 1px solid var(--border); background: #fff; }
 .background-preview { display: block; max-width: 100%; width: 20rem; max-height: 12rem; object-fit: cover; border: 1px solid var(--border); }
 .inline-action { margin-top: 0.75rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+
+/* Aperçu d'un brouillon : cadre en largeur mobile (390 px, smartphone courant) ou ordinateur. */
+.preview-switch { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.preview-switch a {
+  display: inline-block;
+  min-height: 40px;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+.preview-switch a[aria-current="page"] { background: var(--primary); color: #fff; font-weight: 600; }
+.preview-stage { overflow-x: auto; padding: 1rem; background: #e3e6eb; border-radius: var(--radius); }
+.preview-frame { display: block; margin: 0 auto; border: 1px solid var(--border); background: #fff; }
+.preview-frame.mobile { width: 390px; height: 780px; border-radius: 1.25rem; border-width: 0.6rem; border-color: #2b2f36; }
+.preview-frame.desktop { width: 100%; min-width: 64rem; height: 80vh; min-height: 40rem; }

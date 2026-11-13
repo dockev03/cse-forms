@@ -165,3 +165,6 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .privacy-notice table { border-collapse: collapse; width: 100%; }
 .privacy-notice th, .privacy-notice td { border: 1px solid #d0d4da; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
 .privacy-notice th { background: var(--bg); }
+
+/* Aperçu d'un brouillon dans le back-office. */
+.preview-banner { margin: 0 0 1rem; padding: 0.5rem 0.75rem; border: 2px solid #8a5a00; border-radius: 6px; background: #fff4d6; color: #4d3200; font-weight: 600; }

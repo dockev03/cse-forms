@@ -31,7 +31,8 @@ public partial class BackOfficeTests
         byte[]? definition,
         byte[]? template = null,
         Dictionary<string, string>? fields = null,
-        bool withToken = true)
+        bool withToken = true,
+        string? handler = null)
     {
         using var content = new MultipartFormDataContent();
         if (definition is not null)
@@ -58,7 +59,7 @@ public partial class BackOfficeTests
             content.Add(new StringContent(Token(await client.GetStringAsync(ImportUrl))), "__RequestVerificationToken");
         }
 
-        return await client.PostAsync(ImportUrl, content);
+        return await client.PostAsync(handler is null ? ImportUrl : $"{ImportUrl}?handler={handler}", content);
     }
 
     [Fact]

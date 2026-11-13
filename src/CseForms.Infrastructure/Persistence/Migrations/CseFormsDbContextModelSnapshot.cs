@@ -145,6 +145,36 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                     b.ToTable("form", (string)null);
                 });
 
+            modelBuilder.Entity("CseForms.Domain.Forms.FormDraft", b =>
+                {
+                    b.Property<Guid>("FormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("form_id");
+
+                    b.Property<string>("PackageJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("package_json");
+
+                    b.Property<string>("PdfTemplateHtml")
+                        .HasColumnType("text")
+                        .HasColumnName("pdf_template_html");
+
+                    b.Property<DateTimeOffset>("SavedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("saved_at");
+
+                    b.Property<string>("SavedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("saved_by");
+
+                    b.HasKey("FormId")
+                        .HasName("pk_form_draft");
+
+                    b.ToTable("form_draft", (string)null);
+                });
+
             modelBuilder.Entity("CseForms.Domain.Forms.FormVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -739,6 +769,16 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasName("pk_user_token");
 
                     b.ToTable("user_token", (string)null);
+                });
+
+            modelBuilder.Entity("CseForms.Domain.Forms.FormDraft", b =>
+                {
+                    b.HasOne("CseForms.Domain.Forms.Form", null)
+                        .WithOne()
+                        .HasForeignKey("CseForms.Domain.Forms.FormDraft", "FormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_form_draft_form_form_id");
                 });
 
             modelBuilder.Entity("CseForms.Domain.Forms.FormVersion", b =>

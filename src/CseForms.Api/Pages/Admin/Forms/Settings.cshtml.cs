@@ -39,6 +39,10 @@ public sealed class SettingsModel(FormLifecycleService service) : PageModel
         "code" => "Code d'accès changé. Les flyers déjà imprimés portent l'ancien code : pensez à les remplacer.",
         "filigrane" => "Filigrane activé : les PDF téléchargés porteront le nom de la personne et la date.",
         "sans-filigrane" => "Filigrane désactivé.",
+        "brouillon-publie" => "Brouillon publié : la nouvelle version est en ligne. Les réponses déjà reçues restent rattachées à leur version.",
+        "brouillon-publie-ferme" => "Brouillon publié. Le formulaire reste fermé : rouvrez-le ci-dessous pour le mettre en ligne.",
+        "brouillon-identique" => "Le brouillon était identique à la version en ligne : rien n'a été publié, le brouillon est supprimé.",
+        "brouillon-supprime" => "Brouillon supprimé. La version en ligne ne change pas.",
         _ => null,
     };
 

@@ -14,7 +14,7 @@ namespace CseForms.Api.Pages.Admin.Forms;
 /// les fichiers sont lus en mémoire, limités en taille, puis contrôlés comme par <c>forms import</c>.
 /// </summary>
 [RequestSizeLimit(MaxRequestBytes)]
-public sealed class ImportModel(FormImportService service, IAuditLog audit) : PageModel
+public sealed class ImportModel(FormImportService service, FormDraftService drafts, IAuditLog audit) : PageModel
 {
     /// <summary>Deux fichiers au plus, plus les champs du formulaire et l'enveloppe multipart.</summary>
     public const int MaxRequestBytes = (2 * FormImportService.MaxFileBytes) + (64 * 1024);
@@ -84,6 +84,31 @@ public sealed class ImportModel(FormImportService service, IAuditLog audit) : Pa
         }
 
         return Page();
+    }
+
+    /// <summary>
+    /// Enregistre les fichiers comme brouillon, sans rien publier, puis ouvre l'aperçu. Le code d'accès et la
+    /// confirmation du passage en public sont demandés à la publication du brouillon : ils sont ignorés ici.
+    /// </summary>
+    public async Task<IActionResult> OnPostDraftAsync(IFormFile? definition, IFormFile? pdfTemplate, CancellationToken cancellationToken)
+    {
+        var json = await ReadTextAsync(definition, "definition", "Le fichier de formulaire", required: true, cancellationToken);
+        var template = await ReadTextAsync(pdfTemplate, "pdfTemplate", "Le modèle PDF", required: false, cancellationToken);
+        if (Errors.Count > 0)
+        {
+            return Page();
+        }
+
+        switch (await drafts.SaveAsync(User.ToCurrentUser(), json!, template, cancellationToken))
+        {
+            case DraftSaveResult.Saved saved:
+                return RedirectToPage("Preview", new { formId = saved.FormId, fait = "brouillon" });
+            case DraftSaveResult.Invalid invalid:
+                Errors = invalid.Errors;
+                return Page();
+            default:
+                return Forbid();
+        }
     }
 
     public static string RetentionLabel(int? days) => days is { } d ? $"{d} jours" : "aucune purge";

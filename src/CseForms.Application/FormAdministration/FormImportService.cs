@@ -31,17 +31,13 @@ public sealed class FormImportService(
             return new FormImportResult.Forbidden();
         }
 
-        var read = FormPackageReader.Read(request.DefinitionJson, _ => request.PdfTemplateHtml);
-        if (!read.IsValid)
+        var read = ReadUpload(request.DefinitionJson, request.PdfTemplateHtml);
+        if (read.Errors.Count > 0)
         {
             return new FormImportResult.Invalid(read.Errors);
         }
 
         var package = read.Package!;
-        if (request.PdfTemplateHtml is not null && package.PdfTemplateHtml is null)
-        {
-            return Invalid("$.pdfTemplate", "Un modèle PDF a été envoyé, mais le fichier de formulaire ne déclare pas de modèle (pdfTemplate).");
-        }
 
         var existing = await store.FindBySlugAsync(package.Slug.ToLowerInvariant(), cancellationToken);
         if (existing is null ? !user.IsAdmin : !await backOffice.CanAccessFormAsync(user, existing.Id, cancellationToken))
@@ -70,6 +66,7 @@ public sealed class FormImportService(
         // Le journal d'audit partage le contexte de base : rien n'est journalisé sur un import refusé par
         // FormAdminService, qui a pu modifier le formulaire suivi sans l'enregistrer.
         var previousRetention = existing?.RetentionDays;
+        var wasPublished = existing?.CurrentVersionId is not null;
         var outcome = await admin.ImportAsync(package, accessCode, $"user:{user.Id}", cancellationToken);
         switch (outcome)
         {
@@ -83,7 +80,8 @@ public sealed class FormImportService(
         var target = $"form:{form!.Id}";
         if (outcome is ImportOutcome.Published published)
         {
-            var detail = (published.Created ? "create;" : string.Empty) + "v" + published.Version.ToString(CultureInfo.InvariantCulture);
+            var detail = (published.Created ? "create;" : string.Empty) + "v" + published.Version.ToString(CultureInfo.InvariantCulture)
+                + (request.FromDraft ? ";draft" : string.Empty);
             await audit.RecordAsync(AuditActions.FormImported, user.Id, target, detail, cancellationToken);
         }
 
@@ -108,11 +106,29 @@ public sealed class FormImportService(
             },
             Created: outcome is ImportOutcome.Published { Created: true },
             Unchanged: outcome is ImportOutcome.Unchanged,
-            RetentionChange: existing is not null && previousRetention != package.RetentionDays
+            // Formulaire créé par un brouillon et publié pour la première fois : pas de changement à signaler.
+            RetentionChange: wasPublished && previousRetention != package.RetentionDays
                 ? new RetentionChange(previousRetention, package.RetentionDays)
                 : null,
             BecamePublic: becomesPublic,
             StillClosed: form.Status == FormStatus.Closed);
+    }
+
+    /// <summary>
+    /// Lit un fichier de formulaire envoyé et son modèle PDF éventuel, utilisé quel que soit le nom déclaré.
+    /// Un modèle envoyé sans <c>pdfTemplate</c> dans le fichier est refusé.
+    /// </summary>
+    public static FormPackageResult ReadUpload(string definitionJson, string? pdfTemplateHtml)
+    {
+        var read = FormPackageReader.Read(definitionJson, _ => pdfTemplateHtml);
+        if (read.IsValid && pdfTemplateHtml is not null && read.Package!.PdfTemplateHtml is null)
+        {
+            return new FormPackageResult(
+                null,
+                [new DefinitionError("$.pdfTemplate", "Un modèle PDF a été envoyé, mais le fichier de formulaire ne déclare pas de modèle (pdfTemplate).")]);
+        }
+
+        return read;
     }
 
     private static FormImportResult.Invalid Invalid(string path, string message) => new([new DefinitionError(path, message)]);
@@ -121,12 +137,14 @@ public sealed class FormImportService(
 /// <param name="PdfTemplateHtml">Modèle PDF envoyé avec la définition, utilisé quel que soit le nom déclaré.</param>
 /// <param name="AccessCode">Code d'accès à définir (obligatoire au premier import d'un formulaire en mode pin).</param>
 /// <param name="ConfirmPublic">Confirmation explicite du passage d'un formulaire protégé en accès public.</param>
+/// <param name="FromDraft">Publication d'un brouillon, signalée dans le journal (<c>v{n};draft</c>).</param>
 public sealed record FormImportRequest(
     string DefinitionJson,
     string? PdfTemplateHtml = null,
     string? AccessCode = null,
     string? AccessCodeConfirmation = null,
-    bool ConfirmPublic = false);
+    bool ConfirmPublic = false,
+    bool FromDraft = false);
 
 public sealed record RetentionChange(int? Before, int? After);
 

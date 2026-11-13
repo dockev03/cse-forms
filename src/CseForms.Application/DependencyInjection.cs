@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<FormAdminService>();
         services.AddScoped<FormLifecycleService>();
         services.AddScoped<FormImportService>();
+        services.AddScoped<FormDraftService>();
         services.AddScoped<Notifications.NotificationRuleService>();
         services.AddScoped<Distribution.DistributionService>();
         services.AddScoped<Settings.SettingsAdminService>();

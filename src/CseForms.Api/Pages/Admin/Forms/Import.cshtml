@@ -62,6 +62,10 @@
         Le fichier de formulaire (JSON) décrit les réglages, la présentation et les champs ; son format est décrit dans <code>docs/format-definition.md</code>.
         Si son <code>slug</code> existe déjà, une nouvelle version est publiée ; sinon le formulaire est créé@(Model.IsAdmin ? "" : " (administrateurs uniquement)").
     </p>
+    <p>
+        Pour vérifier le rendu sur mobile et sur ordinateur avant de le mettre en ligne, choisissez « Enregistrer comme brouillon » :
+        rien n'est publié, l'aperçu s'ouvre et le brouillon se publie ensuite depuis l'aperçu. Le code d'accès est alors demandé à la publication.
+    </p>
     <form method="post" enctype="multipart/form-data">
         <div class="field">
             <label for="definition">Fichier de formulaire (JSON)</label>
@@ -94,6 +98,9 @@
             </div>
         }
 
-        <button type="submit" class="primary">Importer</button>
+        <div class="actions">
+            <button type="submit" class="primary">Importer et publier</button>
+            <button type="submit" asp-page-handler="Draft" formnovalidate>Enregistrer comme brouillon</button>
+        </div>
     </form>
 </section>

@@ -12,6 +12,16 @@ internal static class SecurityHeaders
 
     public const string ApiContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'";
 
+    /// <summary>Page d'aperçu d'un brouillon : seule page autorisée à afficher un cadre, du même site uniquement.</summary>
+    public const string PreviewHostContentSecurityPolicy =
+        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; " +
+        "form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
+
+    /// <summary>Cadre de l'aperçu : ne peut être affiché que dans une page du même site.</summary>
+    public const string PreviewFrameContentSecurityPolicy =
+        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
+        "form-action 'none'; base-uri 'none'; frame-ancestors 'self'";
+
     public static IApplicationBuilder UseApiSecurityHeaders(this IApplicationBuilder app) =>
         app.Use(async (context, next) =>
         {

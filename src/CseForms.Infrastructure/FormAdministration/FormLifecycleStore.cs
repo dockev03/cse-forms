@@ -19,5 +19,8 @@ internal sealed class FormLifecycleStore(CseFormsDbContext db) : IFormLifecycleS
             s => db.FormVersions.Any(v => v.Id == s.FormVersionId && v.FormId == formId),
             cancellationToken);
 
+    public Task<DateTimeOffset?> GetDraftSavedAtAsync(Guid formId, CancellationToken cancellationToken) =>
+        db.FormDrafts.Where(d => d.FormId == formId).Select(d => (DateTimeOffset?)d.SavedAt).SingleOrDefaultAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) => db.SaveChangesAsync(cancellationToken);
 }

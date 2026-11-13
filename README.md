@@ -77,7 +77,7 @@ En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôl
 
 Les sites, les coordonnées et le bureau du CSE, le logo, l'apparence du formulaire public (couleur, image de fond), l'adresse publique et l'adresse d'alerte se règlent dans le back-office, écran « Paramètres » (`/admin/parametres`, rôle `admin`, [détail](docs/back-office.md#paramètres)). Les commandes `sites` et `settings` ci-dessous restent disponibles, notamment pour l'installation et le SMTP.
 
-En attendant l'éditeur visuel (lot 5), un formulaire se publie depuis son fichier JSON ([format](docs/format-definition.md#fichier-de-formulaire)) : dans le back-office, écran « Importer un formulaire » (`/admin/formulaires/import`, [détail](docs/back-office.md#import-dun-formulaire)), ou en ligne de commande ci-dessous. Les chemins de fichier sont à donner en absolu.
+En attendant l'éditeur visuel (lot 5), un formulaire se publie depuis son fichier JSON ([format](docs/format-definition.md#fichier-de-formulaire)) : dans le back-office, écran « Importer un formulaire » (`/admin/formulaires/import`, [détail](docs/back-office.md#import-dun-formulaire)), ou en ligne de commande ci-dessous. Depuis le back-office, le fichier peut d'abord être enregistré comme brouillon pour vérifier son rendu sur mobile et sur ordinateur avant de le publier ([aperçu](docs/back-office.md#brouillon-et-aperçu-avant-publication)). Les chemins de fichier sont à donner en absolu.
 
 ```bash
 for s in Abrest Aulnat Taverny Riom Brive Varennes Nizerolles Soyons; do
