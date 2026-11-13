@@ -46,6 +46,12 @@ public sealed class LoginModel(SignInManager<AppUser> signInManager, UserManager
             return LocalRedirect(SafeReturnUrl());
         }
 
+        // Mot de passe correct, double authentification active : le code est demandé sur la page suivante.
+        if (result.RequiresTwoFactor)
+        {
+            return RedirectToPage("/Admin/LoginCode", new { returnUrl = SafeReturnUrl() });
+        }
+
         if (result.IsLockedOut)
         {
             await audit.RecordAsync(AuditActions.LoginLockedOut, user.Id, null, cancellationToken);
@@ -59,6 +65,8 @@ public sealed class LoginModel(SignInManager<AppUser> signInManager, UserManager
     }
 
     /// <summary>Seule une adresse du back-office est acceptée : pas de redirection ouverte.</summary>
-    private string SafeReturnUrl() =>
-        ReturnUrl is { } url && Url.IsLocalUrl(url) && url.StartsWith("/admin", StringComparison.Ordinal) ? url : "/admin";
+    private string SafeReturnUrl() => SafeReturnUrl(Url, ReturnUrl);
+
+    internal static string SafeReturnUrl(IUrlHelper url, string? returnUrl) =>
+        returnUrl is { } value && url.IsLocalUrl(value) && value.StartsWith("/admin", StringComparison.Ordinal) ? value : "/admin";
 }

@@ -8,7 +8,7 @@ namespace CseForms.Api.Cli;
 
 /// <summary>
 /// Gestion des comptes en ligne de commande, en attendant l'écran d'administration :
-/// <c>users create|grant|revoke|list</c>. Aucun compte n'est créé par défaut et aucun mot de passe
+/// <c>users create|grant|revoke|reset-2fa|list</c>. Aucun compte n'est créé par défaut et aucun mot de passe
 /// ne transite en argument : il est saisi au terminal (ou lu sur l'entrée standard).
 /// </summary>
 internal static class UserCommands
@@ -18,6 +18,7 @@ internal static class UserCommands
           users create --email <email> --name <nom affiché> --role <admin|editor|reader>
           users grant  --email <email> --form <slug>
           users revoke --email <email> --form <slug>
+          users reset-2fa --email <email>
           users list
         Le mot de passe (12 caractères minimum) est demandé au terminal, ou lu sur l'entrée standard.
         """;
@@ -35,6 +36,7 @@ internal static class UserCommands
                 "create" => await CreateAsync(provider, options, input, output, interactive),
                 "grant" => await GrantAsync(provider, options, output, grant: true),
                 "revoke" => await GrantAsync(provider, options, output, grant: false),
+                "reset-2fa" => await ResetTwoFactorAsync(provider, options, output),
                 "list" => await ListAsync(provider, output),
                 _ => CliSupport.Fail(output, Usage),
             };
@@ -124,6 +126,24 @@ internal static class UserCommands
         return 0;
     }
 
+    /// <summary>
+    /// Téléphone perdu sans code de secours : désactive la double authentification et change la clé.
+    /// L'élu se reconnecte avec son seul mot de passe puis la réactive ; ses appareils de confiance sont oubliés.
+    /// </summary>
+    private static async Task<int> ResetTwoFactorAsync(IServiceProvider provider, Dictionary<string, string> options, TextWriter output)
+    {
+        var email = CliSupport.Required(options, Usage, "email").Trim();
+        var users = provider.GetRequiredService<UserManager<AppUser>>();
+        var user = await users.FindByEmailAsync(email) ?? throw new KeyNotFoundException("Compte introuvable.");
+
+        await users.SetTwoFactorEnabledAsync(user, false);
+        await users.ResetAuthenticatorKeyAsync(user);
+        await provider.GetRequiredService<IAuditLog>()
+            .RecordAsync(AuditActions.TwoFactorReset, null, $"user:{user.Id}", CancellationToken.None);
+        await output.WriteLineAsync($"Double authentification réinitialisée pour {email} : connexion par mot de passe seul jusqu'à sa réactivation.");
+        return 0;
+    }
+
     private static async Task<int> ListAsync(IServiceProvider provider, TextWriter output)
     {
         var db = provider.GetRequiredService<CseFormsDbContext>();
@@ -137,7 +157,8 @@ internal static class UserCommands
                 .Join(db.Forms, a => a.FormId, f => f.Id, (_, f) => f.Slug)
                 .OrderBy(s => s)
                 .ToListAsync();
-            await output.WriteLineAsync($"{user.Email} | {user.DisplayName} | {string.Join(", ", roles)} | {string.Join(", ", forms)}");
+            var twoFactor = user.TwoFactorEnabled ? "2FA" : "sans 2FA";
+            await output.WriteLineAsync($"{user.Email} | {user.DisplayName} | {string.Join(", ", roles)} | {twoFactor} | {string.Join(", ", forms)}");
         }
 
         return 0;

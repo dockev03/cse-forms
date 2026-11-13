@@ -17,6 +17,12 @@ public static class AuditActions
     public const string LoginSucceeded = "login.success";
     public const string LoginFailed = "login.failure";
     public const string LoginLockedOut = "login.lockout";
+    public const string LoginTwoFactorFailed = "login.2fa.failure";
+    public const string LoginRecoveryCodeUsed = "login.2fa.recovery_code";
+    public const string TwoFactorEnabled = "2fa.enable";
+    public const string TwoFactorDisabled = "2fa.disable";
+    public const string TwoFactorRecoveryCodesRenewed = "2fa.recovery_codes";
+    public const string TwoFactorReset = "2fa.reset";
     public const string Logout = "logout";
     public const string SubmissionViewed = "submission.view";
     public const string AccessDenied = "access.denied";

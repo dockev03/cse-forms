@@ -1,0 +1,82 @@
+@page "/admin/securite"
+@model CseForms.Api.Pages.Admin.SecurityModel
+@{
+    ViewData["Title"] = "Sécurité du compte";
+}
+
+<h1>Sécurité du compte</h1>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="summary" role="alert">
+        <p>@Model.ErrorMessage</p>
+    </div>
+}
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status">
+        <p>@Model.Message</p>
+    </div>
+}
+
+@if (Model.NewRecoveryCodes.Count > 0)
+{
+    <section class="card">
+        <h2>Codes de secours</h2>
+        <p>Ils remplacent le code de l'application si vous n'avez plus votre téléphone. Chacun ne sert qu'une fois.
+            <strong>Ils ne seront plus affichés</strong> : notez-les et conservez-les à l'abri.</p>
+        <ol class="codes">
+            @foreach (var code in Model.NewRecoveryCodes)
+            {
+                <li>@code</li>
+            }
+        </ol>
+    </section>
+}
+
+<section class="card">
+    <h2>Double authentification</h2>
+    @if (Model.Enabled)
+    {
+        <p>Activée : un code de votre application est demandé à chaque connexion, sauf sur les appareils de confiance.</p>
+        <p>Codes de secours restants : @Model.RecoveryCodesLeft.</p>
+
+        <h3>Nouveaux codes de secours</h3>
+        <form method="post" asp-page-handler="RecoveryCodes" class="inline-form">
+            <div class="field">
+                <label for="code-secours">Code de l'application</label>
+                <input id="code-secours" name="Code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+            </div>
+            <button type="submit">Créer de nouveaux codes</button>
+        </form>
+
+        <h3>Désactiver</h3>
+        <form method="post" asp-page-handler="Disable" class="inline-form">
+            <div class="field">
+                <label for="code-desactiver">Code de l'application</label>
+                <input id="code-desactiver" name="Code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+            </div>
+            <button type="submit" class="danger">Désactiver la double authentification</button>
+        </form>
+    }
+    else
+    {
+        <p>Facultative et recommandée : en plus du mot de passe, un code à 6 chiffres donné par une application
+            d'authentification (Microsoft Authenticator, Google Authenticator, FreeOTP...) est demandé à la connexion.</p>
+        <ol>
+            <li>Dans l'application, ajoutez un compte en scannant ce QR code :
+                <img class="qr" src="@Model.QrCodeDataUri" alt="QR code de configuration de l'application d'authentification">
+                ou en saisissant cette clé : <span class="key">@Model.FormattedKey</span>
+            </li>
+            <li>Saisissez le code à 6 chiffres affiché par l'application pour confirmer.</li>
+        </ol>
+        <form method="post" asp-page-handler="Enable" class="inline-form">
+            <div class="field">
+                <label for="code-activer">Code de l'application</label>
+                <input id="code-activer" name="Code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+            </div>
+            <button type="submit" class="primary">Activer</button>
+        </form>
+    }
+</section>

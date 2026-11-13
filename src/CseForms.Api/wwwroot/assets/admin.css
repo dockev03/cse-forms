@@ -120,3 +120,13 @@ button.danger { background: var(--error); border-color: var(--error); color: #ff
 .history li:last-child { border-bottom: 0; }
 .history time { font-weight: 600; margin-right: 0.5rem; }
 .history .actor { color: var(--muted); }
+
+/* Double authentification */
+.help { margin: 0 0 0.35rem; color: var(--muted); font-size: 0.95rem; }
+.field.checkbox { display: flex; gap: 0.5rem; align-items: center; }
+.field.checkbox input { width: auto; min-height: 0; }
+.field.checkbox label { margin: 0; font-weight: 400; }
+.qr { width: 12rem; height: 12rem; display: block; margin: 0.5rem 0; }
+.key, .codes { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.key { font-size: 1.1rem; letter-spacing: 0.05em; overflow-wrap: anywhere; }
+.codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.25rem 1rem; padding-left: 1.5rem; }

@@ -14,7 +14,7 @@ Les droits sont vérifiés côté serveur à chaque requête. Un compte sans dro
 ## Sécurité
 
 - Mot de passe de 12 caractères minimum, sans règle de composition imposée.
-- Compte bloqué 15 minutes après 5 échecs ; limitation de débit par IP sur la connexion.
+- Compte bloqué 15 minutes après 5 échecs (mot de passe ou code de double authentification) ; limitation de débit par IP sur la connexion.
 - Message d'échec identique, que le compte existe ou non.
 - Cookie de session `__Host-cse-session` : `Secure`, `HttpOnly`, `SameSite=Strict`, non persistant, expiré après 30 minutes d'inactivité.
 - HTTPS uniquement : une requête HTTP vers `/admin` reçoit un 400 explicite, sans redirection (elle bouclerait derrière un proxy non déclaré dans `ReverseProxy__KnownNetworks`).
@@ -25,9 +25,21 @@ Les droits sont vérifiés côté serveur à chaque requête. Un compte sans dro
 
 Avec `SameSite=Strict`, un lien ouvert depuis un webmail arrive sans cookie : l'élu passe par l'écran de connexion, puis revient sur la page demandée.
 
+## Double authentification
+
+Facultative, activée par chaque élu pour son compte depuis « Sécurité du compte » (`/admin/securite`), avec une application d'authentification (TOTP : Microsoft Authenticator, Google Authenticator, FreeOTP...).
+
+- **Activation** : scanner le QR code (ou saisir la clé), puis confirmer avec un code de l'application. 10 codes de secours sont alors affichés une seule fois ; chacun sert une fois, à la place du code de l'application.
+- **Connexion** : après le mot de passe, la page `/admin/connexion/code` demande le code de l'application ou un code de secours (tiret et majuscules facultatifs). Le lien d'une notification reste suivi après les deux étapes.
+- **Appareil de confiance** : case à cocher à la saisie du code ; plus de code demandé sur ce navigateur pendant 30 jours (cookie `__Host-cse-device`). Pas avec un code de secours.
+- **Nouveaux codes de secours, désactivation** : depuis la même page, sur saisie d'un code valide de l'application. La désactivation change la clé et oublie les appareils de confiance.
+- **Téléphone perdu sans code de secours** : un administrateur lance `users reset-2fa --email <email>` ; l'élu se reconnecte avec son mot de passe seul puis réactive la double authentification. `users list` indique qui l'a activée.
+- La clé et les codes de secours sont gérés par ASP.NET Identity et stockés en base (table des jetons d'Identity) : ils ne protègent un compte que tant que la base elle-même n'est pas compromise.
+
 ## Écrans
 
 - `/admin` : formulaires accessibles et nombre de réponses.
+- `/admin/securite` : double authentification du compte connecté.
 - `/admin/formulaires/{id}/reponses` : liste paginée (25 par page) ; recherche par numéro de dossier, filtres statut, site et période, tri par date. Seuls le numéro, la date, le site et le statut sont affichés.
 - `/admin/reponses/{id}` : fiche avec les libellés de la version remplie, dates au format JJ/MM/AAAA, groupes répétables en tableau. Lien profond utilisable dans les notifications. Le bloc PDF indique si le PDF est disponible, en cours de génération ou en échec.
 - `/admin/reponses/{id}/pdf` : téléchargement du PDF déchiffré, après contrôle des droits, jamais mis en cache.
@@ -115,6 +127,9 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | Action | Cible |
 | --- | --- |
 | `login.success`, `login.failure`, `login.lockout`, `logout` | aucune |
+| `login.2fa.failure` (code faux), `login.2fa.recovery_code` (connexion par code de secours) | aucune |
+| `2fa.enable`, `2fa.disable`, `2fa.recovery_codes` | aucune |
+| `2fa.reset` (`users reset-2fa`) | `user:{id}`, sans compte |
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` |
 | `submission.pdf.regenerate` | `submission:{id}` |
