@@ -1,0 +1,104 @@
+@page "/admin/formulaires/{formId:guid}/apercu"
+@model CseForms.Api.Pages.Admin.Forms.PreviewModel
+@using CseForms.Application.FormAdministration
+@{
+    var draft = Model.Draft;
+    ViewData["Title"] = draft is null ? "Aperçu" : $"Aperçu : {draft.Title}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@Model.FormId/reglages">Réglages</a></p>
+<h1>@ViewData["Title"]</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        <p>@(draft?.DefinitionJson is null ? "Ce brouillon ne passe plus les contrôles : il ne peut être ni affiché ni publié." : "Publication refusée :")</p>
+        <ul>
+            @foreach (var error in Model.Errors)
+            {
+                <li><code>@error.Path</code> : @error.Message</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status"><p>@Model.Message</p></div>
+}
+
+@if (draft is null)
+{
+    <section class="card">
+        <p>Ce formulaire n'a pas de brouillon. Pour en créer un, <a href="/admin/formulaires/import">importez son fichier de formulaire</a> et choisissez « Enregistrer comme brouillon ».</p>
+    </section>
+    return;
+}
+
+<section class="card" aria-labelledby="brouillon">
+    <h2 id="brouillon">Brouillon</h2>
+    <dl class="meta">
+        <div><dt>Adresse publique</dt><dd>/f/@draft.Slug</dd></div>
+        <div><dt>Enregistré le</dt><dd>@Display.DateTime(draft.SavedAt)</dd></div>
+        <div><dt>Version en ligne</dt><dd>@(draft.PublishedVersion is { } v ? $"Version {v}" : "Aucune : jamais publié")</dd></div>
+    </dl>
+    <p>Le brouillon n'est visible que dans le back-office : le lien public et les QR codes continuent d'afficher la version en ligne.</p>
+</section>
+
+@if (draft.DefinitionJson is not null)
+{
+    <section class="card" aria-labelledby="rendu">
+        <h2 id="rendu">Rendu</h2>
+        <p>
+            Le formulaire s'affiche comme sur le lien public, avec les contrôles de saisie. L'envoi est désactivé : rien n'est enregistré,
+            aucun email n'est envoyé@(draft.RequiresAccessCode ? ", et tout code d'accès est accepté" : string.Empty).
+        </p>
+        <nav aria-label="Largeur de l'aperçu" class="preview-switch">
+            <a href="@Model.ViewUrl(PreviewModel.MobileView)" aria-current="@(Model.IsDesktop ? null : "page")">Mobile</a>
+            <a href="@Model.ViewUrl(PreviewModel.DesktopView)" aria-current="@(Model.IsDesktop ? "page" : null)">Ordinateur</a>
+        </nav>
+        <div class="preview-stage">
+            <iframe class="preview-frame @(Model.IsDesktop ? "desktop" : "mobile")"
+                    src="/admin/formulaires/@Model.FormId/apercu/cadre"
+                    title="Aperçu du formulaire, largeur @(Model.IsDesktop ? "ordinateur" : "mobile")"
+                    referrerpolicy="no-referrer"></iframe>
+        </div>
+    </section>
+
+    <section class="card" aria-labelledby="publier">
+        <h2 id="publier">Publier</h2>
+        <p>
+            Publier crée la version @((draft.PublishedVersion ?? 0) + 1) et la met en ligne à la place de la version actuelle, avec les mêmes contrôles qu'un import.
+            Les réponses déjà reçues restent rattachées à leur version. Un formulaire fermé reste fermé.
+        </p>
+        <form method="post" asp-page-handler="Publish" asp-route-formId="@Model.FormId">
+            @if (draft.NeedsAccessCode)
+            {
+                <fieldset class="field narrow">
+                    <legend>Code d'accès</legend>
+                    <p class="help" id="code-aide">Ce formulaire est protégé et n'a pas encore de code : @FormAdminService.AccessCodeRule, saisis deux fois.</p>
+                    <label for="code">Code d'accès</label>
+                    <input id="code" name="code" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" required aria-describedby="code-aide">
+                    <label for="confirmation">Confirmer le code d'accès</label>
+                    <input id="confirmation" name="confirmation" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" required>
+                </fieldset>
+            }
+            @if (draft.MakesPublic)
+            {
+                <div class="field checkbox">
+                    <input id="confirmPublic" name="confirmPublic" type="checkbox" value="true" required>
+                    <label for="confirmPublic">Je confirme que ce formulaire devient public : son code d'accès sera supprimé et n'importe qui ayant le lien pourra répondre.</label>
+                </div>
+            }
+            <button type="submit" class="primary">Publier ce brouillon</button>
+        </form>
+    </section>
+}
+
+<section class="card" aria-labelledby="supprimer">
+    <h2 id="supprimer">Supprimer le brouillon</h2>
+    <p>Supprime définitivement ce brouillon. La version en ligne et les réponses reçues ne changent pas.</p>
+    <form method="post" asp-page-handler="Delete" asp-route-formId="@Model.FormId">
+        <button type="submit" class="danger">Supprimer le brouillon</button>
+    </form>
+</section>

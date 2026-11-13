@@ -569,6 +569,9 @@ export class FormView {
     }
 
     switch (body?.code) {
+      case 'preview':
+        this.showPreviewDone();
+        return;
       case 'invalid':
         this.showErrors(body.errors ?? [], { focus: true });
         return;
@@ -584,6 +587,20 @@ export class FormView {
       default:
         this.showGlobalError(body?.message ?? 'Une erreur est survenue. Réessayez plus tard.');
     }
+  }
+
+  /** Aperçu du brouillon : la saisie est valide, mais rien n'a été envoyé. */
+  showPreviewDone() {
+    const heading = el('h1', { tabindex: '-1', text: 'Aperçu : la saisie est valide' });
+    const restart = el('button', { type: 'button', class: 'primary', text: 'Recommencer la saisie' });
+    restart.addEventListener('click', () => window.location.reload());
+    this.root.replaceChildren(
+      heading,
+      el('div', { class: 'card confirmation', role: 'status' },
+        el('p', { text: 'Rien n\'a été envoyé ni enregistré. Sur le formulaire publié, le répondant verrait ici son numéro de dossier.' }),
+        this.ui.confirmationText ? el('p', { class: 'info', text: this.ui.confirmationText }) : null),
+      el('div', { class: 'actions' }, restart));
+    heading.focus();
   }
 
   showConfirmation(caseNumber) {

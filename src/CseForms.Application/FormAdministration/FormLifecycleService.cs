@@ -28,6 +28,7 @@ public sealed class FormLifecycleService(
         }
 
         var responseCount = await store.CountResponsesAsync(formId, cancellationToken);
+        var draftSavedAt = await store.GetDraftSavedAtAsync(formId, cancellationToken);
         return new(LifecycleStatus.Ok, new FormLifecyclePage(
             form!.Id,
             form.Slug,
@@ -40,7 +41,8 @@ public sealed class FormLifecycleService(
             responseCount,
             form.AccessCodeHash is not null,
             Availability(form, timeProvider.GetUtcNow(), responseCount),
-            form.PdfWatermark));
+            form.PdfWatermark,
+            draftSavedAt));
     }
 
     public Task<LifecycleResult> CloseAsync(CurrentUser user, Guid formId, CancellationToken cancellationToken) =>
@@ -241,6 +243,9 @@ public interface IFormLifecycleStore
 
     Task<int> CountResponsesAsync(Guid formId, CancellationToken cancellationToken);
 
+    /// <summary>Date d'enregistrement du brouillon ; null si le formulaire n'en a pas.</summary>
+    Task<DateTimeOffset?> GetDraftSavedAtAsync(Guid formId, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
 
@@ -285,4 +290,5 @@ public sealed record FormLifecyclePage(
     int ResponseCount,
     bool RequiresAccessCode,
     FormAvailability Availability,
-    bool PdfWatermark = false);
+    bool PdfWatermark = false,
+    DateTimeOffset? DraftSavedAt = null);

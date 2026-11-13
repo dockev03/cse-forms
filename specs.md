@@ -103,6 +103,7 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
 - URL publique courte par formulaire (ex. `/f/inscription`).
 - Génération du QR code (PNG et SVG haute définition) et d'un flyer PDF à imprimer : titre, QR code, URL lisible, code d'accès, contact CSE.
 - Statuts : brouillon, publié, fermé ; dates d'ouverture et de fermeture ; nombre maximal de réponses.
+- Aperçu avant publication (V1.1) : un fichier de formulaire peut être enregistré comme brouillon (un seul par formulaire, remplacé à chaque enregistrement), affiché dans le back-office en largeur mobile et ordinateur avec le moteur du formulaire public et l'envoi désactivé, puis publié (mêmes contrôles qu'un import) ou supprimé. Le brouillon n'est jamais servi au public ; réservé aux rôles admin et editor ayant le droit sur le formulaire.
 - Contrôle d'accès au choix : public, code d'accès (PIN, 4 à 12 chiffres, stocké haché), lien à usage unique (V2). Un formulaire en mode code d'accès n'est jamais publié sans code.
 - Quotas par critère avec liste d'attente (V2).
 - Personnalisation : logo CSE, couleur principale, image de fond, texte de confirmation.
@@ -313,6 +314,7 @@ La réponse est enregistrée d'abord ; le PDF et les emails partent en tâche de
 | --- | --- | --- |
 | `form` | id, slug, titre, statut, version_courante, ouverture, fermeture, code_acces_hash, max_reponses, conservation_jours, prefixe_dossier | Formulaire |
 | `form_version` | id, form_id, numero, schema_json, ui_json, pdf_template_html, created_at, created_by | Définition figée à chaque publication |
+| `form_draft` | form_id, fichier de formulaire, modele_pdf, saved_at, saved_by | Brouillon non publié, pour l'aperçu ; un par formulaire |
 | `notification_rule` | id, form_id, destinataires, champ_email_accuse, objet, corps, lien_reponse | Envois par formulaire |
 | `submission` | id, numero_dossier, form_version_id, data_jsonb, statut, created_at, purge_at | Réponse |
 | `submission_file` | id, submission_id, type (pdf, upload), chemin, sha256 | PDF généré et pièces |

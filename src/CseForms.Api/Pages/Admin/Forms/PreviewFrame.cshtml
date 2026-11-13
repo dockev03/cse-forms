@@ -1,0 +1,31 @@
+@page "/admin/formulaires/{formId:guid}/apercu/cadre"
+@model CseForms.Api.Pages.Admin.Forms.PreviewFrameModel
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Aperçu du formulaire</title>
+  <link rel="stylesheet" href="/assets/form.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script type="module" src="/assets/js/preview.mjs"></script>
+</head>
+<body>
+  <div class="page">
+    <p class="preview-banner" role="note">Aperçu du brouillon : l'envoi est désactivé, rien n'est enregistré.</p>
+    <header class="brand" hidden></header>
+    <main id="app">
+      <p class="status">Chargement de l'aperçu…</p>
+    </main>
+    <footer class="legal" hidden></footer>
+  </div>
+  <noscript>
+    <p class="page">L'aperçu nécessite JavaScript, comme le formulaire public.</p>
+  </noscript>
+</body>
+</html>

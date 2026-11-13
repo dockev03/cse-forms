@@ -281,6 +281,9 @@ public class FormLifecycleTests
 
         public Task<int> CountResponsesAsync(Guid formId, CancellationToken cancellationToken) => Task.FromResult(ResponseCount);
 
+        public Task<DateTimeOffset?> GetDraftSavedAtAsync(Guid formId, CancellationToken cancellationToken) =>
+            Task.FromResult<DateTimeOffset?>(null);
+
         public Task SaveChangesAsync(CancellationToken cancellationToken)
         {
             Saves++;
