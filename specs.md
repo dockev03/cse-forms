@@ -226,7 +226,7 @@ Le formulaire collecte des données personnelles sur le salarié, son conjoint e
 
 ### 5.1 Exigences RGPD
 
-- **Notice d'information** sur le formulaire : responsable (CSE NSE), finalité (gestion des activités sociales et culturelles), destinataires (membres habilités du CSE), durée de conservation, droits et contact.
+- **Notice d'information** sur le formulaire : responsable (CSE NSE), finalité (gestion des activités sociales et culturelles), destinataires (membres habilités du CSE), durée de conservation, droits et contact. Mention courte dans le formulaire ; notice complète en paramètre (`rgpd.notice`, commune à tous les formulaires, modifiable dans le back-office), publiée sur `/donnees-personnelles` et liée en bas de chaque formulaire public.
 - **Minimisation** : chaque champ doit servir une prestation. À justifier : civilité, sexe des enfants, données du conjoint.
 - **Durée de conservation** paramétrée par formulaire, comptée à partir du traitement de la réponse (premier passage à un statut autre que « Nouvelle ») ; une réponse jamais traitée n'est pas purgée, et revenir à « Nouvelle » annule la suppression prévue. Pour l'inscription : suppression de la réponse et du PDF 180 jours après son traitement (décision du 13/11/2026, à faire valider par le CSE, voir 5.4).
 - **Registre des traitements** du CSE à compléter.

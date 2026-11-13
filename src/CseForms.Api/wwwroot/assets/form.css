@@ -153,3 +153,15 @@ button:disabled { opacity: 0.6; cursor: wait; }
   .page { padding: 2rem 1rem; }
   h1 { font-size: 1.85rem; }
 }
+
+/* Lien vers la notice RGPD et page de la notice (/donnees-personnelles). */
+.legal { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d0d4da; font-size: 0.95rem; }
+.legal a, .privacy-notice a { color: var(--primary-dark); }
+.privacy-notice h2 { margin-top: 1.5rem; }
+.privacy-notice h2:first-child { margin-top: 0; }
+.privacy-notice h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; }
+.privacy-notice hr { border: 0; border-top: 1px solid #d0d4da; margin: 1.5rem 0; }
+.privacy-notice .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+.privacy-notice table { border-collapse: collapse; width: 100%; }
+.privacy-notice th, .privacy-notice td { border: 1px solid #d0d4da; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
+.privacy-notice th { background: var(--bg); }

@@ -9,86 +9,12 @@ Les passages `[À COMPLÉTER : …]` dépendent d'une décision ou d'une informa
 
 ## Texte de la notice complète
 
-> Cette partie est destinée au salarié. Elle est rédigée pour être publiée telle quelle (page liée depuis le formulaire, voir § « Points ouverts »).
+Le texte destiné au salarié est dans [`notice-publique.md`](notice-publique.md), seule version à maintenir. Il est rédigé dans le Markdown restreint accepté par l'outil (un test vérifie sa syntaxe) et se publie tel quel :
 
-### Qui traite vos données ?
+- back-office, écran « Paramètres », carte « Notice sur les données personnelles » : coller le texte, une fois les `[À COMPLÉTER]` levés, puis enregistrer ;
+- ou en ligne de commande : `docker compose exec -T api dotnet CseForms.Api.dll settings set --key rgpd.notice < notice-publique.md`.
 
-Le **Comité social et économique (CSE) NSE**, [À COMPLÉTER : adresse postale du CSE], est responsable du traitement.
-
-Contact pour toute question sur vos données : [À COMPLÉTER : adresse email dédiée du CSE, par ex. une boîte « rgpd » ou la boîte du secrétariat], ou par courrier à l'adresse ci-dessus.
-
-Le CSE n'a pas désigné de délégué à la protection des données ; [À COMPLÉTER : nom ou fonction du référent RGPD désigné par le CSE, par ex. « le secrétaire du CSE »] est votre interlocuteur.
-
-### Pourquoi ces données ?
-
-Pour vous inscrire auprès du CSE et vous donner accès aux **activités sociales et culturelles** (ASC) : prestations, billetterie, chèques, arbre de Noël, etc.
-
-Concrètement, votre fiche permet au CSE :
-
-- de vérifier que vous faites partie des bénéficiaires (contrat, date d'embauche, date de fin le cas échéant, lieu de travail) ;
-- d'enregistrer votre foyer pour les prestations qui en dépendent (conjoint, enfants) ;
-- de créer votre accès au site du CSE et de vous envoyer un accusé de réception (email personnel).
-
-Vos données ne servent à rien d'autre. Elles ne font l'objet d'aucune décision automatisée ni d'aucun profilage.
-
-### Sur quelle base ?
-
-[À VALIDER : base légale retenue par le CSE, voir le registre.] Proposition : le traitement est nécessaire à la fourniture des prestations ASC que vous demandez au CSE (article 6.1.b du RGPD).
-
-Les champs marqués comme obligatoires sont nécessaires à votre inscription : sans eux, le CSE ne peut pas l'enregistrer. Les sections « Conjoint » et « Enfants » sont facultatives ; sans elles, vous n'aurez pas accès aux prestations qui dépendent de la composition du foyer.
-
-### Quelles données ?
-
-| Catégorie | Données |
-| --- | --- |
-| Identité | Civilité, nom, prénom |
-| Situation professionnelle | Type de contrat, date d'embauche, date de fin de contrat (hors CDI), lieu de travail |
-| Coordonnées | Adresse postale, email personnel |
-| Conjoint (facultatif) | Nom, prénom |
-| Enfants (facultatif) | Nom, prénom, date de naissance, sexe |
-| Validation | Accusé de lecture de la présente notice, attestation d'exactitude, date et heure d'envoi, numéro de dossier |
-
-Si vous renseignez les données de votre conjoint ou de vos enfants, merci de les informer de cette transmission et de la présente notice.
-
-Votre adresse IP est utilisée quelques minutes, uniquement pour protéger le formulaire contre les envois automatisés. Elle n'est jamais enregistrée avec votre fiche.
-
-Le formulaire ne dépose aucun cookie de suivi et ne charge aucun service extérieur (pas de mesure d'audience, pas de publicité).
-
-### Qui peut les consulter ?
-
-- Les **seuls membres du CSE habilités** par le CSE à traiter les inscriptions ([À COMPLÉTER : fonctions concernées, par ex. « le secrétaire, le trésorier et leurs adjoints »]). Chaque consultation et chaque téléchargement sont enregistrés.
-- Les prestataires techniques du CSE, qui agissent sur ses instructions et sont tenus à la confidentialité :
-  - l'hébergeur de l'outil de formulaires, [À COMPLÉTER : nom], en [À COMPLÉTER : France / pays de l'Union européenne] ;
-  - l'éditeur du logiciel de gestion du CSE, dans lequel votre inscription est ensuite saisie, [À COMPLÉTER : nom].
-
-**Votre employeur n'a pas accès à ces données.** Le service RH remet le flyer d'inscription mais ne reçoit aucune réponse. Aucune donnée n'est vendue ni transmise à des partenaires commerciaux.
-
-Vos données restent en France ou dans l'Union européenne.
-
-### Combien de temps ?
-
-- **Fiche en ligne et son PDF** : supprimés automatiquement **180 jours** après leur traitement par le CSE (saisie dans le logiciel du CSE). Une fiche pas encore traitée est conservée jusqu'à son traitement.
-- **Sauvegardes** : une fiche supprimée disparaît des sauvegardes au plus tard [À COMPLÉTER : 30 jours, durée de rotation des sauvegardes à valider] après sa suppression.
-- **Données saisies dans le logiciel du CSE** : [À COMPLÉTER : durée fixée par le CSE pour ses bénéficiaires, par ex. « tant que vous êtes salarié de l'entreprise, puis [N] mois après votre départ »].
-- **Numéro de dossier** : il est conservé seul, sans aucune donnée vous concernant, dans le journal de sécurité de l'outil, pour prouver qu'une fiche a été reçue puis supprimée.
-
-### Vos droits
-
-Vous pouvez à tout moment demander au CSE :
-
-- l'**accès** à vos données et leur copie ;
-- leur **rectification** : signalez au CSE tout changement d'état civil ou de situation ;
-- leur **effacement** ;
-- la **limitation** du traitement ;
-- la **portabilité** des données que vous avez fournies.
-
-Pour exercer vos droits, écrivez à [À COMPLÉTER : contact ci-dessus] en indiquant si possible votre numéro de dossier. Le CSE peut vous demander de justifier de votre identité en cas de doute. Il vous répond dans un délai d'un mois.
-
-Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la **CNIL** (www.cnil.fr, 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07).
-
-### Sécurité
-
-Accès réservé aux élus habilités par compte nominatif, double authentification proposée, connexion chiffrée (HTTPS), PDF chiffrés sur le serveur, aucune donnée personnelle dans les emails, journal des consultations, suppression automatique.
+La notice apparaît alors sur `/donnees-personnelles`, et chaque formulaire public affiche un lien « Vos données personnelles » en bas de page. Tant que le paramètre est vide, ni la page ni le lien n'existent.
 
 ---
 
@@ -112,4 +38,4 @@ Proposition pour remplacer le texte du champ `rgpdNotice` de [`forms/inscription
 | Durée de conservation dans le logiciel CSE | Plénière | Hors outil, mais doit figurer dans la notice |
 | Rotation des sauvegardes | Bureau | 30 jours proposés dans [mise-en-service § 9](../mise-en-service.md#9-sauvegarde-et-restauration) |
 | Minimisation : civilité, sexe des enfants, conjoint | Plénière | Si un champ est supprimé, retirer la ligne correspondante ci-dessus |
-| Publication de la notice complète | Développement | Le formulaire n'a pas encore de lien vers une notice complète (specs § 4 : « Lien vers la notice complète ») |
+| Publication de la notice complète | Bureau | Page `/donnees-personnelles` disponible : coller le texte de `notice-publique.md` dans les paramètres une fois complété |

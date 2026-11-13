@@ -16,6 +16,19 @@ function showLogo() {
   brand.replaceChildren(logo);
 }
 
+/** Lien vers la notice RGPD complète, ouvert dans un nouvel onglet pour ne pas perdre la saisie. */
+function showPrivacyLink() {
+  const footer = document.querySelector('.legal');
+  if (!footer) return;
+  const link = document.createElement('a');
+  link.href = '/donnees-personnelles';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = 'Vos données personnelles (nouvel onglet)';
+  footer.replaceChildren(link);
+  footer.hidden = false;
+}
+
 function showMessage(title, text) {
   const heading = document.createElement('h1');
   heading.textContent = title;
@@ -63,6 +76,7 @@ async function start() {
   const form = result.body;
   document.title = form.title;
   if (form.logo) showLogo();
+  if (form.privacyNotice) showPrivacyLink();
   if (!form.accepting || !form.definition) {
     showMessage(form.title, 'Ce formulaire n\'accepte pas de réponse pour le moment.');
     return;

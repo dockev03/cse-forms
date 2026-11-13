@@ -6,7 +6,7 @@ namespace CseForms.Api.Pages.Admin;
 
 /// <summary>
 /// Paramètres de l'application : coordonnées et bureau du CSE, adresse publique, adresse d'alerte, logo,
-/// apparence du formulaire public (couleur, image de fond), sites.
+/// apparence du formulaire public (couleur, image de fond), notice RGPD, sites.
 /// Réservé aux administrateurs (404 pour les autres rôles).
 /// </summary>
 [RequestSizeLimit(MaxRequestBytes)]
@@ -32,6 +32,7 @@ public sealed class SettingsModel(SettingsAdminService service) : AdminPageModel
         SettingKeys.CseLogo => "Logo",
         SettingKeys.ThemePrimaryColor => "Couleur principale",
         SettingKeys.ThemeBackground => "Image de fond",
+        SettingKeys.RgpdNotice => "Notice sur les données personnelles",
         _ => "Site",
     };
 
@@ -67,6 +68,7 @@ public sealed class SettingsModel(SettingsAdminService service) : AdminPageModel
 
     public async Task<IActionResult> OnPostSaveAsync(CancellationToken cancellationToken)
     {
+        // Chaque carte n'envoie que ses champs : les autres paramètres ne sont pas touchés.
         var values = SettingsAdminService.EditableKeys
             .Where(k => k != SettingKeys.ThemePrimaryColor && Request.Form.ContainsKey(k))
             .ToDictionary(k => k, k => (string?)Request.Form[k].ToString());

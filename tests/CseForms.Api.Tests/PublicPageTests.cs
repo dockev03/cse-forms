@@ -114,6 +114,50 @@ public class PublicPageTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(again)).StatusCode);
     }
 
+    [Fact]
+    public async Task Privacy_notice_page_and_link_follow_the_setting()
+    {
+        var client = factory.CreateClient();
+        Assert.Contains("<footer class=\"legal\" hidden></footer>", await client.GetStringAsync("/f/inscription"));
+
+        await using (var db = factory.Database.CreateContext())
+        {
+            db.Settings.RemoveRange(db.Settings.Where(s => s.Key == "rgpd.notice"));
+            await db.SaveChangesAsync();
+            await TestData.AddPublishedFormAsync(db, "page-notice");
+        }
+
+        var missing = await client.GetAsync("/donnees-personnelles");
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Contains("Notice indisponible", await missing.Content.ReadAsStringAsync());
+        Assert.False(JsonNode.Parse(await client.GetStringAsync("/api/public/forms/page-notice"))!["privacyNotice"]!.GetValue<bool>());
+
+        await using (var db = factory.Database.CreateContext())
+        {
+            db.Settings.Add(new Setting("rgpd.notice", "## Qui traite vos données ?\nLe CSE fictif. <script>alert(1)</script>\n\n- [CNIL](https://www.cnil.fr)"));
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True(JsonNode.Parse(await client.GetStringAsync("/api/public/forms/page-notice"))!["privacyNotice"]!.GetValue<bool>());
+        var response = await client.GetAsync("/donnees-personnelles");
+        var html = await response.Content.ReadAsStringAsync();
+        var csp = response.Headers.GetValues("Content-Security-Policy").Single();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("no-cache", response.Headers.CacheControl!.ToString());
+        Assert.Contains("<h1>Vos données personnelles</h1>", html, StringComparison.Ordinal);
+        Assert.Contains("<h2>Qui traite vos données ?</h2>", html, StringComparison.Ordinal);
+        Assert.Contains("<a href=\"https://www.cnil.fr\" rel=\"noopener noreferrer\">CNIL</a>", html, StringComparison.Ordinal);
+        Assert.Contains("&lt;script&gt;", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<style", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(" style=", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<link rel=\"stylesheet\" href=\"/theme.css\">", html, StringComparison.Ordinal);
+        Assert.Contains("default-src 'none'", csp, StringComparison.Ordinal);
+        Assert.DoesNotContain("unsafe-inline", csp, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("/form.html")]
     [InlineData("/")]

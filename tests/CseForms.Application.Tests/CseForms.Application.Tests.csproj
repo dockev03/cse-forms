@@ -17,6 +17,7 @@
   <ItemGroup>
     <None Include="..\fixtures\form-engine\*.json" Link="fixtures\form-engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\forms\*.json;..\..\forms\*.html" Link="forms\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\rgpd\notice-publique.md" Link="docs\rgpd\notice-publique.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

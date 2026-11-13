@@ -353,6 +353,12 @@ docker compose exec -T api dotnet CseForms.Api.dll settings set --key cse.addres
 docker compose exec -T api dotnet CseForms.Api.dll settings set --key cse.office < bureau.txt
 ```
 
+Notice complète sur les données personnelles, publiée sur `/donnees-personnelles` et liée en bas de chaque formulaire public (texte de départ : [`docs/rgpd/notice-publique.md`](rgpd/notice-publique.md), à compléter avant l'ouverture). Markdown restreint, 20 000 caractères au plus ; refusée avec le numéro de ligne en cas d'erreur de syntaxe :
+
+```bash
+docker compose exec -T api dotnet CseForms.Api.dll settings set --key rgpd.notice < notice-publique.md
+```
+
 Logo (PNG ou JPEG, 256 Ko au plus, pas de SVG), via un montage en lecture seule :
 
 ```bash
@@ -782,6 +788,7 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 | `smtp.security` | `starttls` (défaut), `ssl`, `none` |
 | `smtp.from` | Adresse d'expédition |
 | `alerts.email` | Destinataire des alertes d'échec |
+| `rgpd.notice` | Notice complète sur les données personnelles (Markdown restreint, page `/donnees-personnelles`) |
 
 `cse settings list` affiche la liste à jour. Aucun secret n'est stocké en base.
 
@@ -838,7 +845,7 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 
 **Paramétrage**
 
-- [ ] `cse.*`, logo, `app.publicBaseUrl`
+- [ ] `cse.*`, logo, `app.publicBaseUrl`, notice `rgpd.notice` complétée (`/donnees-personnelles` s'affiche)
 - [ ] Sites créés
 - [ ] SMTP réglé, `mail test` reçu, `alerts.email` renseigné
 - [ ] Formulaire importé, code d'accès défini

@@ -74,6 +74,35 @@ public partial class BackOfficeTests
     }
 
     [Fact]
+    public async Task Admin_writes_the_privacy_notice_without_touching_other_settings()
+    {
+        var client = await LoggedInAsync("admin");
+        Assert.Contains("name=\"rgpd.notice\"", await client.GetStringAsync(SettingsUrl));
+
+        var refused = await PostSettingsAsync(client, "Save", new() { ["rgpd.notice"] = "## Titre\r\n\r\n[clic](javascript:alert(1))" });
+        Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
+        var refusedPage = await refused.Content.ReadAsStringAsync();
+        Assert.Contains("Ligne 3 : lien refusé", refusedPage);
+        Assert.Contains("Notice sur les données personnelles :", refusedPage);
+
+        var notice = string.Join("\n\n", Enumerable.Repeat("Paragraphe fictif de la notice.", 200));
+        Assert.Equal(HttpStatusCode.Redirect, (await PostSettingsAsync(client, "Save", new() { ["cse.name"] = "CSE avant notice" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await PostSettingsAsync(client, "Save", new() { ["rgpd.notice"] = notice })).StatusCode);
+
+        await using (var db = factory.Database.CreateContext())
+        {
+            var values = await db.Settings.AsNoTracking().ToDictionaryAsync(s => s.Key, s => s.Value);
+            Assert.Equal(notice, values["rgpd.notice"]);
+            Assert.Equal("CSE avant notice", values["cse.name"]);
+        }
+
+        Assert.Contains("Paragraphe fictif de la notice.", await factory.CreateClient().GetStringAsync("/donnees-personnelles"));
+
+        Assert.Equal(HttpStatusCode.Redirect, (await PostSettingsAsync(client, "Save", new() { ["rgpd.notice"] = "" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await factory.CreateClient().GetAsync("/donnees-personnelles")).StatusCode);
+    }
+
+    [Fact]
     public async Task Admin_uploads_and_removes_the_logo_but_not_an_svg()
     {
         var client = await LoggedInAsync("admin");

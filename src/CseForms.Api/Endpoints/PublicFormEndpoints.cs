@@ -39,6 +39,7 @@ internal static class PublicFormEndpoints
             return ApiErrors.NotFound();
         }
 
+        var values = await settings.GetAllAsync(cancellationToken);
         return Results.Ok(new PublicFormResponse(
             view.Slug,
             view.Title,
@@ -49,7 +50,9 @@ internal static class PublicFormEndpoints
             ParseOrNull(view.UiJson),
             view.Sites,
             // La page ne demande /logo que s'il existe : aucune requête en erreur sans logo.
-            CseLogo.IsValid((await settings.GetAllAsync(cancellationToken)).GetValueOrDefault(SettingKeys.CseLogo))));
+            CseLogo.IsValid(values.GetValueOrDefault(SettingKeys.CseLogo)),
+            // Lien vers la notice RGPD complète, seulement si elle est rédigée.
+            values.GetValueOrDefault(SettingKeys.RgpdNotice) is { Length: > 0 }));
     }
 
     private static async Task<IResult> Submit(
@@ -107,7 +110,8 @@ internal static class PublicFormEndpoints
         JsonElement? Definition,
         JsonElement? Ui,
         IReadOnlyList<string> Sites,
-        bool Logo);
+        bool Logo,
+        bool PrivacyNotice);
 
     internal sealed record SubmitRequest(int Version, string? AccessCode, JsonElement Data, ProofOfWorkSolution? Proof);
 
