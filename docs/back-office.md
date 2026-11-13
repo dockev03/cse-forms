@@ -12,7 +12,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
-- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion ou les réglages, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages ou l'import, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
 - **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
@@ -69,6 +69,7 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/reponses/{id}/suppression` : [suppression définitive](#suppression-unitaire), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/diffusion` : [diffusion](#diffusion-qr-code-et-flyer), réservée aux rôles `admin` et `editor` ayant le droit sur le formulaire.
 - `/admin/formulaires/{id}/reglages` : [réglages du formulaire](#réglages-dun-formulaire), réservés aux rôles `admin` et `editor` ayant le droit sur le formulaire.
+- `/admin/formulaires/import` : [import d'un fichier de formulaire](#import-dun-formulaire), rôles `admin` (création et nouvelle version) et `editor` (nouvelle version d'un formulaire attribué).
 
 ## Réglages d'un formulaire
 
@@ -79,6 +80,17 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - **Ouverture, fermeture** : saisies à l'heure de Paris, stockées en UTC ; champ vide, pas de borne. La fermeture doit suivre l'ouverture. Une heure qui n'existe pas (passage à l'heure d'été) est refusée ; une heure ambiguë (passage à l'heure d'hiver) est lue en heure d'hiver.
 - **Nombre maximal de réponses** : entier positif, champ vide pour aucune limite. Un plafond inférieur aux réponses déjà reçues est accepté : le formulaire cesse d'accepter des réponses. Le contrôle à la soumission verrouille la ligne du formulaire : deux soumissions simultanées ne dépassent pas le plafond.
 - **Code d'accès** (formulaires en mode `pin` uniquement) : nouveau code saisi deux fois, 4 à 12 chiffres, stocké haché. Le code actuel n'est jamais affiché ; le code saisi n'est ni journalisé ni réaffiché, même en cas d'erreur. Les flyers déjà imprimés portent l'ancien code. Un formulaire public reste public : le mode d'accès fait partie de la définition.
+
+## Import d'un formulaire
+
+Écran `/admin/formulaires/import`, lié depuis la liste des formulaires et depuis les réglages. Il remplace `forms import` pour l'usage courant, avec les mêmes contrôles ([format](format-definition.md#fichier-de-formulaire)) ; la ligne de commande reste disponible.
+
+- **Fichiers** : le fichier de formulaire (JSON) et, s'il déclare un `pdfTemplate`, le modèle PDF (HTML), 256 Ko au plus chacun, en UTF-8. Ils sont lus en mémoire, jamais écrits sur le disque. Le modèle envoyé est utilisé quel que soit le nom déclaré ; un modèle envoyé sans `pdfTemplate` dans le fichier est refusé.
+- **Création ou nouvelle version** : le `slug` du fichier désigne le formulaire. S'il n'existe pas, le formulaire est créé et publié en version 1, par un administrateur uniquement. S'il existe, une nouvelle version est publiée si la définition, la présentation ou le modèle PDF ont changé ; sinon rien n'est publié. Un éditeur ne publie que pour un formulaire qui lui est attribué ; sinon, il reçoit le même message que le formulaire existe ou non, et le refus est journalisé.
+- **Code d'accès** : à saisir deux fois au premier import d'un formulaire en mode `pin` ; jamais réaffiché ni journalisé. Ensuite, laisser vide conserve le code actuel ; le changer se fait plutôt depuis les réglages.
+- **Passage en accès public** : un fichier en mode `public` pour un formulaire protégé par code supprime ce code. L'import demande alors de cocher une confirmation, puis de renvoyer le fichier ; le passage est journalisé (`form.public`).
+- **Compte rendu** : version publiée, ou aucun changement ; changement de durée de conservation (elle s'applique aux réponses traitées ensuite, les dates de purge déjà fixées ne bougent pas) ; formulaire resté fermé (l'import ne rouvre jamais).
+- La version garde l'auteur de l'import (`user:{id}`, sans email ni nom ; `cli` en ligne de commande).
 
 ## Statuts de traitement
 
@@ -168,7 +180,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` |
 | `submission.pdf.regenerate` | `submission:{id}` |
-| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) |
+| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé (sans cible si le formulaire n'existe pas) |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 | `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
@@ -178,5 +190,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.close`, `form.reopen` | `form:{id}` |
 | `form.schedule` | `form:{id}`, détail : `opens=…;closes=…;max=…` (UTC, `-` sans limite) |
 | `form.access_code` | `form:{id}`, sans le code |
+| `form.import` | `form:{id}`, détail : `create;v1` à la création, `v{n}` pour une nouvelle version ; rien si le fichier n'a pas changé |
+| `form.public` | `form:{id}` : formulaire protégé passé en accès public par import |
 
 Chaque entrée porte l'id du compte (absent pour un identifiant inconnu ou une action automatique), l'horodatage UTC et, au besoin, un détail technique (`detail`). Aucune donnée saisie, aucun email ni nom.

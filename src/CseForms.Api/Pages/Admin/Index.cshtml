@@ -6,6 +6,11 @@
 
 <h1>Formulaires</h1>
 
+@if (Model.CanDistribute)
+{
+    <p><a href="/admin/formulaires/import">Importer un formulaire ou une nouvelle version</a></p>
+}
+
 @if (Model.Forms.Count == 0)
 {
     <p class="card">Aucun formulaire ne vous est attribué. Contactez un administrateur du CSE.</p>

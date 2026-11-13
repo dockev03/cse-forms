@@ -39,6 +39,8 @@ public static class AuditActions
     public const string FormReopened = "form.reopen";
     public const string FormScheduleChanged = "form.schedule";
     public const string FormAccessCodeChanged = "form.access_code";
+    public const string FormImported = "form.import";
+    public const string FormMadePublic = "form.public";
     public const string PasswordChanged = "password.change";
     public const string UserCreated = "user.create";
     public const string UserUpdated = "user.update";

@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<Retention.RetentionService>();
         services.AddScoped<FormAdminService>();
         services.AddScoped<FormLifecycleService>();
+        services.AddScoped<FormImportService>();
         services.AddScoped<Distribution.DistributionService>();
 
         return services;

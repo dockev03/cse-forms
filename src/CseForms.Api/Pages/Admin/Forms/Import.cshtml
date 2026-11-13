@@ -1,0 +1,99 @@
+@page "/admin/formulaires/import"
+@model CseForms.Api.Pages.Admin.Forms.ImportModel
+@using CseForms.Application.FormAdministration
+@{
+    ViewData["Title"] = "Importer un formulaire";
+    var result = Model.Result;
+}
+
+<p><a href="/admin">Formulaires</a></p>
+<h1>Importer un formulaire</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        <p>Import refusé :</p>
+        <ul>
+            @foreach (var error in Model.Errors)
+            {
+                <li><code>@error.Path</code> : @error.Message</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (result is not null)
+{
+    <div class="notice" role="status">
+        @if (result.Created)
+        {
+            <p>Formulaire créé et publié en version @result.Version, à l'adresse /f/@result.Slug.</p>
+        }
+        else if (result.Unchanged)
+        {
+            <p>Aucun changement : la version @result.Version reste en ligne.</p>
+        }
+        else
+        {
+            <p>Version @result.Version publiée. Les réponses déjà reçues restent rattachées à leur version.</p>
+        }
+
+        @if (result.RetentionChange is { } retention)
+        {
+            <p>Durée de conservation : @ImportModel.RetentionLabel(retention.Before) → @ImportModel.RetentionLabel(retention.After). Elle s'applique aux réponses traitées à partir de maintenant ; les dates de purge déjà fixées ne changent pas.</p>
+        }
+
+        @if (result.BecamePublic)
+        {
+            <p>Le formulaire est désormais public : son code d'accès a été supprimé.</p>
+        }
+
+        @if (result.StillClosed)
+        {
+            <p>Le formulaire reste fermé : il se rouvre depuis ses réglages.</p>
+        }
+    </div>
+    <p><a href="/admin/formulaires/@result.FormId/reglages">Réglages du formulaire</a> · <a href="/admin/formulaires/@result.FormId/diffusion">Diffusion</a></p>
+}
+
+<section class="card" aria-labelledby="fichiers">
+    <h2 id="fichiers">Fichiers</h2>
+    <p>
+        Le fichier de formulaire (JSON) décrit les réglages, la présentation et les champs ; son format est décrit dans <code>docs/format-definition.md</code>.
+        Si son <code>slug</code> existe déjà, une nouvelle version est publiée ; sinon le formulaire est créé@(Model.IsAdmin ? "" : " (administrateurs uniquement)").
+    </p>
+    <form method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label for="definition">Fichier de formulaire (JSON)</label>
+            <input id="definition" name="definition" type="file" accept=".json,application/json" required>
+        </div>
+        <div class="field">
+            <label for="pdfTemplate">Modèle PDF (HTML, facultatif)</label>
+            <p class="help" id="pdf-aide">À joindre si le fichier de formulaire déclare un modèle (<code>pdfTemplate</code>).</p>
+            <input id="pdfTemplate" name="pdfTemplate" type="file" accept=".html,text/html" aria-describedby="pdf-aide">
+        </div>
+
+        <fieldset class="field">
+            <legend>Code d'accès</legend>
+            <p class="help" id="code-aide">
+                @(Model.AskAccessCode
+                    ? "Obligatoire pour ce formulaire : 4 à 12 chiffres, saisis deux fois."
+                    : "Seulement au premier import d'un formulaire protégé par code (4 à 12 chiffres). Sinon, laisser vide : le code actuel est conservé.")
+            </p>
+            <label for="code">Code d'accès</label>
+            <input id="code" name="code" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" aria-describedby="code-aide" required="@Model.AskAccessCode">
+            <label for="confirmation">Confirmer le code d'accès</label>
+            <input id="confirmation" name="confirmation" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" required="@Model.AskAccessCode">
+        </fieldset>
+
+        @if (Model.AskConfirmPublic)
+        {
+            <div class="field checkbox">
+                <input id="confirmPublic" name="confirmPublic" type="checkbox" value="true" required>
+                <label for="confirmPublic">Je confirme que ce formulaire devient public : n'importe qui ayant le lien pourra répondre.</label>
+            </div>
+        }
+
+        <button type="submit" class="primary">Importer</button>
+    </form>
+</section>

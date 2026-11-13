@@ -75,7 +75,7 @@ En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôl
 
 ## Formulaires, sites et paramètres
 
-En attendant l'éditeur visuel (lot 5), un formulaire se publie depuis son fichier JSON ([format](docs/format-definition.md#fichier-de-formulaire)). Les chemins de fichier sont à donner en absolu.
+En attendant l'éditeur visuel (lot 5), un formulaire se publie depuis son fichier JSON ([format](docs/format-definition.md#fichier-de-formulaire)) : dans le back-office, écran « Importer un formulaire » (`/admin/formulaires/import`, [détail](docs/back-office.md#import-dun-formulaire)), ou en ligne de commande ci-dessous. Les chemins de fichier sont à donner en absolu.
 
 ```bash
 for s in Abrest Aulnat Taverny Riom Brive Varennes Nizerolles Soyons; do
