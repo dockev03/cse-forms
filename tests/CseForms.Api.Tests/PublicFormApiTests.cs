@@ -24,7 +24,7 @@ public class PublicFormApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     private static object ValidData => new { nom = " dupont ", site = Site };
 
     private Task<HttpResponseMessage> SubmitAsync(string slug, object body) =>
-        factory.CreateClient().PostAsJsonAsync($"/api/public/forms/{slug}/submissions", body);
+        factory.CreateClient().PostWithProofAsync($"/api/public/forms/{slug}/submissions", body);
 
     private static async Task<JsonNode> ReadJsonAsync(HttpResponseMessage response) =>
         JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

@@ -99,10 +99,10 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
             ["attestation"] = true,
         };
 
-        var denied = await client.PostAsJsonAsync("/api/public/forms/inscription/submissions", new { version = 1, accessCode = "0000", data });
+        var denied = await client.PostWithProofAsync("/api/public/forms/inscription/submissions", new { version = 1, accessCode = "0000", data });
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
 
-        var created = await client.PostAsJsonAsync("/api/public/forms/inscription/submissions", new { version = 1, accessCode = "4821", data });
+        var created = await client.PostWithProofAsync("/api/public/forms/inscription/submissions", new { version = 1, accessCode = "4821", data });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var caseNumber = JsonNode.Parse(await created.Content.ReadAsStringAsync())!["caseNumber"]!.GetValue<string>();
         Assert.Matches(@"^INS-\d{4}-0001$", caseNumber);

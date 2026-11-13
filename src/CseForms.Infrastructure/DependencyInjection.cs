@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddSingleton<IAccessCodeHasher, AccessCodeHasher>();
         services.AddScoped<IBackOfficeStore, BackOfficeStore>();
         services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<CseForms.Application.ProofOfWork.IProofOfWorkStore, ProofOfWork.ProofOfWorkStore>();
         services.AddScoped<CseForms.Application.Retention.ISubmissionEraseStore, Retention.SubmissionEraseStore>();
         services.AddScoped<IFormAdminStore, FormAdminStore>();
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
@@ -75,6 +76,23 @@ public static class DependencyInjection
             http.BaseAddress = new Uri(options.Url.TrimEnd('/') + "/");
             http.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
+
+        return services;
+    }
+
+    /// <summary>Preuve de travail anti-robot du formulaire public : uniquement dans l'API, qui détient la clé HMAC.</summary>
+    public static IServiceCollection AddProofOfWork(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<CseForms.Application.ProofOfWork.ProofOfWorkOptions>()
+            .Bind(configuration.GetSection(CseForms.Application.ProofOfWork.ProofOfWorkOptions.Section))
+            .Validate(o => CseForms.Application.ProofOfWork.ProofOfWorkOptions.IsValidKey(o.HmacKey), "ProofOfWork__HmacKey doit contenir 32 octets encodés en base64.")
+            .Validate(o => o.MaxNumber is >= 1_000 and <= 10_000_000, "ProofOfWork__MaxNumber doit être compris entre 1000 et 10000000.")
+            .Validate(o => o.ExpiresMinutes is >= 1 and <= 240, "ProofOfWork__ExpiresMinutes doit être compris entre 1 et 240.")
+            .ValidateOnStart();
+        services.AddScoped(provider => new CseForms.Application.ProofOfWork.ProofOfWorkService(
+            provider.GetRequiredService<IOptions<CseForms.Application.ProofOfWork.ProofOfWorkOptions>>().Value,
+            provider.GetRequiredService<CseForms.Application.ProofOfWork.IProofOfWorkStore>(),
+            provider.GetRequiredService<TimeProvider>()));
 
         return services;
     }

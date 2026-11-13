@@ -301,7 +301,7 @@ La réponse est enregistrée d'abord ; le PDF et les emails partent en tâche de
 | PDF | Gotenberg (HTML vers PDF via Chromium) | QuestPDF (licence à vérifier) |
 | Email | Mail API existante (MailKit) | SMTP direct |
 | QR code | QRCoder (.NET) | |
-| Anti-robot | ALTCHA (auto-hébergé) + code d'accès | |
+| Anti-robot | Preuve de travail au format ALTCHA, implémentée dans le projet (sans dépendance) + code d'accès | Widget et bibliothèque ALTCHA |
 | Déploiement | Docker Compose derrière Traefik, CI GitHub Actions + Trivy | |
 
 ### 6.3 Modèle de données

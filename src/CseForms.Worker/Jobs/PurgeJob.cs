@@ -1,13 +1,14 @@
+using CseForms.Application.ProofOfWork;
 using CseForms.Application.Retention;
 using Hangfire;
 
 namespace CseForms.Worker.Jobs;
 
 /// <summary>
-/// Purge quotidienne des réponses dont la durée de conservation est écoulée. Planifiée au démarrage
-/// du Worker ; en cas d'échec, la purge suivante reprend où elle s'est arrêtée.
+/// Purge quotidienne des réponses dont la durée de conservation est écoulée, et des défis anti-robot
+/// expirés. Planifiée au démarrage du Worker ; en cas d'échec, la purge suivante reprend où elle s'est arrêtée.
 /// </summary>
-public sealed class PurgeJob(RetentionService service)
+public sealed class PurgeJob(RetentionService service, IProofOfWorkStore proofOfWork, TimeProvider timeProvider)
 {
     public const string RecurringJobId = "purge-reponses";
 
@@ -16,7 +17,11 @@ public sealed class PurgeJob(RetentionService service)
 
     [AutomaticRetry(Attempts = 2)]
     [DisableConcurrentExecution(timeoutInSeconds: 600)]
-    public Task RunAsync(CancellationToken cancellationToken) => service.PurgeDueAsync(cancellationToken);
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        await service.PurgeDueAsync(cancellationToken);
+        await proofOfWork.DeleteExpiredAsync(timeProvider.GetUtcNow(), cancellationToken);
+    }
 
     public static void Schedule(IRecurringJobManager manager, IConfiguration configuration) =>
         manager.AddOrUpdate<PurgeJob>(

@@ -30,7 +30,7 @@ dotnet run --project src/CseForms.Api
 dotnet run --project src/CseForms.Worker   # dans un autre terminal : PDF, emails et purge
 ```
 
-La clé de chiffrement des PDF se génère avec `openssl rand -base64 32` (variable `Storage__EncryptionKey`). Voir [`docs/back-office.md`](docs/back-office.md#pdf).
+La clé de chiffrement des PDF se génère avec `openssl rand -base64 32` (variable `Storage__EncryptionKey`). Voir [`docs/back-office.md`](docs/back-office.md#pdf). L'API exige aussi une clé pour signer les défis anti-robot, générée de la même façon (`ProofOfWork__HmacKey`) ; voir [`docs/api-publique.md`](docs/api-publique.md#obtenir-un-défi-anti-robot).
 
 Le back-office (`/admin`) exige HTTPS : ses cookies sont `Secure`. En local, lancer l'API avec `ASPNETCORE_URLS=https://127.0.0.1:7214` (certificat de développement : `dotnet dev-certs https`). En production, Traefik termine le TLS et transmet `X-Forwarded-Proto`. Voir [`docs/back-office.md`](docs/back-office.md).
 
@@ -77,7 +77,7 @@ QR code (PNG, SVG), QR code par site et flyer PDF se produisent dans le back-off
 
 ## Conservation et purge
 
-Chaque formulaire fixe sa durée de conservation (`retentionDays`, 180 jours pour l'inscription). Elle court à partir du traitement de la réponse : dès qu'un élu la passe de « Nouvelle » à « Saisie dans le logiciel CSE » ou « Archivée ». Le Worker supprime chaque nuit (3 h 17, heure de Paris) les réponses échues avec leur PDF, et le trace dans le journal d'audit. Horaire modifiable par `Purge__Cron` (expression cron, heure de Paris). Voir [`docs/back-office.md`](docs/back-office.md#conservation-et-purge).
+Chaque formulaire fixe sa durée de conservation (`retentionDays`, 180 jours pour l'inscription). Elle court à partir du traitement de la réponse : dès qu'un élu la passe de « Nouvelle » à « Saisie dans le logiciel CSE » ou « Archivée ». Le Worker supprime chaque nuit (3 h 17, heure de Paris) les réponses échues avec leur PDF, et le trace dans le journal d'audit ; il efface aussi les défis anti-robot expirés. Horaire modifiable par `Purge__Cron` (expression cron, heure de Paris). Voir [`docs/back-office.md`](docs/back-office.md#conservation-et-purge).
 
 ## Emails
 
@@ -114,7 +114,7 @@ set -a; . ./.env; set +a
 dotnet test
 ```
 
-Tests du moteur client (Node 22 ou plus, sans dépendance npm) :
+Tests du moteur client et de la preuve de travail (Node 22 ou plus, sans dépendance npm) :
 
 ```bash
 node --test tests/js/*.test.mjs

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CseForms.Api.Hosting;
+using CseForms.Application.ProofOfWork;
 using CseForms.Application.PublicForms;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +13,10 @@ internal static class PublicFormEndpoints
 
     public static IEndpointRouteBuilder MapPublicFormEndpoints(this IEndpointRouteBuilder app)
     {
+        // Défi anti-robot, à résoudre par le navigateur avant l'envoi (preuve de travail, format ALTCHA).
+        app.MapGet("/api/public/challenge", (ProofOfWorkService proofOfWork) => Results.Ok(proofOfWork.CreateChallenge()))
+            .RequireRateLimiting(RateLimitingSetup.PublicReadPolicy);
+
         var group = app.MapGroup("/api/public/forms");
 
         group.MapGet("/{slug}", GetForm)
@@ -47,11 +52,18 @@ internal static class PublicFormEndpoints
         string slug,
         SubmitRequest? request,
         PublicFormService service,
+        ProofOfWorkService proofOfWork,
         CancellationToken cancellationToken)
     {
         if (request is null || request.Version <= 0 || request.Data.ValueKind != JsonValueKind.Object)
         {
             return ApiErrors.BadRequest();
+        }
+
+        // Vérifiée avant tout le reste : un robot sans preuve ne coûte qu'un calcul d'empreinte.
+        if (!await proofOfWork.VerifyAsync(request.Proof, cancellationToken))
+        {
+            return ApiErrors.Forbidden("proofInvalid", "La vérification anti-robot a échoué. Réessayez l'envoi.");
         }
 
         var outcome = await service.SubmitAsync(
@@ -92,7 +104,7 @@ internal static class PublicFormEndpoints
         JsonElement? Ui,
         IReadOnlyList<string> Sites);
 
-    internal sealed record SubmitRequest(int Version, string? AccessCode, JsonElement Data);
+    internal sealed record SubmitRequest(int Version, string? AccessCode, JsonElement Data, ProofOfWorkSolution? Proof);
 
     internal sealed record SubmitResponse(string CaseNumber);
 }
