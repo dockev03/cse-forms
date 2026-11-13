@@ -1,0 +1,135 @@
+@page "/admin/parametres"
+@model CseForms.Api.Pages.Admin.SettingsModel
+@using CseForms.Application.Settings
+@{
+    ViewData["Title"] = "Paramètres";
+    var settings = Model.Settings;
+}
+
+<p><a href="/admin">Formulaires</a></p>
+<h1>Paramètres</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        <p>Rien n'a été enregistré :</p>
+        <ul>
+            @foreach (var (key, error) in Model.Errors)
+            {
+                var label = SettingsModel.Fields.TryGetValue(key, out var f) ? f.Label
+                    : key == SettingKeys.CseLogo ? "Logo" : "Site";
+                <li>@label : @error</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status"><p>@Model.Message</p></div>
+}
+
+<section class="card" aria-labelledby="coordonnees">
+    <h2 id="coordonnees">CSE et adresses</h2>
+    <p>Repris sur les PDF, le flyer et les emails, jamais écrits dans les modèles. Un champ vidé supprime le paramètre.</p>
+    <form method="post" asp-page-handler="Save">
+        @foreach (var (key, field) in SettingsModel.Fields)
+        {
+            var id = SettingsModel.FieldId(key);
+            var hasError = Model.Errors.TryGetValue(key, out var error);
+            <div class="field">
+                <label for="@id">@field.Label</label>
+                @if (field.Help.Length > 0)
+                {
+                    <p class="help" id="@(id)-aide">@field.Help</p>
+                }
+                @if (hasError)
+                {
+                    <p class="error-text" id="@(id)-erreur">@error</p>
+                }
+                @{
+                    var describedBy = string.Join(' ', new[] { field.Help.Length > 0 ? $"{id}-aide" : null, hasError ? $"{id}-erreur" : null }.Where(x => x is not null));
+                    var type = key is SettingKeys.CseEmail or SettingKeys.AlertsEmail ? "email" : key == SettingKeys.PublicBaseUrl ? "url" : key == SettingKeys.CsePhone ? "tel" : "text";
+                }
+                @if (SettingKeys.MultiLineKeys.Contains(key))
+                {
+                    <textarea id="@id" name="@key" rows="5" maxlength="@SettingKeys.ValueMaxLength" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" aria-invalid="@(hasError ? "true" : null)">@Model.Inputs.GetValueOrDefault(key)</textarea>
+                }
+                else
+                {
+                    <input id="@id" name="@key" type="@type" maxlength="@SettingKeys.ValueMaxLength" value="@Model.Inputs.GetValueOrDefault(key)" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" aria-invalid="@(hasError ? "true" : null)">
+                }
+            </div>
+        }
+        <button type="submit" class="primary">Enregistrer</button>
+    </form>
+</section>
+
+<section class="card" aria-labelledby="logo">
+    <h2 id="logo">Logo du CSE</h2>
+    @if (settings.Logo is not null)
+    {
+        <p><img class="logo-preview" src="@settings.Logo" alt="Logo actuel du CSE"></p>
+    }
+    else
+    {
+        <p>Aucun logo : les documents sortent sans logo.</p>
+    }
+    <form method="post" asp-page-handler="Logo" enctype="multipart/form-data">
+        <div class="field">
+            <label for="p-logo">@(settings.Logo is null ? "Ajouter un logo" : "Remplacer le logo")</label>
+            <p class="help" id="p-logo-aide">@(char.ToUpperInvariant(CseLogo.Rule[0]) + CseLogo.Rule[1..]). Pas de SVG, qui peut contenir du script. Stocké en base et intégré aux documents, sans lien externe.</p>
+            <input id="p-logo" name="logo" type="file" accept="image/png,image/jpeg" required aria-describedby="p-logo-aide">
+        </div>
+        <button type="submit">Envoyer le logo</button>
+    </form>
+    @if (settings.Logo is not null)
+    {
+        <form method="post" asp-page-handler="RemoveLogo" class="inline-action">
+            <button type="submit" class="danger">Retirer le logo</button>
+        </form>
+    }
+</section>
+
+<section class="card" aria-labelledby="sites">
+    <h2 id="sites">Sites</h2>
+    <p>Liste proposée dans les champs « site » de tous les formulaires. Un site n'est jamais supprimé : désactivé, il n'est plus proposé (ni prérempli par ses QR codes déjà imprimés), et les réponses existantes le gardent.</p>
+    @if (settings.Sites.Count == 0)
+    {
+        <p>Aucun site.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th scope="col">Site</th><th scope="col">État</th><th scope="col">Action</th></tr></thead>
+                <tbody>
+                    @foreach (var site in settings.Sites)
+                    {
+                        <tr>
+                            <td>@site.Label</td>
+                            <td>@(site.IsActive ? "Actif" : "Désactivé")</td>
+                            <td>
+                                <form method="post" asp-page-handler="@(site.IsActive ? "DisableSite" : "EnableSite")">
+                                    <input type="hidden" name="siteId" value="@site.Id">
+                                    <button type="submit" aria-label="@(site.IsActive ? "Désactiver" : "Réactiver") le site @site.Label">@(site.IsActive ? "Désactiver" : "Réactiver")</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <form method="post" asp-page-handler="AddSite">
+        <div class="field">
+            <label for="p-site">Nouveau site</label>
+            @if (Model.Errors.TryGetValue(SettingsAdminService.SiteField, out var siteError))
+            {
+                <p class="error-text" id="p-site-erreur">@siteError</p>
+            }
+            <input id="p-site" name="label" required maxlength="@CseForms.Domain.Sites.Site.LabelMaxLength" value="@Model.SiteInput" aria-describedby="@(siteError is null ? null : "p-site-erreur")">
+        </div>
+        <button type="submit">Ajouter le site</button>
+    </form>
+</section>

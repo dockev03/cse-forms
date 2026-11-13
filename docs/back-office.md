@@ -52,12 +52,23 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - **Changement de rôle** : pris en compte sous 5 minutes dans les sessions ouvertes. Un administrateur voit tous les formulaires : ses attributions sont ignorées.
 - **Secours** : `users reset-password --email <email>` affiche un mot de passe provisoire au terminal (administrateur qui a oublié le sien).
 
+## Paramètres
+
+Écran « Paramètres » (`/admin/parametres`, lien dans l'en-tête), réservé au rôle `admin` ; les autres rôles reçoivent un 404. Mêmes contrôles que la commande `settings` ; un champ vidé supprime le paramètre.
+
+- **CSE et adresses** : nom, adresse postale, email et téléphone de contact, composition du bureau (une ligne par membre), adresse publique (`app.publicBaseUrl`, HTTPS sans chemin, barre finale retirée), adresse d'alerte (`alerts.email`). Un seul enregistrement pour tout le bloc : une valeur refusée n'enregistre rien et la saisie est conservée. Changer l'adresse publique rend inutilisables les QR codes déjà imprimés.
+- **Logo** : PNG ou JPEG de 256 Ko au plus, reconnu à son contenu et non à son nom ; un SVG est refusé. Aperçu, remplacement, retrait.
+- **Sites** : ajout (libellé unique, majuscules comprises), désactivation et réactivation. Pas de suppression ni de renommage : les réponses gardent le libellé saisi, et un site désactivé n'est plus proposé ni prérempli par ses QR codes.
+- Le serveur SMTP reste réglé en ligne de commande (`settings set --key smtp.*`).
+- Le journal garde le nom des paramètres modifiés, jamais leur valeur.
+
 ## Écrans
 
 - `/admin` : formulaires accessibles et nombre de réponses.
 - `/admin/securite` : double authentification du compte connecté.
 - `/admin/mot-de-passe` : changement de son mot de passe (mot de passe actuel, nouveau, confirmation).
 - `/admin/comptes`, `/admin/comptes/nouveau`, `/admin/comptes/{id}` : [comptes](#comptes), rôle `admin` uniquement.
+- `/admin/parametres` : [paramètres](#paramètres) du CSE, logo et sites, rôle `admin` uniquement.
 - `/admin/acces-refuse` : page « Accès refusé » (403), cible des refus pour rôle insuffisant.
 - `/admin/formulaires/{id}/reponses` : liste paginée (25 par page) ; recherche par numéro de dossier, filtres statut, site et période, tri par date. Seuls le numéro, la date, le site et le statut sont affichés.
 - `/admin/reponses/{id}` : fiche avec les libellés de la version remplie, dates au format JJ/MM/AAAA, groupes répétables en tableau. Lien profond utilisable dans les notifications. Le bloc PDF indique si le PDF est disponible, en cours de génération ou en échec.
@@ -206,5 +217,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.public` | `form:{id}` : formulaire protégé passé en accès public par import |
 | `form.notifications` | `form:{id}`, détail : `recipients={nombre}`, sans les adresses |
 | `form.notifications.remove` | `form:{id}` |
+| `settings.change` | `settings`, détail : noms des paramètres modifiés (`cse.name,cse.logo`...), sans les valeurs |
+| `site.add`, `site.disable`, `site.enable` | `site:{id}` |
 
 Chaque entrée porte l'id du compte (absent pour un identifiant inconnu ou une action automatique), l'horodatage UTC et, au besoin, un détail technique (`detail`). Aucune donnée saisie, aucun email ni nom.

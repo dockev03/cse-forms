@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
         services.AddScoped<PendingJobDispatcher>();
         services.AddScoped<ISettingReader, SettingReader>();
+        services.AddScoped<CseForms.Application.Settings.ISettingsAdminStore, Settings.SettingsAdminStore>();
         services.AddScoped<ISubmissionEmailStore, SubmissionEmailStore>();
         services.AddScoped<IDistributionStore, DistributionStore>();
         services.AddSingleton<IQrCodeRenderer, QrCodeRenderer>();

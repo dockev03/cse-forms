@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<FormImportService>();
         services.AddScoped<Notifications.NotificationRuleService>();
         services.AddScoped<Distribution.DistributionService>();
+        services.AddScoped<Settings.SettingsAdminService>();
 
         return services;
     }
