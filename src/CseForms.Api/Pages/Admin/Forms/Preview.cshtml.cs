@@ -37,6 +37,7 @@ public sealed class PreviewModel(FormDraftService service) : PageModel
     {
         "brouillon" => "Brouillon enregistré, rien n'a été publié. Vérifiez le rendu ci-dessous, puis publiez-le.",
         "copie" => "Formulaire dupliqué, hors ligne : la copie est en brouillon. Vérifiez le rendu ci-dessous, puis publiez-la.",
+        "modele" => "Formulaire créé à partir du modèle, hors ligne : il est en brouillon. Vérifiez le rendu ci-dessous, puis publiez-le.",
         _ => null,
     };
 

@@ -175,6 +175,47 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                     b.ToTable("form_draft", (string)null);
                 });
 
+            modelBuilder.Entity("CseForms.Domain.Forms.FormTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("PackageJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("package_json");
+
+                    b.Property<string>("PdfTemplateHtml")
+                        .HasColumnType("text")
+                        .HasColumnName("pdf_template_html");
+
+                    b.HasKey("Id")
+                        .HasName("pk_form_template");
+
+                    b.ToTable("form_template", (string)null);
+                });
+
             modelBuilder.Entity("CseForms.Domain.Forms.FormVersion", b =>
                 {
                     b.Property<Guid>("Id")

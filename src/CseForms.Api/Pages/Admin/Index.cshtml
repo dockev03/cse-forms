@@ -8,7 +8,13 @@
 
 @if (Model.CanDistribute)
 {
-    <p><a href="/admin/formulaires/import">Importer un formulaire ou une nouvelle version</a></p>
+    <p>
+        <a href="/admin/formulaires/import">Importer un formulaire ou une nouvelle version</a>
+        @if (User.IsInRole(AppRoles.Admin))
+        {
+            <text> · <a href="/admin/formulaires/modeles">Partir d'un modèle</a></text>
+        }
+    </p>
 }
 
 @if (Model.Forms.Count == 0)

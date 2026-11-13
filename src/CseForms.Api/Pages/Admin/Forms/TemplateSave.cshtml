@@ -1,0 +1,55 @@
+@page "/admin/formulaires/{formId:guid}/modele"
+@model CseForms.Api.Pages.Admin.Forms.TemplateSaveModel
+@{
+    var source = Model.Source;
+    ViewData["Title"] = $"Enregistrer comme modèle : {source.Title}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@source.FormId/reglages">Réglages</a> · <a href="/admin/formulaires/modeles">Modèles</a></p>
+<h1>Enregistrer comme modèle : @source.Title</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        <p>Enregistrement refusé :</p>
+        <ul>
+            @foreach (var error in Model.Errors)
+            {
+                <li>@error.Message</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (source.Version is null)
+{
+    <section class="card">
+        <p>Ce formulaire n'a jamais été publié : seule une version en ligne peut devenir un modèle.</p>
+    </section>
+    return;
+}
+
+<section class="card" aria-labelledby="contenu">
+    <h2 id="contenu">Ce que contient le modèle</h2>
+    <ul>
+        <li>La version en ligne (version @source.Version) : champs, présentation, accusé de réception, modèle PDF, préfixe des dossiers, durée de conservation et mode d'accès.</li>
+    </ul>
+    <p>Ne sont pas enregistrés : les réponses, les notifications au CSE, les comptes attribués, le filigrane, les dates, le nombre maximal de réponses@(source.Protected ? " et le code d'accès : il sera demandé à la publication de chaque formulaire créé" : string.Empty).</p>
+    <p>Le modèle n'est pas modifiable ; il se supprime depuis la liste des modèles. Le formulaire d'origine ne change pas.</p>
+</section>
+
+<section class="card narrow" aria-labelledby="modele">
+    <h2 id="modele">Modèle</h2>
+    <form method="post" asp-route-formId="@source.FormId">
+        <div class="field">
+            <label for="name">Nom du modèle</label>
+            <input id="name" name="name" required maxlength="100" autocomplete="off" value="@Model.NameInput">
+        </div>
+        <div class="field">
+            <label for="description">Description (facultative)</label>
+            <p class="help" id="description-aide">Usage du modèle, en une ou deux phrases ; aucune donnée personnelle.</p>
+            <textarea id="description" name="description" maxlength="500" rows="3" aria-describedby="description-aide">@Model.DescriptionInput</textarea>
+        </div>
+        <button type="submit" class="primary">Enregistrer le modèle</button>
+    </form>
+</section>

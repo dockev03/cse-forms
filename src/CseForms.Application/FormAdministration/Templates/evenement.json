@@ -1,0 +1,73 @@
+{
+  "slug": "modele-evenement",
+  "title": "Inscription à un événement",
+  "caseNumberPrefix": "EVT",
+  "retentionDays": 90,
+  "access": { "mode": "public" },
+  "ui": {
+    "multiStep": true,
+    "confirmationText": "Votre inscription a bien été transmise au CSE. Si vous avez indiqué votre email, un accusé de réception vous est envoyé."
+  },
+  "receipt": {
+    "emailField": "email",
+    "message": "Le CSE vous recontactera si l'événement est complet ou modifié."
+  },
+  "sections": [
+    {
+      "id": "participant",
+      "title": "Participant",
+      "fields": [
+        { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+        { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 },
+        { "id": "site", "type": "site", "label": "Lieu de travail", "required": true, "prefill": "url" },
+        { "id": "email", "type": "email", "label": "Email", "help": "Il sert à l'envoi de l'accusé de réception." },
+        { "id": "telephone", "type": "phone", "label": "Téléphone", "help": "Pour vous joindre le jour de l'événement." }
+      ]
+    },
+    {
+      "id": "accompagnants",
+      "title": "Accompagnants (facultatif)",
+      "fields": [
+        {
+          "id": "accompagnants",
+          "type": "repeat",
+          "label": "Accompagnant",
+          "min": 0,
+          "max": 6,
+          "addLabel": "Ajouter un accompagnant",
+          "fields": [
+            { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper", "maxLength": 80 },
+            { "id": "prenom", "type": "text", "label": "Prénom", "required": true, "transform": "capitalize", "maxLength": 80 },
+            { "id": "categorie", "type": "choice", "label": "Catégorie", "required": true, "options": ["Adulte", "Enfant de moins de 12 ans"], "display": "radio" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "details",
+      "title": "Précisions",
+      "fields": [
+        {
+          "id": "regimes",
+          "type": "multichoice",
+          "label": "Régimes alimentaires à prévoir (repas éventuel)",
+          "options": ["Végétarien", "Sans porc", "Sans gluten", "Allergie (à préciser ci-dessous)"]
+        },
+        { "id": "remarques", "type": "textarea", "label": "Remarques", "help": "Mobilité réduite, allergies, covoiturage...", "maxLength": 1000 }
+      ]
+    },
+    {
+      "id": "validation",
+      "title": "Validation",
+      "fields": [
+        {
+          "id": "rgpdNotice",
+          "type": "info",
+          "label": "Information sur vos données personnelles",
+          "text": "Le CSE, responsable du traitement, utilise ces informations pour organiser l'événement. Seuls les membres du CSE habilités les consultent ; elles ne sont jamais transmises à l'employeur. L'inscription est supprimée 90 jours après son traitement. Vous pouvez accéder à vos données, les faire rectifier ou effacer en écrivant au CSE, et saisir la CNIL. Le détail figure dans la notice « Vos données personnelles »."
+        },
+        { "id": "rgpdLu", "type": "consent", "label": "J'ai lu l'information sur mes données personnelles", "required": true }
+      ]
+    }
+  ]
+}
