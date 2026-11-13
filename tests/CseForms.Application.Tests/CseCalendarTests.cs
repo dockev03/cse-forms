@@ -22,3 +22,24 @@ public class CseCalendarTests
         Assert.Equal(DateOnly.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), calendar.Today);
     }
 }
+
+public class CseCalendarLocalTimeTests
+{
+    [Theory]
+    [InlineData("2026-12-01T08:00", "2026-12-01T07:00:00Z")] // hiver, UTC+1
+    [InlineData("2026-07-01T08:00", "2026-07-01T06:00:00Z")] // été, UTC+2
+    [InlineData("2026-10-25T02:30", "2026-10-25T01:30:00Z")] // heure ambiguë du passage à l'hiver : lue en heure d'hiver
+    public void Paris_time_is_converted_to_utc(string local, string expected)
+    {
+        var utc = CseCalendar.LocalToUtc(DateTime.Parse(local, System.Globalization.CultureInfo.InvariantCulture));
+
+        Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), utc);
+        Assert.Equal(TimeSpan.Zero, utc!.Value.Offset);
+    }
+
+    [Fact]
+    public void Missing_hour_of_the_spring_change_is_refused()
+    {
+        Assert.Null(CseCalendar.LocalToUtc(new DateTime(2026, 3, 29, 2, 30, 0)));
+    }
+}

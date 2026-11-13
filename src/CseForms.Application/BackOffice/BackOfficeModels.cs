@@ -35,6 +35,10 @@ public static class AuditActions
     public const string SubmissionDeleted = "submission.delete";
     public const string SubmissionPurged = "submission.purge";
     public const string SubmissionsExported = "form.export";
+    public const string FormClosed = "form.close";
+    public const string FormReopened = "form.reopen";
+    public const string FormScheduleChanged = "form.schedule";
+    public const string FormAccessCodeChanged = "form.access_code";
     public const string PasswordChanged = "password.change";
     public const string UserCreated = "user.create";
     public const string UserUpdated = "user.update";

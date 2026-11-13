@@ -15,6 +15,21 @@ public sealed class CseCalendar(TimeProvider timeProvider)
     /// <summary>Heure locale du CSE, pour l'affichage.</summary>
     public static DateTimeOffset ToLocal(DateTimeOffset utc) => TimeZoneInfo.ConvertTime(utc, TimeZone);
 
+    /// <summary>
+    /// Instant UTC d'une heure saisie à Paris. Null si cette heure n'existe pas (passage à l'heure d'été) ;
+    /// une heure ambiguë (passage à l'heure d'hiver) est lue en heure d'hiver.
+    /// </summary>
+    public static DateTimeOffset? LocalToUtc(DateTime local)
+    {
+        var unspecified = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        if (TimeZone.IsInvalidTime(unspecified))
+        {
+            return null;
+        }
+
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(unspecified, TimeZone), TimeSpan.Zero);
+    }
+
     /// <summary>Instant UTC du début d'une journée à Paris (bornes des filtres par période).</summary>
     public static DateTimeOffset StartOfDayUtc(DateOnly day)
     {

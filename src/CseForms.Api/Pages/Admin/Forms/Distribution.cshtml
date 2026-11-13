@@ -5,7 +5,7 @@
     ViewData["Title"] = $"Diffusion : {form.Title}";
 }
 
-<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@form.FormId/reponses">Réponses</a></p>
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@form.FormId/reponses">Réponses</a> · <a href="/admin/formulaires/@form.FormId/reglages">Réglages</a></p>
 <h1>Diffusion : @form.Title</h1>
 
 @if (Model.Error is not null)
@@ -24,7 +24,7 @@
         <p><strong>@form.PublicUrl</strong></p>
         @if (form.Status != "Published")
         {
-            <p class="error-text">Ce formulaire n'est pas publié : le lien n'accepte pas de réponse pour l'instant.</p>
+            <p class="error-text">Ce formulaire n'est pas publié : le lien n'accepte pas de réponse pour l'instant (voir <a href="/admin/formulaires/@form.FormId/reglages">Réglages</a>).</p>
         }
         <p>@(form.RequiresAccessCode ? "Accès protégé par un code d'accès, à imprimer sur le flyer." : "Accès public, sans code.")</p>
     }

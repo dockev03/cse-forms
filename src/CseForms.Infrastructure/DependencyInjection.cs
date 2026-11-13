@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<CseForms.Application.ProofOfWork.IProofOfWorkStore, ProofOfWork.ProofOfWorkStore>();
         services.AddScoped<CseForms.Application.Retention.ISubmissionEraseStore, Retention.SubmissionEraseStore>();
         services.AddScoped<IFormAdminStore, FormAdminStore>();
+        services.AddScoped<IFormLifecycleStore, FormLifecycleStore>();
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
         services.AddScoped<PendingJobDispatcher>();
         services.AddScoped<ISettingReader, SettingReader>();

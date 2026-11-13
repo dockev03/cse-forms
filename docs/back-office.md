@@ -12,7 +12,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
-- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte ou ouvre la diffusion, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion ou les réglages, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
 - **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
@@ -68,6 +68,17 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/formulaires/{id}/export` : [export CSV](#export-csv) des réponses filtrées, rôles `admin` et `editor`.
 - `/admin/reponses/{id}/suppression` : [suppression définitive](#suppression-unitaire), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/diffusion` : [diffusion](#diffusion-qr-code-et-flyer), réservée aux rôles `admin` et `editor` ayant le droit sur le formulaire.
+- `/admin/formulaires/{id}/reglages` : [réglages du formulaire](#réglages-dun-formulaire), réservés aux rôles `admin` et `editor` ayant le droit sur le formulaire.
+
+## Réglages d'un formulaire
+
+Écran `/admin/formulaires/{id}/reglages`, lié depuis la liste des formulaires et depuis la diffusion. Chaque action est un POST avec jeton anti-CSRF, journalisé. La définition, elle, ne change que par l'import d'une nouvelle version.
+
+- **État** : adresse publique, version publiée, état effectif (ouvert, fermé, pas encore ouvert, date de fermeture passée, nombre maximal atteint) et nombre de réponses reçues.
+- **Fermer** : refuse immédiatement toute nouvelle réponse, quelles que soient les dates ; les réponses reçues sont conservées. **Rouvrir** remet le formulaire en ligne, dans la limite des dates et du nombre maximal. Importer une nouvelle version ne rouvre jamais un formulaire fermé.
+- **Ouverture, fermeture** : saisies à l'heure de Paris, stockées en UTC ; champ vide, pas de borne. La fermeture doit suivre l'ouverture. Une heure qui n'existe pas (passage à l'heure d'été) est refusée ; une heure ambiguë (passage à l'heure d'hiver) est lue en heure d'hiver.
+- **Nombre maximal de réponses** : entier positif, champ vide pour aucune limite. Un plafond inférieur aux réponses déjà reçues est accepté : le formulaire cesse d'accepter des réponses. Le contrôle à la soumission verrouille la ligne du formulaire : deux soumissions simultanées ne dépassent pas le plafond.
+- **Code d'accès** (formulaires en mode `pin` uniquement) : nouveau code saisi deux fois, 4 à 12 chiffres, stocké haché. Le code actuel n'est jamais affiché ; le code saisi n'est ni journalisé ni réaffiché, même en cas d'erreur. Les flyers déjà imprimés portent l'ancien code. Un formulaire public reste public : le mode d'accès fait partie de la définition.
 
 ## Statuts de traitement
 
@@ -164,5 +175,8 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.delete` | `submission:{id}`, détail : numéro de dossier |
 | `submission.purge` | `submission:{id}`, sans compte, détail : numéro de dossier |
 | `form.export` | `form:{id}`, détail : nombre de lignes |
+| `form.close`, `form.reopen` | `form:{id}` |
+| `form.schedule` | `form:{id}`, détail : `opens=…;closes=…;max=…` (UTC, `-` sans limite) |
+| `form.access_code` | `form:{id}`, sans le code |
 
 Chaque entrée porte l'id du compte (absent pour un identifiant inconnu ou une action automatique), l'horodatage UTC et, au besoin, un détail technique (`detail`). Aucune donnée saisie, aucun email ni nom.
