@@ -1,0 +1,58 @@
+@page "/admin/formulaires/{formId:guid}/duplication"
+@model CseForms.Api.Pages.Admin.Forms.DuplicateModel
+@{
+    var source = Model.Source;
+    ViewData["Title"] = $"Dupliquer : {source.Title}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@source.FormId/reglages">Réglages</a></p>
+<h1>Dupliquer : @source.Title</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="summary" role="alert">
+        <p>Duplication refusée :</p>
+        <ul>
+            @foreach (var error in Model.Errors)
+            {
+                <li>@error.Message</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (source.Version is null)
+{
+    <section class="card">
+        <p>Ce formulaire n'a jamais été publié : seule une version en ligne peut être dupliquée.</p>
+    </section>
+    return;
+}
+
+<section class="card" aria-labelledby="copie">
+    <h2 id="copie">Ce qui est copié</h2>
+    <ul>
+        <li>La version en ligne (version @source.Version) : champs, présentation, accusé de réception, modèle PDF, préfixe des dossiers, durée de conservation et mode d'accès.</li>
+        <li>Les notifications au CSE, le réglage du filigrane du PDF et les comptes attribués au formulaire.</li>
+    </ul>
+    <p>
+        Ne sont pas copiés : les réponses et leur historique, les dates d'ouverture et de fermeture, le nombre maximal de réponses@(source.Protected ? ", et le code d'accès : un nouveau code sera demandé à la publication" : string.Empty).
+    </p>
+    <p>Le nouveau formulaire est créé hors ligne, en brouillon : l'aperçu s'ouvre pour le vérifier, puis le publier. Le formulaire d'origine ne change pas.</p>
+</section>
+
+<section class="card narrow" aria-labelledby="nouveau">
+    <h2 id="nouveau">Nouveau formulaire</h2>
+    <form method="post" asp-route-formId="@source.FormId">
+        <div class="field">
+            <label for="slug">Adresse publique</label>
+            <p class="help" id="slug-aide">Lettres minuscules, chiffres et tirets : le lien sera /f/<em>adresse</em>.</p>
+            <input id="slug" name="slug" required maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" aria-describedby="slug-aide" value="@Model.SlugInput">
+        </div>
+        <div class="field">
+            <label for="title">Titre</label>
+            <input id="title" name="title" required maxlength="200" autocomplete="off" value="@Model.TitleInput">
+        </div>
+        <button type="submit" class="primary">Dupliquer</button>
+    </form>
+</section>

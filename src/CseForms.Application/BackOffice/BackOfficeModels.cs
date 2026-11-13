@@ -44,6 +44,7 @@ public static class AuditActions
     public const string FormMadePublic = "form.public";
     public const string FormDraftSaved = "form.draft.save";
     public const string FormDraftDeleted = "form.draft.delete";
+    public const string FormDuplicated = "form.duplicate";
     public const string FormNotificationsChanged = "form.notifications";
     public const string FormNotificationsRemoved = "form.notifications.remove";
     public const string SettingsChanged = "settings.change";

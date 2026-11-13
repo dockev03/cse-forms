@@ -12,7 +12,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
-- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages, les notifications, l'import ou l'aperçu d'un brouillon, un `editor` qui supprime une réponse) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte, ouvre la diffusion, les réglages, les notifications, l'import ou l'aperçu d'un brouillon, un `editor` qui supprime une réponse ou duplique un formulaire) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
 - **Compte connecté sans rôle du back-office** : même page « Accès refusé » sur tout `/admin`. Le refus est journalisé (`access.denied`, sans cible, détail `no-role` ; l'adresse demandée n'est pas conservée).
 
 ## Sécurité
@@ -87,6 +87,7 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - `/admin/formulaires/{id}/reglages` : [réglages du formulaire](#réglages-dun-formulaire), réservés aux rôles `admin` et `editor` ayant le droit sur le formulaire.
 - `/admin/formulaires/{id}/notifications` : [notifications au CSE](#notifications-au-cse), rôles `admin` et `editor` ayant le droit sur le formulaire.
 - `/admin/formulaires/import` : [import d'un fichier de formulaire](#import-dun-formulaire), rôles `admin` (création et nouvelle version) et `editor` (nouvelle version d'un formulaire attribué).
+- `/admin/formulaires/{id}/duplication` : [duplication d'un formulaire](#duplication-dun-formulaire), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/apercu` : [aperçu du brouillon](#brouillon-et-aperçu-avant-publication), publication et suppression, rôles `admin` et `editor` ayant le droit sur le formulaire.
 
 ## Réglages d'un formulaire
@@ -123,6 +124,16 @@ Pour vérifier le rendu d'une version sur smartphone et sur ordinateur avant de 
 - Le brouillon est relu et contrôlé à chaque affichage : s'il ne passe plus les contrôles, l'aperçu liste les erreurs et ne propose plus la publication.
 - **Droits** : 404 pour un formulaire non attribué, page « Accès refusé » pour un lecteur, refus journalisés. Le cadre ne contient aucune donnée ; les droits sont contrôlés sur `/apercu/donnees`.
 - **En-têtes** : la page d'aperçu est la seule du back-office autorisée à afficher un cadre, et seulement du même site (`frame-src 'self'`) ; le cadre n'accepte d'être affiché que par le même site (`frame-ancestors 'self'`, `X-Frame-Options: SAMEORIGIN`). Toutes les autres pages gardent `frame-ancestors 'none'`. Les trois adresses sont sous `/admin` : jamais en cache, jamais indexées. La page d'aperçu elle-même reste sans script.
+
+## Duplication d'un formulaire
+
+Pour réutiliser un formulaire, par exemple l'arbre de Noël d'une année sur l'autre. Écran `/admin/formulaires/{id}/duplication`, lié depuis les réglages d'un formulaire publié ; réservé au rôle `admin`, comme la création d'un formulaire (les autres rôles reçoivent la page « Accès refusé », refus journalisé, détail `form-duplicate`).
+
+- **Saisie** : nouvelle adresse (`slug`, proposée : `{adresse}-copie`) et nouveau titre (proposé : `{titre} (copie)`). Une adresse déjà utilisée est refusée.
+- **Source** : la version en ligne uniquement ; un formulaire jamais publié ne se duplique pas. Le formulaire d'origine ne change pas.
+- **Copié** : définition, présentation, accusé de réception, modèle PDF, préfixe des dossiers (les deux éditions partagent donc le compteur `PRÉFIXE-AAAA-NNNN`), durée de conservation et mode d'accès, reconstruits en fichier de formulaire et contrôlés comme un import ; la règle de notification au CSE ; le réglage du filigrane ; les comptes attribués au formulaire (éditeurs et lecteurs, y compris désactivés).
+- **Non copié** : réponses, PDF et historique ; dates d'ouverture et de fermeture et nombre maximal de réponses, propres à chaque édition ; code d'accès (stocké haché) : pour une source protégée, un nouveau code est demandé à la publication.
+- **Résultat** : le nouveau formulaire est créé hors ligne, en statut brouillon, sans version ; la copie est son [brouillon](#brouillon-et-aperçu-avant-publication) et l'aperçu s'ouvre. Il se publie depuis l'aperçu, ou se corrige d'abord par un import. Préfixe, conservation et mode d'accès s'appliquent au formulaire à sa publication. Tout est enregistré en une fois.
 
 ## Statuts de traitement
 
@@ -225,7 +236,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` ; détail `watermark` si la copie est filigranée |
 | `submission.pdf.regenerate` | `submission:{id}` |
-| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé, `form-draft` pour un brouillon refusé (sans cible si le formulaire n'existe pas) |
+| `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé, `form-draft` pour un brouillon refusé, `form-duplicate` pour une duplication refusée (sans cible si le formulaire n'existe pas) |
 | `form.qrcode` | `form:{id}` |
 | `form.flyer`, `form.flyer.code_rejected` | `form:{id}` |
 | `submission.status` | `submission:{id}`, détail `ancien>nouveau` |
@@ -240,6 +251,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.public` | `form:{id}` : formulaire protégé passé en accès public par import |
 | `form.draft.save` | `form:{id}`, détail `create` si le brouillon a créé le formulaire ; publication d'un brouillon : `form.import` avec le détail `v{n};draft` |
 | `form.draft.delete` | `form:{id}` |
+| `form.duplicate` | `form:{id}` de la copie, détail `from=form:{source};v{n};access={comptes attribués}` |
 | `form.notifications` | `form:{id}`, détail : `recipients={nombre}`, sans les adresses |
 | `form.notifications.remove` | `form:{id}` |
 | `settings.change` | `settings`, détail : noms des paramètres modifiés (`cse.name,cse.logo`...), sans les valeurs |
