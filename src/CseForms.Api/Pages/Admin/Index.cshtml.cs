@@ -8,7 +8,7 @@ public sealed class IndexModel(BackOfficeService service) : PageModel
 {
     public IReadOnlyList<FormSummary> Forms { get; private set; } = [];
 
-    /// <summary>QR code et flyer : administrateurs et éditeurs.</summary>
+    /// <summary>Réglages, QR code et flyer : administrateurs et éditeurs.</summary>
     public bool CanDistribute => !User.ToCurrentUser().IsReadOnly;
 
     public async Task OnGetAsync(CancellationToken cancellationToken) =>

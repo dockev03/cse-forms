@@ -6,6 +6,11 @@
 
 <h1>Formulaires</h1>
 
+@if (Model.CanDistribute)
+{
+    <p><a href="/admin/formulaires/import">Importer un formulaire ou une nouvelle version</a></p>
+}
+
 @if (Model.Forms.Count == 0)
 {
     <p class="card">Aucun formulaire ne vous est attribué. Contactez un administrateur du CSE.</p>
@@ -19,7 +24,7 @@ else
                     <th scope="col">Formulaire</th><th scope="col">Adresse publique</th><th scope="col">État</th><th scope="col" class="num">Réponses</th>
                     @if (Model.CanDistribute)
                     {
-                        <th scope="col">Diffusion</th>
+                        <th scope="col">Gestion</th>
                     }
                 </tr>
             </thead>
@@ -33,7 +38,7 @@ else
                         <td class="num">@form.ResponseCount</td>
                         @if (Model.CanDistribute)
                         {
-                            <td><a href="/admin/formulaires/@form.Id/diffusion">QR code et flyer</a></td>
+                            <td><a href="/admin/formulaires/@form.Id/reglages">Réglages</a> · <a href="/admin/formulaires/@form.Id/diffusion">QR code et flyer</a></td>
                         }
                     </tr>
                 }

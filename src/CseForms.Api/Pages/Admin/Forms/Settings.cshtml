@@ -1,0 +1,97 @@
+@page "/admin/formulaires/{formId:guid}/reglages"
+@model CseForms.Api.Pages.Admin.Forms.SettingsModel
+@using CseForms.Application.FormAdministration
+@using CseForms.Domain.Forms
+@{
+    var form = Model.Form;
+    ViewData["Title"] = $"Réglages : {form.Title}";
+}
+
+<p><a href="/admin">Formulaires</a> · <a href="/admin/formulaires/@form.FormId/reponses">Réponses</a> · <a href="/admin/formulaires/@form.FormId/diffusion">Diffusion</a></p>
+<h1>Réglages : @form.Title</h1>
+
+@if (Model.Error is not null)
+{
+    <div class="summary" role="alert"><p>@Model.Error</p></div>
+}
+
+@if (Model.Message is not null)
+{
+    <div class="notice" role="status"><p>@Model.Message</p></div>
+}
+
+<section class="card" aria-labelledby="etat">
+    <h2 id="etat">État</h2>
+    <dl class="meta">
+        <div><dt>Adresse publique</dt><dd>/f/@form.Slug</dd></div>
+        <div><dt>Version publiée</dt><dd>@(form.VersionNumber?.ToString() ?? "Aucune")</dd></div>
+        <div><dt>État actuel</dt><dd>@SettingsModel.StatusLabel(form.Availability)</dd></div>
+        <div><dt>Réponses reçues</dt><dd>@form.ResponseCount@(form.MaxResponses is { } max ? $" sur {max}" : string.Empty)</dd></div>
+    </dl>
+
+    @if (form.Status == FormStatus.Published)
+    {
+        <p>Fermer le formulaire refuse immédiatement toute nouvelle réponse, quelles que soient les dates. Les réponses reçues sont conservées.</p>
+        <form method="post" asp-page-handler="Close" asp-route-formId="@form.FormId">
+            <button type="submit" class="danger">Fermer le formulaire</button>
+        </form>
+    }
+    else if (form.Status == FormStatus.Closed)
+    {
+        <p>Rouvrir le formulaire le remet en ligne, dans la limite des dates et du nombre maximal de réponses ci-dessous.</p>
+        <form method="post" asp-page-handler="Reopen" asp-route-formId="@form.FormId">
+            <button type="submit" class="primary">Rouvrir le formulaire</button>
+        </form>
+    }
+    else
+    {
+        <p>Ce formulaire n'a pas encore de version publiée : il se publie par l'<a href="/admin/formulaires/import">import de son fichier de formulaire</a>.</p>
+    }
+</section>
+
+<section class="card" aria-labelledby="version">
+    <h2 id="version">Définition</h2>
+    <p>Les champs, la présentation, la durée de conservation et le modèle PDF viennent du fichier de formulaire. Pour les modifier, <a href="/admin/formulaires/import">importez une nouvelle version</a> : les réponses déjà reçues restent rattachées à leur version.</p>
+</section>
+
+<section class="card" aria-labelledby="calendrier">
+    <h2 id="calendrier">Ouverture et nombre de réponses</h2>
+    <p>Heure de Paris. Laisser un champ vide pour ne pas fixer de limite.</p>
+    <form method="post" asp-page-handler="Schedule" asp-route-formId="@form.FormId" class="filters">
+        <div class="field">
+            <label for="opensAt">Ouverture le</label>
+            <input id="opensAt" name="opensAt" type="datetime-local" value="@Model.OpensAtInput">
+        </div>
+        <div class="field">
+            <label for="closesAt">Fermeture le</label>
+            <input id="closesAt" name="closesAt" type="datetime-local" value="@Model.ClosesAtInput">
+        </div>
+        <div class="field">
+            <label for="maxResponses">Nombre maximal de réponses</label>
+            <input id="maxResponses" name="maxResponses" inputmode="numeric" pattern="[0-9]*" maxlength="9" value="@Model.MaxResponsesInput">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="primary">Enregistrer</button>
+        </div>
+    </form>
+</section>
+
+@if (form.RequiresAccessCode)
+{
+    <section class="card narrow" aria-labelledby="code-acces">
+        <h2 id="code-acces">Code d'accès</h2>
+        <p>Le code actuel n'est pas affiché : il est stocké haché. Après un changement, les flyers déjà imprimés ne fonctionnent plus.</p>
+        <form method="post" asp-page-handler="AccessCode" asp-route-formId="@form.FormId">
+            <div class="field">
+                <label for="code">Nouveau code d'accès</label>
+                <p class="help" id="code-aide">@FormAdminService.AccessCodeRule.</p>
+                <input id="code" name="code" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" required aria-describedby="code-aide">
+            </div>
+            <div class="field">
+                <label for="confirmation">Confirmer le nouveau code</label>
+                <input id="confirmation" name="confirmation" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]{4,12}" required>
+            </div>
+            <button type="submit">Changer le code d'accès</button>
+        </form>
+    </section>
+}
