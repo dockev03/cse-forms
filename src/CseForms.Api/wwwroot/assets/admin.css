@@ -132,4 +132,5 @@ button.danger { background: var(--error); border-color: var(--error); color: #ff
 .codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.25rem 1rem; padding-left: 1.5rem; }
 .mail-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }
 .logo-preview { display: block; max-width: 12rem; max-height: 8rem; border: 1px solid var(--border); background: #fff; }
+.background-preview { display: block; max-width: 100%; width: 20rem; max-height: 12rem; object-fit: cover; border: 1px solid var(--border); }
 .inline-action { margin-top: 0.75rem; }

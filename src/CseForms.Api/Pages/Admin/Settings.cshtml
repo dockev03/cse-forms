@@ -16,9 +16,7 @@
         <ul>
             @foreach (var (key, error) in Model.Errors)
             {
-                var label = SettingsModel.Fields.TryGetValue(key, out var f) ? f.Label
-                    : key == SettingKeys.CseLogo ? "Logo" : "Site";
-                <li>@label : @error</li>
+                <li>@SettingsModel.Label(key) : @error</li>
             }
         </ul>
     </div>
@@ -87,6 +85,51 @@
     {
         <form method="post" asp-page-handler="RemoveLogo" class="inline-action">
             <button type="submit" class="danger">Retirer le logo</button>
+        </form>
+    }
+</section>
+
+<section class="card" aria-labelledby="apparence">
+    <h2 id="apparence">Apparence du formulaire public</h2>
+    <p>S'applique à tous les formulaires publics. Le formulaire garde un fond uni : l'image n'apparaît qu'autour, sans gêner la lecture.</p>
+    <form method="post" asp-page-handler="Theme">
+        @{
+            var colorError = Model.Errors.GetValueOrDefault(SettingKeys.ThemePrimaryColor);
+            var colorDescribedBy = colorError is null ? "p-couleur-aide" : "p-couleur-aide p-couleur-erreur";
+        }
+        <div class="field">
+            <label for="p-couleur">Couleur principale</label>
+            <p class="help" id="p-couleur-aide">Boutons, cases cochées, barre de progression. Format #rrggbb, par exemple @ThemeColor.Default (couleur par défaut si le champ est vide). Refusée si le contraste avec le texte blanc et les fonds clairs est inférieur à 4,5:1 (RGAA) : une couleur trop claire rendrait les boutons illisibles.</p>
+            @if (colorError is not null)
+            {
+                <p class="error-text" id="p-couleur-erreur">@colorError</p>
+            }
+            <input id="p-couleur" name="@SettingKeys.ThemePrimaryColor" type="text" maxlength="7" autocomplete="off" spellcheck="false" placeholder="@ThemeColor.Default" value="@Model.Inputs.GetValueOrDefault(SettingKeys.ThemePrimaryColor)" aria-describedby="@colorDescribedBy" aria-invalid="@(colorError is null ? null : "true")">
+        </div>
+        <button type="submit" class="primary">Enregistrer la couleur</button>
+    </form>
+
+    <h3>Image de fond</h3>
+    @if (settings.Background is not null)
+    {
+        <p><img class="background-preview" src="@settings.Background" alt="Image de fond actuelle"></p>
+    }
+    else
+    {
+        <p>Aucune image : fond uni.</p>
+    }
+    <form method="post" asp-page-handler="Background" enctype="multipart/form-data">
+        <div class="field">
+            <label for="p-fond">@(settings.Background is null ? "Ajouter une image de fond" : "Remplacer l'image de fond")</label>
+            <p class="help" id="p-fond-aide">@(char.ToUpperInvariant(BackgroundImage.Rule[0]) + BackgroundImage.Rule[1..]). Pas de SVG. Stockée en base et servie par le site lui-même, sans lien externe. Privilégiez une image légère et sans texte.</p>
+            <input id="p-fond" name="background" type="file" accept="image/png,image/jpeg" required aria-describedby="p-fond-aide">
+        </div>
+        <button type="submit">Envoyer l'image</button>
+    </form>
+    @if (settings.Background is not null)
+    {
+        <form method="post" asp-page-handler="RemoveBackground" class="inline-action">
+            <button type="submit" class="danger">Retirer l'image de fond</button>
         </form>
     }
 </section>

@@ -4,6 +4,18 @@ import { createProofSource } from './pow.mjs';
 
 const root = document.getElementById('app');
 
+/** Logo du CSE, demandé seulement s'il est défini ; l'en-tête reste masqué tant qu'il n'est pas chargé. */
+function showLogo() {
+  const brand = document.querySelector('.brand');
+  if (!brand) return;
+  const logo = document.createElement('img');
+  logo.className = 'cse-logo';
+  logo.alt = 'Logo du CSE';
+  logo.addEventListener('load', () => { brand.hidden = false; }, { once: true });
+  logo.src = '/logo';
+  brand.replaceChildren(logo);
+}
+
 function showMessage(title, text) {
   const heading = document.createElement('h1');
   heading.textContent = title;
@@ -50,6 +62,7 @@ async function start() {
 
   const form = result.body;
   document.title = form.title;
+  if (form.logo) showLogo();
   if (!form.accepting || !form.definition) {
     showMessage(form.title, 'Ce formulaire n\'accepte pas de réponse pour le moment.');
     return;

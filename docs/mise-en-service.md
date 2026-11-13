@@ -359,6 +359,16 @@ Logo (PNG ou JPEG, 256 Ko au plus, pas de SVG), via un montage en lecture seule 
 docker compose run --rm --no-deps -v "$PWD/logo-cse.png:/import/logo.png:ro" api settings logo --file /import/logo.png
 ```
 
+Apparence du formulaire public : couleur principale (refusée si son contraste avec le blanc est inférieur à 4,5:1) et image de fond (PNG ou JPEG, 512 Ko au plus) :
+
+```bash
+docker compose exec api dotnet CseForms.Api.dll settings set --key theme.primaryColor --value "#1d4f91"
+```
+
+```bash
+docker compose run --rm --no-deps -v "$PWD/fond.jpg:/import/fond.jpg:ro" api settings background --file /import/fond.jpg
+```
+
 Adresse publique, utilisée pour les liens des emails, le QR code et le flyer :
 
 ```bash
@@ -764,6 +774,8 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 | `cse.phone` | Téléphone |
 | `cse.office` | Composition du bureau (multi-lignes, PDF) |
 | `cse.logo` | Logo (`settings logo`) |
+| `theme.primaryColor` | Couleur principale du formulaire public (`#rrggbb`, contraste 4,5:1) |
+| `theme.background` | Image de fond du formulaire public (`settings background`) |
 | `app.publicBaseUrl` | Adresse publique (liens, QR code, flyer) |
 | `smtp.host` | Serveur SMTP |
 | `smtp.port` | Port (587 par défaut) |
@@ -789,7 +801,7 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 | `users create\|grant\|revoke\|reset-password\|reset-2fa\|list` | Comptes et droits, en secours de l'écran « Comptes » |
 | `forms import\|access-code\|list` | Formulaires |
 | `sites add\|disable\|enable\|list` | Sites |
-| `settings set\|unset\|logo\|list` | Paramètres |
+| `settings set\|unset\|logo\|background\|list` | Paramètres |
 | `notifications set\|show\|remove` | Règles de notification |
 | `mail test --to <adresse>` (conteneur `worker`) | Test SMTP |
 

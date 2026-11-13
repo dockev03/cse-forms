@@ -295,6 +295,29 @@ public sealed class CliTests(ApiFactory factory) : IClassFixture<ApiFactory>, ID
     }
 
     [Fact]
+    public async Task Background_and_color_are_set_from_the_command_line()
+    {
+        var png = Path.Combine(_directory, "fond.png");
+        await File.WriteAllBytesAsync(png, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
+        var svg = Path.Combine(_directory, "fond.svg");
+        await File.WriteAllTextAsync(svg, "<svg onload=\"x()\"></svg>");
+
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "background", "--file", svg));
+        Assert.Contains("Image de fond refusée", LastOutput);
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "theme.background", "--value", "data:image/png;base64,AAAA"));
+        Assert.Contains("settings background", LastOutput);
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "background", "--file", png));
+
+        Assert.Equal(1, await RunAsync(string.Empty, "settings", "set", "--key", "theme.primaryColor", "--value", "#ffcc00"));
+        Assert.Contains("Contraste insuffisant", LastOutput);
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "set", "--key", "theme.primaryColor", "--value", "#A3004C"));
+
+        Assert.Equal(0, await RunAsync(string.Empty, "settings", "list"));
+        Assert.Contains("theme.background | (image, 1 Ko)", LastOutput);
+        Assert.Contains("theme.primaryColor | #a3004c", LastOutput);
+    }
+
+    [Fact]
     public async Task Notification_rule_is_set_shown_and_removed()
     {
         Assert.Equal(0, await RunAsync(string.Empty, "forms", "import", "--file", WriteForm("cli-notif")));

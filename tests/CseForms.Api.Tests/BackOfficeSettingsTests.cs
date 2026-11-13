@@ -20,14 +20,17 @@ public partial class BackOfficeTests
         return await client.PostAsync($"{SettingsUrl}?handler={handler}", new FormUrlEncodedContent(values));
     }
 
-    private static async Task<HttpResponseMessage> PostLogoAsync(HttpClient client, byte[] content, string fileName, string mediaType)
+    private static Task<HttpResponseMessage> PostLogoAsync(HttpClient client, byte[] content, string fileName, string mediaType) =>
+        PostImageAsync(client, "Logo", "logo", content, fileName, mediaType);
+
+    private static async Task<HttpResponseMessage> PostImageAsync(HttpClient client, string handler, string field, byte[] content, string fileName, string mediaType)
     {
         using var form = new MultipartFormDataContent();
         var file = new ByteArrayContent(content);
         file.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
-        form.Add(file, "logo", fileName);
+        form.Add(file, field, fileName);
         form.Add(new StringContent(Token(await client.GetStringAsync(SettingsUrl))), "__RequestVerificationToken");
-        return await client.PostAsync($"{SettingsUrl}?handler=Logo", form);
+        return await client.PostAsync($"{SettingsUrl}?handler={handler}", form);
     }
 
     [Fact]
@@ -86,6 +89,37 @@ public partial class BackOfficeTests
         Assert.Equal(HttpStatusCode.Redirect, (await PostSettingsAsync(client, "RemoveLogo")).StatusCode);
         await using var db = factory.Database.CreateContext();
         Assert.False(await db.Settings.AnyAsync(s => s.Key == "cse.logo"));
+    }
+
+    [Fact]
+    public async Task Admin_sets_a_contrasted_color_and_a_background_image()
+    {
+        var client = await LoggedInAsync("admin");
+
+        var light = await PostSettingsAsync(client, "Theme", new() { ["theme.primaryColor"] = "#FFCC00" });
+        Assert.Equal(HttpStatusCode.OK, light.StatusCode);
+        var lightPage = await light.Content.ReadAsStringAsync();
+        Assert.Contains("Couleur principale : Contraste insuffisant", lightPage);
+        Assert.Contains("value=\"#FFCC00\"", lightPage);
+
+        var dark = await PostSettingsAsync(client, "Theme", new() { ["theme.primaryColor"] = "#A3004C" });
+        Assert.Equal(HttpStatusCode.Redirect, dark.StatusCode);
+        Assert.Contains("value=\"#a3004c\"", await client.GetStringAsync(dark.Headers.Location!.OriginalString));
+
+        var svg = await PostImageAsync(client, "Background", "background", "<svg onload=\"alert(1)\"/>"u8.ToArray(), "fond.png", "image/png");
+        Assert.Contains("Image de fond refusée", await svg.Content.ReadAsStringAsync());
+
+        var png = await PostImageAsync(client, "Background", "background", FictitiousPng, "fond.png", "image/png");
+        Assert.Equal(HttpStatusCode.Redirect, png.StatusCode);
+        Assert.Contains("class=\"background-preview\" src=\"data:image/png;base64,", await client.GetStringAsync(png.Headers.Location!.OriginalString));
+
+        var css = await client.GetStringAsync("/theme.css");
+        Assert.Contains("--primary: #a3004c;", css);
+        Assert.Contains("background-image: url(\"data:image/png;base64,", css);
+
+        Assert.Equal(HttpStatusCode.Redirect, (await PostSettingsAsync(client, "RemoveBackground")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await PostSettingsAsync(client, "Theme", new() { ["theme.primaryColor"] = string.Empty })).StatusCode);
+        Assert.DoesNotContain("--primary", await client.GetStringAsync("/theme.css"));
     }
 
     [Fact]

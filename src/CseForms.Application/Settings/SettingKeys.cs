@@ -15,6 +15,8 @@ public static class SettingKeys
     public const string CsePhone = "cse.phone";
     public const string CseOffice = "cse.office";
     public const string CseLogo = "cse.logo";
+    public const string ThemePrimaryColor = "theme.primaryColor";
+    public const string ThemeBackground = "theme.background";
     public const string PublicBaseUrl = "app.publicBaseUrl";
     public const string SmtpHost = "smtp.host";
     public const string SmtpPort = "smtp.port";
@@ -32,16 +34,25 @@ public static class SettingKeys
         [CseEmail] = "Email de contact du CSE, communiqué aux salariés",
         [CsePhone] = "Téléphone de contact du CSE",
         [CseOffice] = "Composition du bureau : une ligne par membre (fonction : prénom nom)",
-        [CseLogo] = "Logo du CSE (PDF, flyer) : se règle avec « settings logo --file <image> »",
+        [CseLogo] = "Logo du CSE (PDF, flyer, formulaire public) : se règle avec « settings logo --file <image> »",
         [PublicBaseUrl] = "Adresse publique du site, par exemple https://formulaires.example.test (QR code, liens)",
         [SmtpHost] = "Serveur SMTP d'envoi des emails (identifiant et mot de passe : variables Smtp__Username et Smtp__Password)",
         [SmtpPort] = "Port du serveur SMTP (587 par défaut)",
         [SmtpSecurity] = "Chiffrement SMTP : starttls (par défaut), ssl ou none (sans authentification)",
         [SmtpFrom] = "Adresse d'expédition des emails",
+        [ThemePrimaryColor] = "Couleur principale du formulaire public, #rrggbb (contraste 4,5:1 au moins avec le blanc, RGAA)",
+        [ThemeBackground] = "Image de fond du formulaire public : se règle avec « settings background --file <image> »",
         [AlertsEmail] = "Adresse qui reçoit les alertes d'échec définitif des tâches (PDF, emails)",
     };
 
-    /// <summary>Longueur maximale d'une valeur (hors logo).</summary>
+    /// <summary>Paramètres image, stockés en adresse <c>data:</c> et réglés par envoi de fichier.</summary>
+    public static readonly IReadOnlyDictionary<string, SettingImage> ImageKeys = new Dictionary<string, SettingImage>(StringComparer.Ordinal)
+    {
+        [CseLogo] = Logo.Image,
+        [ThemeBackground] = BackgroundImage.Image,
+    };
+
+    /// <summary>Longueur maximale d'une valeur (hors images).</summary>
     public const int ValueMaxLength = 4000;
 
     /// <summary>Paramètres saisis sur plusieurs lignes ; les autres tiennent sur une seule.</summary>
@@ -51,12 +62,17 @@ public static class SettingKeys
 
     /// <summary>
     /// Retours à la ligne unifiés, espaces de fin de ligne et lignes vides de début et de fin supprimés ;
-    /// adresse publique sans barre finale. Une valeur vide signifie « paramètre non défini ».
+    /// adresse publique sans barre finale, couleur en <c>#rrggbb</c> minuscule. Une valeur vide signifie « paramètre non défini ».
     /// </summary>
     public static string Normalize(string key, string? value)
     {
         var normalized = string.Join('\n', (value ?? string.Empty).ReplaceLineEndings("\n").Split('\n').Select(line => line.TrimEnd())).Trim();
-        return key == PublicBaseUrl ? normalized.TrimEnd('/') : normalized;
+        return key switch
+        {
+            PublicBaseUrl => normalized.TrimEnd('/'),
+            ThemePrimaryColor => ThemeColor.Normalize(normalized),
+            _ => normalized,
+        };
     }
 
     /// <summary>Adresse seule, sans nom affiché ni espace : rien qui puisse altérer un en-tête d'email.</summary>
@@ -69,12 +85,17 @@ public static class SettingKeys
     /// <summary>Contrôle propre à certaines clés ; null si la valeur est acceptée.</summary>
     public static string? Validate(string key, string value)
     {
-        if (key != CseLogo && (value.Length == 0 || value.Length > ValueMaxLength))
+        if (ImageKeys.TryGetValue(key, out var image))
+        {
+            return image.IsValid(value) ? null : $"Image attendue : {image.Rule}.";
+        }
+
+        if ((value.Length == 0 || value.Length > ValueMaxLength))
         {
             return $"Valeur vide ou trop longue ({ValueMaxLength} caractères au plus).";
         }
 
-        if (key != CseLogo && !MultiLineKeys.Contains(key) && value.Contains('\n', StringComparison.Ordinal))
+        if (!MultiLineKeys.Contains(key) && value.Contains('\n', StringComparison.Ordinal))
         {
             return "Une seule ligne attendue.";
         }
@@ -89,9 +110,9 @@ public static class SettingKeys
             return "Adresse HTTPS attendue, sans chemin ni paramètre : https://formulaires.example.test";
         }
 
-        if (key == CseLogo && !Logo.IsValid(value))
+        if (key == ThemePrimaryColor && ThemeColor.Validate(value) is { } colorError)
         {
-            return $"Logo attendu : {Logo.Rule}.";
+            return colorError;
         }
 
         if ((key is CseEmail or SmtpFrom or AlertsEmail) && !IsPlainEmail(value))

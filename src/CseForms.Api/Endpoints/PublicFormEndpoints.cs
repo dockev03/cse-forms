@@ -1,3 +1,5 @@
+using CseForms.Application.Notifications;
+using CseForms.Application.Settings;
 using System.Text.Json;
 using CseForms.Api.Hosting;
 using CseForms.Application.ProofOfWork;
@@ -29,7 +31,7 @@ internal static class PublicFormEndpoints
         return app;
     }
 
-    private static async Task<IResult> GetForm(string slug, PublicFormService service, CancellationToken cancellationToken)
+    private static async Task<IResult> GetForm(string slug, PublicFormService service, ISettingReader settings, CancellationToken cancellationToken)
     {
         var view = await service.GetAsync(slug, cancellationToken);
         if (view is null)
@@ -45,7 +47,9 @@ internal static class PublicFormEndpoints
             view.RequiresAccessCode,
             ParseOrNull(view.DefinitionJson),
             ParseOrNull(view.UiJson),
-            view.Sites));
+            view.Sites,
+            // La page ne demande /logo que s'il existe : aucune requête en erreur sans logo.
+            CseLogo.IsValid((await settings.GetAllAsync(cancellationToken)).GetValueOrDefault(SettingKeys.CseLogo))));
     }
 
     private static async Task<IResult> Submit(
@@ -102,7 +106,8 @@ internal static class PublicFormEndpoints
         bool RequiresAccessCode,
         JsonElement? Definition,
         JsonElement? Ui,
-        IReadOnlyList<string> Sites);
+        IReadOnlyList<string> Sites,
+        bool Logo);
 
     internal sealed record SubmitRequest(int Version, string? AccessCode, JsonElement Data, ProofOfWorkSolution? Proof);
 
