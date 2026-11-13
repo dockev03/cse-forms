@@ -12,11 +12,11 @@ public partial class BackOfficeTests
 {
     private static readonly byte[] FakePdf = "%PDF-1.7 fictif"u8.ToArray();
 
-    private async Task StorePdfAsync(Guid submissionId)
+    private async Task StorePdfAsync(Guid submissionId, byte[]? content = null)
     {
         var vault = factory.Services.GetRequiredService<IFileVault>();
         var fileId = Guid.NewGuid();
-        var stored = await vault.WriteAsync(fileId, submissionId, FakePdf, default);
+        var stored = await vault.WriteAsync(fileId, submissionId, content ?? FakePdf, default);
 
         await using var db = factory.Database.CreateContext();
         db.SubmissionFiles.Add(new SubmissionFile(fileId, submissionId, SubmissionFileKind.Pdf, stored.StoragePath, stored.Sha256, stored.SizeBytes, DateTimeOffset.UtcNow));
@@ -49,6 +49,36 @@ public partial class BackOfficeTests
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString());
         Assert.Equal(FakePdf, await response.Content.ReadAsByteArrayAsync());
         Assert.Contains(await AuditAsync($"submission:{submissionId}"), e => e.Action == "submission.download");
+    }
+
+    [Fact]
+    public async Task Watermark_set_on_the_form_marks_each_download_with_the_downloader_name()
+    {
+        var (form, submissionId) = await SeedSubmissionAsync("bo-pdf-filigrane");
+        using (var document = new PdfSharp.Pdf.PdfDocument())
+        using (var pdf = new MemoryStream())
+        {
+            document.AddPage();
+            document.Save(pdf, closeStream: false);
+            await StorePdfAsync(submissionId, pdf.ToArray());
+        }
+
+        var client = await LoggedInAsync("admin");
+        var settings = await client.GetStringAsync($"/admin/formulaires/{form.Id}/reglages");
+        Assert.Contains("Activer le filigrane", settings);
+        var plain = await client.GetByteArrayAsync($"/admin/reponses/{submissionId}/pdf");
+        Assert.DoesNotContain("CONFIDENTIEL CSE", System.Text.Encoding.Latin1.GetString(plain));
+
+        var enabled = await PostSettingsAsync(client, form.Id, "Watermark", new() { ["enabled"] = "true" });
+        Assert.Equal(HttpStatusCode.Redirect, enabled.StatusCode);
+        Assert.Contains("Désactiver le filigrane", await client.GetStringAsync(enabled.Headers.Location!.OriginalString));
+
+        var marked = await client.GetByteArrayAsync($"/admin/reponses/{submissionId}/pdf");
+        using var reopened = PdfSharp.Pdf.IO.PdfReader.Open(new MemoryStream(marked), PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = System.Text.Encoding.Latin1.GetString(reopened.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.Contains("(CONFIDENTIEL CSE) Tj", content);
+        Assert.Contains("(T\u00e9l\u00e9charg\u00e9 par \u00c9lu fictif le ", content);
+        Assert.Contains(await AuditAsync($"form:{form.Id}"), e => e.Action == "form.pdf_watermark");
     }
 
     [Fact]

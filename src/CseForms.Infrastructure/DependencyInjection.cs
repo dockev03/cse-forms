@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IFormLifecycleStore, FormLifecycleStore>();
         services.AddScoped<INotificationRuleStore, NotificationRuleStore>();
         services.AddScoped<ISubmissionPdfStore, SubmissionPdfStore>();
+        services.AddSingleton<IPdfWatermarker, PdfSharpWatermarker>();
         services.AddScoped<PendingJobDispatcher>();
         services.AddScoped<ISettingReader, SettingReader>();
         services.AddScoped<CseForms.Application.Settings.ISettingsAdminStore, Settings.SettingsAdminStore>();

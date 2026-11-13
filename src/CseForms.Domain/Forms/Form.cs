@@ -52,6 +52,12 @@ public sealed partial class Form
     /// <summary>Conservation des réponses en jours, comptée à partir de leur traitement ; null : pas de purge.</summary>
     public int? RetentionDays { get; private set; }
 
+    /// <summary>
+    /// Filigrane « Confidentiel CSE, téléchargé par X le JJ/MM/AAAA » sur chaque page du PDF téléchargé
+    /// depuis le back-office. Le PDF stocké n'est pas modifié.
+    /// </summary>
+    public bool PdfWatermark { get; private set; }
+
     /// <summary>Préfixe des numéros de dossier, par exemple <c>INS</c> pour <c>INS-2026-0042</c>.</summary>
     public string CaseNumberPrefix { get; private set; }
 
@@ -103,6 +109,8 @@ public sealed partial class Form
 
         RetentionDays = retentionDays;
     }
+
+    public void SetPdfWatermark(bool enabled) => PdfWatermark = enabled;
 
     public void SetCaseNumberPrefix(string prefix) => CaseNumberPrefix = CaseNumber.NormalizePrefix(prefix);
 

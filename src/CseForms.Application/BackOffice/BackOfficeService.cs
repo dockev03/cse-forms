@@ -14,6 +14,7 @@ public sealed class BackOfficeService(
     IAuditLog audit,
     IFileVault vault,
     SubmissionEraser eraser,
+    IPdfWatermarker watermarker,
     TimeProvider timeProvider)
 {
     public Task<IReadOnlyList<FormSummary>> ListFormsAsync(CurrentUser user, CancellationToken cancellationToken) =>
@@ -210,7 +211,14 @@ public sealed class BackOfficeService(
         }
 
         var content = await vault.ReadAsync(file.StoragePath, file.FileId, cancellationToken);
-        await audit.RecordAsync(AuditActions.SubmissionDownloaded, user.Id, $"submission:{submissionId}", cancellationToken);
+        if (record.PdfWatermark)
+        {
+            // Filigrane propre à chaque téléchargement ; le PDF stocké reste intact. En cas d'échec, rien n'est remis.
+            var name = await store.GetUserDisplayNameAsync(user.Id, cancellationToken) ?? "compte inconnu";
+            content = watermarker.Apply(content, PdfWatermarkText.For(name, timeProvider.GetUtcNow()));
+        }
+
+        await audit.RecordAsync(AuditActions.SubmissionDownloaded, user.Id, $"submission:{submissionId}", record.PdfWatermark ? "watermark" : null, cancellationToken);
         return new PdfDownload($"{record.CaseNumber}.pdf", content);
     }
 

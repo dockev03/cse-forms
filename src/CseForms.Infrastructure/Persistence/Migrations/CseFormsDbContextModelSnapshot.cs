@@ -107,6 +107,12 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("opens_at");
 
+                    b.Property<bool>("PdfWatermark")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("pdf_watermark");
+
                     b.Property<int?>("RetentionDays")
                         .HasColumnType("integer")
                         .HasColumnName("retention_days");

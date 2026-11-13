@@ -100,3 +100,17 @@
         </form>
     </section>
 }
+
+<section class="card" aria-labelledby="filigrane">
+    <h2 id="filigrane">Filigrane du PDF</h2>
+    <p>
+        @(form.PdfWatermark
+            ? "Activé : chaque PDF téléchargé depuis le back-office porte en diagonale « Confidentiel CSE, téléchargé par » le nom de la personne connectée et la date du jour."
+            : "Désactivé : le PDF est téléchargé tel qu'il a été généré.")
+        Le PDF stocké n'est jamais modifié ; le filigrane dissuade de faire circuler une copie et permet d'en retrouver l'origine.
+    </p>
+    <form method="post" asp-page-handler="Watermark" asp-route-formId="@form.FormId">
+        <input type="hidden" name="enabled" value="@(form.PdfWatermark ? "false" : "true")">
+        <button type="submit">@(form.PdfWatermark ? "Désactiver le filigrane" : "Activer le filigrane")</button>
+    </form>
+</section>

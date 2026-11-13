@@ -17,6 +17,9 @@ public interface IBackOfficeStore
 
     Task<StoredPdf?> GetPdfFileAsync(Guid submissionId, CancellationToken cancellationToken);
 
+    /// <summary>Nom affiché d'un compte (filigrane du PDF) ; null s'il n'existe pas.</summary>
+    Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken);
+
     /// <summary>Ajoute une tâche de génération, sauf si une génération est déjà en cours ; renvoie vrai si elle est ajoutée.</summary>
     Task<bool> RequestPdfAsync(Guid submissionId, DateTimeOffset now, CancellationToken cancellationToken);
 

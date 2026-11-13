@@ -92,6 +92,7 @@ Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresse
 - **Ouverture, fermeture** : saisies à l'heure de Paris, stockées en UTC ; champ vide, pas de borne. La fermeture doit suivre l'ouverture. Une heure qui n'existe pas (passage à l'heure d'été) est refusée ; une heure ambiguë (passage à l'heure d'hiver) est lue en heure d'hiver.
 - **Nombre maximal de réponses** : entier positif, champ vide pour aucune limite. Un plafond inférieur aux réponses déjà reçues est accepté : le formulaire cesse d'accepter des réponses. Le contrôle à la soumission verrouille la ligne du formulaire : deux soumissions simultanées ne dépassent pas le plafond.
 - **Code d'accès** (formulaires en mode `pin` uniquement) : nouveau code saisi deux fois, 4 à 12 chiffres, stocké haché. Le code actuel n'est jamais affiché ; le code saisi n'est ni journalisé ni réaffiché, même en cas d'erreur. Les flyers déjà imprimés portent l'ancien code. Un formulaire public reste public : le mode d'accès fait partie de la définition.
+- **Filigrane du PDF** : désactivé par défaut. Activé, chaque PDF téléchargé depuis la fiche réponse porte en diagonale, sur chaque page, « CONFIDENTIEL CSE » et « Téléchargé par {nom affiché} le JJ/MM/AAAA » (voir [PDF](#pdf)). Non versionné, et absent du fichier de formulaire : un réimport ne le change pas.
 
 ## Import d'un formulaire
 
@@ -154,6 +155,8 @@ Le PDF est produit en tâche de fond, jamais pendant la soumission :
 
 Mise en page : celle de la version remplie si elle a un modèle propre (`form_version.pdf_template_html`, voir [modèle PDF](format-definition.md#modèle-pdf)), sinon le modèle générique : logo, nom et coordonnées du CSE (paramètres), titre du formulaire, numéro de dossier, date et heure de soumission (heure de Paris), mention « Formulaire soumis en ligne », sections, groupes répétables en tableau, composition du bureau. Dans les deux cas, pied de page « Document confidentiel » avec numéro de page. Toutes les valeurs sont encodées et le document ne charge aucune ressource externe. Un modèle propre inapplicable laisse place au modèle générique.
 
+Filigrane (si le formulaire l'active dans ses [réglages](#réglages-dun-formulaire)) : posé à chaque téléchargement, au nom affiché du compte connecté et à la date du jour (heure de Paris), sur une copie ; le PDF stocké n'est jamais modifié. Texte rouge semi-transparent au-dessus du contenu, en Helvetica (police standard des lecteurs PDF, rien d'embarqué ; un caractère hors de l'alphabet latin est remplacé par sa lettre de base ou `?`). Réalisé dans l'API avec PDFsharp (licence MIT), sans appel à Gotenberg. Un PDF illisible n'est pas remis du tout plutôt que remis sans filigrane. Le journal du téléchargement porte alors le détail `watermark`.
+
 Stockage : AES-256-GCM, clé `Storage__EncryptionKey` (32 octets en base64), fichiers sous `Storage__Path` hors de la racine web, droits réservés au compte du service. L'identifiant du fichier est authentifié avec le contenu ; l'empreinte SHA-256 du contenu en clair est conservée en base. La perte de la clé rend les PDF illisibles : la sauvegarder à part.
 
 ## Emails
@@ -201,7 +204,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `user.password_reset` | `user:{id}` ; sans compte en ligne de commande |
 | `user.bootstrap` (administrateur initial) | `user:{id}`, sans compte |
 | `submission.view` | `submission:{id}` |
-| `submission.download` | `submission:{id}` |
+| `submission.download` | `submission:{id}` ; détail `watermark` si la copie est filigranée |
 | `submission.pdf.regenerate` | `submission:{id}` |
 | `access.denied` | `submission:{id}` ou `form:{id}` ; aucune pour un compte sans rôle (détail `no-role`) ; détail `form-import` pour un import refusé (sans cible si le formulaire n'existe pas) |
 | `form.qrcode` | `form:{id}` |
@@ -213,6 +216,7 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `form.close`, `form.reopen` | `form:{id}` |
 | `form.schedule` | `form:{id}`, détail : `opens=…;closes=…;max=…` (UTC, `-` sans limite) |
 | `form.access_code` | `form:{id}`, sans le code |
+| `form.pdf_watermark` | `form:{id}`, détail `on` ou `off` |
 | `form.import` | `form:{id}`, détail : `create;v1` à la création, `v{n}` pour une nouvelle version ; rien si le fichier n'a pas changé |
 | `form.public` | `form:{id}` : formulaire protégé passé en accès public par import |
 | `form.notifications` | `form:{id}`, détail : `recipients={nombre}`, sans les adresses |

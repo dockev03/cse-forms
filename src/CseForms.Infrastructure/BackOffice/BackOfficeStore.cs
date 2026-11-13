@@ -131,7 +131,7 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
             join f in db.Forms on v.FormId equals f.Id
             where s.Id == submissionId
             select new SubmissionRecord(
-                s.Id, f.Id, f.Title, s.CaseNumber, v.Number, v.SchemaJson, s.DataJson, s.Status, s.CreatedAt, s.PurgeAt, f.RetentionDays))
+                s.Id, f.Id, f.Title, s.CaseNumber, v.Number, v.SchemaJson, s.DataJson, s.Status, s.CreatedAt, s.PurgeAt, f.RetentionDays, f.PdfWatermark))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<PdfState> GetPdfStateAsync(Guid submissionId, CancellationToken cancellationToken)
@@ -152,6 +152,9 @@ internal sealed class BackOfficeStore(CseFormsDbContext db) : IBackOfficeStore
             Generating: lastStatus is JobStatus.Pending or JobStatus.Queued,
             Failed: lastStatus is JobStatus.Failed);
     }
+
+    public Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken) =>
+        db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => (string?)u.DisplayName).SingleOrDefaultAsync(cancellationToken);
 
     public Task<StoredPdf?> GetPdfFileAsync(Guid submissionId, CancellationToken cancellationToken) =>
         db.SubmissionFiles.AsNoTracking()
