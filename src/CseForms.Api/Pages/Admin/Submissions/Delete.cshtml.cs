@@ -38,18 +38,13 @@ public sealed class DeleteModel(BackOfficeService service) : PageModel
 
     private async Task<IActionResult> ShowAsync(Guid id, bool notConfirmed, CancellationToken cancellationToken)
     {
-        var user = User.ToCurrentUser();
-        if (await service.GetSubmissionHeaderAsync(user, id, cancellationToken) is not { } header)
+        var (outcome, screen) = await service.GetDeletionScreenAsync(User.ToCurrentUser(), id, cancellationToken);
+        if (screen is null)
         {
-            return NotFound();
+            return outcome == DeletionOutcome.Forbidden ? Forbid() : NotFound();
         }
 
-        if (!user.IsAdmin)
-        {
-            return Forbid();
-        }
-
-        (SubmissionId, FormId, FormTitle, CaseNumber) = header;
+        (SubmissionId, FormId, FormTitle, CaseNumber) = screen;
         NotConfirmed = notConfirmed;
         return Page();
     }

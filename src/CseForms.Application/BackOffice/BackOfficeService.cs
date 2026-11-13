@@ -176,14 +176,29 @@ public sealed class BackOfficeService(
         return new DeletionResult(DeletionOutcome.Deleted, record.FormId);
     }
 
-    /// <summary>Réponse visible du compte, sans journaliser de consultation (écran de confirmation).</summary>
-    public async Task<(Guid Id, Guid FormId, string FormTitle, string CaseNumber)?> GetSubmissionHeaderAsync(
+    /// <summary>
+    /// Écran de confirmation de suppression, sans journaliser de consultation. Réservé aux administrateurs :
+    /// un autre rôle ayant le droit sur le formulaire est refusé et le refus est journalisé.
+    /// </summary>
+    public async Task<(DeletionOutcome Outcome, DeletionScreen? Screen)> GetDeletionScreenAsync(
         CurrentUser user,
         Guid submissionId,
-        CancellationToken cancellationToken) =>
-        await FindAccessibleAsync(user, submissionId, cancellationToken) is { } record
-            ? (record.Id, record.FormId, record.FormTitle, record.CaseNumber)
-            : null;
+        CancellationToken cancellationToken)
+    {
+        var record = await FindAccessibleAsync(user, submissionId, cancellationToken);
+        if (record is null)
+        {
+            return (DeletionOutcome.NotFound, null);
+        }
+
+        if (!user.IsAdmin)
+        {
+            await audit.RecordAsync(AuditActions.AccessDenied, user.Id, $"submission:{submissionId}", cancellationToken);
+            return (DeletionOutcome.Forbidden, null);
+        }
+
+        return (DeletionOutcome.NotConfirmed, new DeletionScreen(record.Id, record.FormId, record.FormTitle, record.CaseNumber));
+    }
 
     /// <summary>PDF déchiffré, prêt à télécharger ; chaque téléchargement est journalisé.</summary>
     public async Task<PdfDownload?> DownloadPdfAsync(CurrentUser user, Guid submissionId, CancellationToken cancellationToken)

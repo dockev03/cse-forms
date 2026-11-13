@@ -12,7 +12,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 Les droits sont vérifiés côté serveur à chaque requête. Deux cas de refus :
 
 - **Formulaire non attribué** : 404, comme pour une ressource inexistante (l'existence du formulaire ou de la réponse n'est pas révélée). Le refus est journalisé.
-- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte ou ouvre la diffusion, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`) quand il porte sur une action. Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
+- **Formulaire attribué, rôle insuffisant pour l'action** (un `reader` qui change un statut, exporte ou ouvre la diffusion, un `editor` qui supprime) : redirection vers la page « Accès refusé » (`/admin/acces-refuse`), servie en 403 avec un lien vers `/admin`. Le refus est journalisé (`access.denied`). Cette page ne renvoie jamais vers l'écran de connexion, qui ramènerait un compte connecté vers la page refusée, en boucle.
 
 ## Sécurité
 

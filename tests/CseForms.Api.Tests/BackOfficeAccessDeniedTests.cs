@@ -39,7 +39,7 @@ public partial class BackOfficeTests
     }
 
     [Fact]
-    public async Task Editor_opening_deletion_gets_access_denied_page_without_redirect_loop()
+    public async Task Editor_opening_deletion_gets_access_denied_page_without_redirect_loop_and_refusal_is_audited()
     {
         var (_, submissionId) = await SeedSubmissionAsync("bo-refus-suppr");
         var client = await LoggedInAsync(AppRoles.Editor, "bo-refus-suppr");
@@ -47,6 +47,7 @@ public partial class BackOfficeTests
         var (final, hops) = await FollowAsync(client, new HttpRequestMessage(HttpMethod.Get, $"/admin/reponses/{submissionId}/suppression"));
 
         await AssertAccessDeniedPageAsync(final, hops);
+        Assert.Single(await AuditAsync($"submission:{submissionId}"), e => e.Action == AuditActions.AccessDenied);
     }
 
     [Fact]
