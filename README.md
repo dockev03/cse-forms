@@ -60,10 +60,11 @@ Aucun compte n'existe par défaut. Les comptes se gèrent en ligne de commande, 
 dotnet run --project src/CseForms.Api -- users create --email elu@example.test --name "Prénom Nom" --role admin
 dotnet run --project src/CseForms.Api -- users grant --email elu@example.test --form inscription
 dotnet run --project src/CseForms.Api -- users revoke --email elu@example.test --form inscription
+dotnet run --project src/CseForms.Api -- users reset-2fa --email elu@example.test
 dotnet run --project src/CseForms.Api -- users list
 ```
 
-En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôles : `admin` (tous les formulaires), `editor` et `reader` (formulaires attribués uniquement).
+En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôles : `admin` (tous les formulaires), `editor` et `reader` (formulaires attribués uniquement). Chaque élu peut activer la double authentification depuis « Sécurité du compte » ; `users reset-2fa` la désactive pour un élu qui a perdu son téléphone et ses codes de secours ([détail](docs/back-office.md#double-authentification)).
 
 ## Formulaires, sites et paramètres
 

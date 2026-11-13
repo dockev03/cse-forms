@@ -1,0 +1,28 @@
+@page "/admin/connexion/code"
+@model CseForms.Api.Pages.Admin.LoginCodeModel
+@{
+    ViewData["Title"] = "Code de vérification";
+}
+
+<h1>Code de vérification</h1>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="summary" role="alert">
+        <p>@Model.ErrorMessage</p>
+    </div>
+}
+
+<form method="post" class="card narrow">
+    <input type="hidden" asp-for="ReturnUrl">
+    <div class="field">
+        <label asp-for="Code">Code à 6 chiffres de votre application</label>
+        <p class="help" id="code-aide">Ou l'un de vos codes de secours si vous n'avez pas votre téléphone.</p>
+        <input asp-for="Code" type="text" inputmode="text" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="20" required aria-describedby="code-aide">
+    </div>
+    <div class="field checkbox">
+        <input asp-for="RememberDevice" type="checkbox">
+        <label asp-for="RememberDevice">Faire confiance à cet appareil pendant @Model.TrustedDeviceDays jours</label>
+    </div>
+    <button type="submit" class="primary">Valider</button>
+</form>

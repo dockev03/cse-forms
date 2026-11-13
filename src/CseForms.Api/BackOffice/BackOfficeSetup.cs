@@ -1,6 +1,7 @@
 using CseForms.Application.BackOffice;
 using CseForms.Infrastructure.Identity;
 using CseForms.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.WebEncoders;
@@ -18,6 +19,7 @@ internal static class BackOfficeSetup
     public const string Policy = "back-office";
     public const string LoginPath = "/admin/connexion";
     public static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan TrustedDeviceDuration = TimeSpan.FromDays(30);
 
     public static IServiceCollection AddBackOffice(this IServiceCollection services, IConfiguration configuration)
     {
@@ -58,6 +60,27 @@ internal static class BackOfficeSetup
             options.ReturnUrlParameter = "returnUrl";
         });
 
+        // Étape intermédiaire entre le mot de passe et le code : 5 minutes pour saisir le code.
+        services.Configure<CookieAuthenticationOptions>(IdentityConstants.TwoFactorUserIdScheme, options =>
+        {
+            options.Cookie.Name = "__Host-cse-2fa";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+            options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+        });
+
+        // Appareil de confiance : plus de code pendant 30 jours sur ce navigateur. Invalidé quand la 2FA
+        // est désactivée ou réinitialisée (changement du jeton de sécurité du compte).
+        services.Configure<CookieAuthenticationOptions>(IdentityConstants.TwoFactorRememberMeScheme, options =>
+        {
+            options.Cookie.Name = "__Host-cse-device";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+            options.ExpireTimeSpan = TrustedDeviceDuration;
+        });
+
         services.AddAntiforgery(options =>
         {
             options.Cookie.Name = "__Host-cse-af";
@@ -84,6 +107,7 @@ internal static class BackOfficeSetup
         {
             options.Conventions.AuthorizeFolder("/Admin", Policy);
             options.Conventions.AllowAnonymousToPage("/Admin/Login");
+            options.Conventions.AllowAnonymousToPage("/Admin/LoginCode");
         });
 
         return services;

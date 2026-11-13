@@ -60,6 +60,9 @@ public sealed class E2EEnvironment : IAsyncLifetime
     /// <summary>Lecteur sans aucun droit sur le formulaire.</summary>
     public Account Outsider { get; } = Account.Create("sansdroit.e2e@example.test", "Autre Fictif", "reader");
 
+    /// <summary>Compte réservé au scénario de double authentification, qui l'active.</summary>
+    public Account TwoFactorUser { get; } = Account.Create("double.e2e@example.test", "Double Fictif", "reader");
+
     public IBrowser Browser { get; private set; } = null!;
 
     public IPlaywright Playwright => _playwright!;
@@ -168,7 +171,7 @@ public sealed class E2EEnvironment : IAsyncLifetime
         var definition = Path.Combine(AppProcess.SolutionRoot, "forms", "inscription.json");
         await AppProcess.RunAsync(cli, environment, AccessCode, "forms", "import", "--file", definition);
 
-        foreach (var account in new[] { Admin, Reader, Outsider })
+        foreach (var account in new[] { Admin, Reader, Outsider, TwoFactorUser })
         {
             await AppProcess.RunAsync(cli, environment, account.Password,
                 "users", "create", "--email", account.Email, "--name", account.Name, "--role", account.Role);
