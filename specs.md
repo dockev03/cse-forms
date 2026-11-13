@@ -272,11 +272,12 @@ Aucune donnée personnelle ne circule par email : le PDF reste sur le serveur et
 Salarié (QR code)          Élu CSE (back-office)
         \                         /
          v                       v
-   Traefik : HTTPS, limitation de débit
+   Reverse proxy existant (hors projet) : HTTPS
                   |
                   v
-   API .NET 10 + front web
+   API .NET 10 + front web, port HTTP exposé
    (formulaire public, validation par schéma JSON,
+    limitation de débit par IP,
     back-office : comptes, 2FA optionnelle, audit)
         |                 |
         v                 v
@@ -302,7 +303,7 @@ La réponse est enregistrée d'abord ; le PDF et les emails partent en tâche de
 | Email | Mail API existante (MailKit) | SMTP direct |
 | QR code | QRCoder (.NET) | |
 | Anti-robot | Preuve de travail au format ALTCHA, implémentée dans le projet (sans dépendance) + code d'accès | Widget et bibliothèque ALTCHA |
-| Déploiement | Docker Compose derrière Traefik, CI GitHub Actions + Trivy | |
+| Déploiement | Docker Compose, service exposé directement derrière le reverse proxy existant (pas de proxy dans le projet), CI GitHub Actions + Trivy | |
 
 ### 6.3 Modèle de données
 
