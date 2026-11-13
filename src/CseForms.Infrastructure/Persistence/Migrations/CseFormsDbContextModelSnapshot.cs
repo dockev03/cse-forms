@@ -465,6 +465,10 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disabled_at");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -487,6 +491,10 @@ namespace CseForms.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lockout_end");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)

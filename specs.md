@@ -134,6 +134,8 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
 ### 3.6 Administration
 
 - Comptes nominatifs avec rôles (administrateur, éditeur, lecteur), restreints par formulaire si besoin.
+- Administrateur initial créé au premier démarrage à partir de la configuration (`.env`), uniquement si aucun compte n'existe ; les autres comptes se gèrent dans le back-office par un administrateur (création, rôle, formulaires, désactivation, réinitialisation). Pas d'inscription libre.
+- Mot de passe provisoire tiré au hasard, affiché une seule fois à l'administrateur et transmis de vive voix ; changement obligatoire à la première connexion. Chaque élu peut changer son mot de passe.
 - Authentification par mot de passe robuste ; 2FA (TOTP) proposée en option, activable par chaque utilisateur.
 - Journal d'audit : connexion, consultation, téléchargement, export, suppression, changement de statut.
 - Paramètres : serveur SMTP, liste des sites, composition du bureau, identité visuelle, mentions RGPD par défaut.

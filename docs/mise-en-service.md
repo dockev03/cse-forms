@@ -188,11 +188,21 @@ Smtp__Password=<mot de passe>
 
 Seuls les identifiants sont en variables (Worker uniquement). Le serveur, le port, le chiffrement et l'expéditeur se règlent en base (§ 7.3). Laisser vides pour un relais sans authentification. L'authentification est refusée sans chiffrement (`smtp.security=none`).
 
-### 4.6 Valeurs facultatives
+### 4.6 Administrateur initial
+
+```dotenv
+BootstrapAdmin__Email=admin-cse@example.test
+BootstrapAdmin__Name=Administrateur CSE
+BootstrapAdmin__Password=<mot de passe de 12 caractères minimum>
+```
+
+Compte `admin` créé au premier démarrage de l'API, **uniquement si la base ne contient aucun compte**. Le mot de passe est provisoire : il est demandé de le changer à la première connexion. Les élus suivants se créent ensuite dans le back-office (§ 7.6). Une fois connecté, vider `BootstrapAdmin__Password` dans `.env` : la valeur n'est plus utilisée, inutile de la laisser sur le serveur.
+
+### 4.7 Valeurs facultatives
 
 Les valeurs par défaut de `docker-compose.yml` conviennent à un CSE. Voir le tableau complet au § 13.1 (limitation de débit, difficulté anti-robot, cadence du Worker, horaire de purge).
 
-### 4.7 Vérification
+### 4.8 Vérification
 
 ```bash
 docker compose config --quiet && echo OK
@@ -441,35 +451,25 @@ L'accusé de réception au salarié se règle dans le fichier du formulaire (`re
 
 ### 7.6 Comptes des élus
 
-Aucun compte n'existe par défaut. Créer d'abord un administrateur :
+Se connecter à `https://<domaine>/admin` avec l'administrateur initial (§ 4.6) et choisir son mot de passe définitif. Puis, menu « Comptes » (`/admin/comptes`) :
 
-```bash
-cse users create --email elu1@example.test --name "Prénom Nom" --role admin
-```
-
-Le mot de passe (12 caractères minimum) est demandé deux fois au terminal. Puis les autres élus :
-
-```bash
-cse users create --email elu2@example.test --name "Prénom Nom" --role editor
-```
-
-```bash
-cse users grant --email elu2@example.test --form inscription
-```
-
-```bash
-cse users list
-```
+1. « Créer un compte » : adresse email, nom affiché, rôle et, pour un éditeur ou un lecteur, les formulaires attribués.
+2. Noter le mot de passe provisoire affiché **une seule fois** et le transmettre à l'élu de vive voix ou par un canal distinct, jamais dans le même email que l'identifiant.
+3. À sa première connexion, l'élu choisit son propre mot de passe.
 
 | Rôle | Accès |
 | --- | --- |
-| `admin` | Tous les formulaires et réponses |
+| `admin` | Tous les formulaires et réponses, gestion des comptes |
 | `editor` | Formulaires attribués : réponses, statuts, diffusion (QR code, flyer) |
 | `reader` | Formulaires attribués, en lecture |
 
-N'habiliter que les élus désignés par le CSE. Recommander à chacun d'activer la double authentification dans « Sécurité du compte » (`/admin/securite`). Retrait d'un droit : `users revoke` ; téléphone perdu sans code de secours : `users reset-2fa`.
+N'habiliter que les élus désignés par le CSE. Recommander à chacun d'activer la double authentification dans « Sécurité du compte » (`/admin/securite`). Depuis la fiche d'un compte : changer le rôle ou les formulaires, réinitialiser le mot de passe (mot de passe oublié, compte bloqué), désactiver la double authentification (téléphone perdu), désactiver le compte (départ d'un élu).
 
-Le mot de passe initial se transmet de vive voix ou par un canal distinct, jamais par le même email que l'identifiant. Aucune commande ne change le mot de passe d'un compte existant à ce jour.
+En secours, la ligne de commande fait la même chose : `cse users create|grant|revoke|reset-password|reset-2fa|list` ; par exemple, si le seul administrateur a oublié son mot de passe :
+
+```bash
+cse users reset-password --email admin-cse@example.test
+```
 
 ### 7.7 Diffusion
 
@@ -633,7 +633,7 @@ Les journaux ne contiennent aucune donnée personnelle : une réponse y est iden
 | Quotidienne (automatique) | Purge des réponses échues et des défis anti-robot (Worker, 3 h 17) ; sauvegarde |
 | Hebdomadaire | Lire les alertes ; vérifier qu'aucune réponse ne reste « Nouvelle » trop longtemps (elle ne serait jamais purgée) |
 | Mensuelle | Mises à jour (§ 10) ; contrôle de la réussite des sauvegardes |
-| À chaque changement d'élus | `users revoke` / `users grant`, création ou retrait des comptes ; changer le code d'accès si besoin |
+| À chaque changement d'élus | Écran « Comptes » : création, droits, désactivation des partants ; changer le code d'accès si besoin |
 | Annuelle | Test de restauration ; revue des comptes et des droits ; revue du registre des traitements |
 
 ### 11.3 Commandes utiles
@@ -746,6 +746,7 @@ Horloge de l'hôte décalée : `timedatectl` doit indiquer `System clock synchro
 | `Jobs__WorkerCount` | worker | `2` | Tâches simultanées |
 | `Purge__Cron` | worker | `17 3 * * *` | Horaire de purge (cron, heure de Paris) |
 | `Smtp__Username` / `Smtp__Password` | worker | vide | Identifiants SMTP |
+| `BootstrapAdmin__Email` / `__Password` / `__Name` | api | vide | Administrateur initial, base sans compte uniquement (§ 4.6) |
 | `Smtp__TimeoutSeconds` | worker | `30` | Délai d'expiration SMTP |
 
 Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/files`, `DataProtection__KeysPath=/var/lib/cse-forms/keys`, `ASPNETCORE_HTTP_PORTS=8080`, `Gotenberg__Url=http://gotenberg:3000`, `ConnectionStrings__Default` (construite par Compose).
@@ -782,7 +783,7 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 | Commande (conteneur `api`, sauf mention) | Effet |
 | --- | --- |
 | `db migrate` | Met le schéma à jour (lancé par `migrate`) |
-| `users create\|grant\|revoke\|reset-2fa\|list` | Comptes et droits |
+| `users create\|grant\|revoke\|reset-password\|reset-2fa\|list` | Comptes et droits, en secours de l'écran « Comptes » |
 | `forms import\|access-code\|list` | Formulaires |
 | `sites add\|disable\|enable\|list` | Sites |
 | `settings set\|unset\|logo\|list` | Paramètres |
@@ -827,6 +828,7 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 - [ ] SMTP réglé, `mail test` reçu, `alerts.email` renseigné
 - [ ] Formulaire importé, code d'accès défini
 - [ ] Notifications réglées
+- [ ] Mot de passe de l'administrateur initial changé, `BootstrapAdmin__Password` vidé dans `.env`
 - [ ] Comptes des élus habilités créés, droits attribués, 2FA recommandée
 
 **Exploitation**

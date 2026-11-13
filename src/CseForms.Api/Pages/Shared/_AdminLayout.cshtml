@@ -15,6 +15,11 @@
         {
             <nav class="account" aria-label="Compte">
                 <span class="user">@User.Identity.Name</span>
+                @if (User.IsInRole(AppRoles.Admin))
+                {
+                    <a href="/admin/comptes">Comptes</a>
+                }
+                <a href="/admin/mot-de-passe">Mot de passe</a>
                 <a href="/admin/securite">Sécurité du compte</a>
                 <form method="post" asp-page="/Admin/Logout">
                     <button type="submit" class="link">Se déconnecter</button>

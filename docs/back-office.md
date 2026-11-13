@@ -7,7 +7,7 @@ Réservé aux élus authentifiés, à l'adresse `/admin`. Rendu côté serveur (
 | Rôle | Accès |
 | --- | --- |
 | `admin` | Tous les formulaires et toutes les réponses |
-| `editor`, `reader` | Uniquement les formulaires attribués (`users grant`) |
+| `editor`, `reader` | Uniquement les formulaires attribués (écran « Comptes » ou `users grant`) |
 
 Les droits sont vérifiés côté serveur à chaque requête. Un compte sans droit sur un formulaire reçoit un 404, comme pour une ressource inexistante, et le refus est journalisé.
 
@@ -33,13 +33,27 @@ Facultative, activée par chaque élu pour son compte depuis « Sécurité du co
 - **Connexion** : après le mot de passe, la page `/admin/connexion/code` demande le code de l'application ou un code de secours (tiret et majuscules facultatifs). Le lien d'une notification reste suivi après les deux étapes.
 - **Appareil de confiance** : case à cocher à la saisie du code ; plus de code demandé sur ce navigateur pendant 30 jours (cookie `__Host-cse-device`). Pas avec un code de secours.
 - **Nouveaux codes de secours, désactivation** : depuis la même page, sur saisie d'un code valide de l'application. La désactivation change la clé et oublie les appareils de confiance.
-- **Téléphone perdu sans code de secours** : un administrateur lance `users reset-2fa --email <email>` ; l'élu se reconnecte avec son mot de passe seul puis réactive la double authentification. `users list` indique qui l'a activée.
+- **Téléphone perdu sans code de secours** : un administrateur clique « Désactiver la double authentification » sur la fiche du compte (`/admin/comptes/{id}`) ou lance `users reset-2fa --email <email>` ; l'élu se reconnecte avec son mot de passe seul puis réactive la double authentification. `users list` indique qui l'a activée.
 - La clé et les codes de secours sont gérés par ASP.NET Identity et stockés en base (table des jetons d'Identity) : ils ne protègent un compte que tant que la base elle-même n'est pas compromise.
+
+## Comptes
+
+Réservé au rôle `admin` ; les autres rôles reçoivent un 404 sur ces adresses.
+
+- **Administrateur initial** : créé au démarrage de l'API si la base ne contient aucun compte, à partir de `BootstrapAdmin__Email`, `BootstrapAdmin__Password` et `BootstrapAdmin__Name` (facultatif). Ignoré dès qu'un compte existe. Le journal indique la création sans l'adresse ni le mot de passe ; une valeur refusée (mot de passe trop court, adresse invalide) arrête le démarrage avec un message explicite.
+- **Mot de passe provisoire** : à la création d'un compte et à la réinitialisation, l'application tire un mot de passe de 19 caractères (`abcd-efgh-jkmn-pqrs`, sans caractères ambigus), affiché une seule fois, jamais envoyé par email. Il se transmet de vive voix ou par un canal distinct. Tant qu'il n'est pas changé, toute page du back-office renvoie vers `/admin/mot-de-passe`.
+- **Réinitialisation du mot de passe** : coupe les sessions ouvertes du compte (5 minutes au plus) et le débloque s'il a été bloqué après trop d'essais.
+- **Désactivation** (départ d'un élu) : connexion refusée avec le message d'échec habituel, session coupée sous 5 minutes ; les droits sont conservés pour une réactivation. Pas de suppression de compte : le journal d'audit garde la trace des actions.
+- **Garde-fous** : un administrateur ne peut ni désactiver son propre compte ni changer son propre rôle ; il reste toujours au moins un administrateur actif.
+- **Changement de rôle** : pris en compte sous 5 minutes dans les sessions ouvertes. Un administrateur voit tous les formulaires : ses attributions sont ignorées.
+- **Secours** : `users reset-password --email <email>` affiche un mot de passe provisoire au terminal (administrateur qui a oublié le sien).
 
 ## Écrans
 
 - `/admin` : formulaires accessibles et nombre de réponses.
 - `/admin/securite` : double authentification du compte connecté.
+- `/admin/mot-de-passe` : changement de son mot de passe (mot de passe actuel, nouveau, confirmation).
+- `/admin/comptes`, `/admin/comptes/nouveau`, `/admin/comptes/{id}` : [comptes](#comptes), rôle `admin` uniquement.
 - `/admin/formulaires/{id}/reponses` : liste paginée (25 par page) ; recherche par numéro de dossier, filtres statut, site et période, tri par date. Seuls le numéro, la date, le site et le statut sont affichés.
 - `/admin/reponses/{id}` : fiche avec les libellés de la version remplie, dates au format JJ/MM/AAAA, groupes répétables en tableau. Lien profond utilisable dans les notifications. Le bloc PDF indique si le PDF est disponible, en cours de génération ou en échec.
 - `/admin/reponses/{id}/pdf` : téléchargement du PDF déchiffré, après contrôle des droits, jamais mis en cache.
@@ -129,7 +143,12 @@ Après le 3e échec d'une tâche (PDF, notification ou accusé), un email part v
 | `login.success`, `login.failure`, `login.lockout`, `logout` | aucune |
 | `login.2fa.failure` (code faux), `login.2fa.recovery_code` (connexion par code de secours) | aucune |
 | `2fa.enable`, `2fa.disable`, `2fa.recovery_codes` | aucune |
-| `2fa.reset` (`users reset-2fa`) | `user:{id}`, sans compte |
+| `2fa.reset` (fiche du compte ou `users reset-2fa`) | `user:{id}` ; sans compte en ligne de commande |
+| `password.change` | aucune |
+| `user.create`, `user.update` | `user:{id}`, détail : rôle |
+| `user.disable`, `user.enable` | `user:{id}` |
+| `user.password_reset` | `user:{id}` ; sans compte en ligne de commande |
+| `user.bootstrap` (administrateur initial) | `user:{id}`, sans compte |
 | `submission.view` | `submission:{id}` |
 | `submission.download` | `submission:{id}` |
 | `submission.pdf.regenerate` | `submission:{id}` |

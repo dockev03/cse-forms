@@ -56,17 +56,22 @@ docker compose up -d --build
 
 ## Comptes du back-office
 
-Aucun compte n'existe par défaut. Les comptes se gèrent en ligne de commande, le mot de passe (12 caractères minimum) étant saisi au terminal :
+Au premier démarrage, l'API crée un administrateur si la base ne contient aucun compte, à partir de `BootstrapAdmin__Email`, `BootstrapAdmin__Password` (12 caractères minimum) et `BootstrapAdmin__Name` (facultatif) lus dans `.env`. Ce mot de passe est provisoire : il est à changer à la première connexion ; les variables sont ensuite ignorées.
+
+Les autres comptes se gèrent dans le back-office, écran « Comptes » (`/admin/comptes`, rôle `admin`) : création avec mot de passe provisoire affiché une seule fois, rôle, formulaires attribués, réinitialisation du mot de passe ou de la double authentification, désactivation ([détail](docs/back-office.md#comptes)). Chaque élu change son mot de passe depuis « Mot de passe » (`/admin/mot-de-passe`).
+
+La ligne de commande reste disponible en secours (par exemple si plus aucun administrateur ne peut se connecter), le mot de passe étant saisi au terminal :
 
 ```bash
 dotnet run --project src/CseForms.Api -- users create --email elu@example.test --name "Prénom Nom" --role admin
 dotnet run --project src/CseForms.Api -- users grant --email elu@example.test --form inscription
 dotnet run --project src/CseForms.Api -- users revoke --email elu@example.test --form inscription
+dotnet run --project src/CseForms.Api -- users reset-password --email elu@example.test
 dotnet run --project src/CseForms.Api -- users reset-2fa --email elu@example.test
 dotnet run --project src/CseForms.Api -- users list
 ```
 
-En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôles : `admin` (tous les formulaires), `editor` et `reader` (formulaires attribués uniquement). Chaque élu peut activer la double authentification depuis « Sécurité du compte » ; `users reset-2fa` la désactive pour un élu qui a perdu son téléphone et ses codes de secours ([détail](docs/back-office.md#double-authentification)).
+En conteneur : `docker compose exec api dotnet CseForms.Api.dll users ...`. Rôles : `admin` (tous les formulaires), `editor` et `reader` (formulaires attribués uniquement). Chaque élu peut activer la double authentification depuis « Sécurité du compte » ; `users reset-2fa` (ou le bouton de l'écran « Comptes ») la désactive pour un élu qui a perdu son téléphone et ses codes de secours ([détail](docs/back-office.md#double-authentification)).
 
 ## Formulaires, sites et paramètres
 
