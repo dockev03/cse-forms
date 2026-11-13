@@ -35,6 +35,13 @@ public static class AuditActions
     public const string SubmissionDeleted = "submission.delete";
     public const string SubmissionPurged = "submission.purge";
     public const string SubmissionsExported = "form.export";
+    public const string PasswordChanged = "password.change";
+    public const string UserCreated = "user.create";
+    public const string UserUpdated = "user.update";
+    public const string UserDisabled = "user.disable";
+    public const string UserEnabled = "user.enable";
+    public const string UserPasswordReset = "user.password_reset";
+    public const string BootstrapAdminCreated = "user.bootstrap";
 }
 
 /// <summary>Utilisateur connecté, tel que vu par les cas d'usage. Un lecteur ne déclenche aucune action.</summary>

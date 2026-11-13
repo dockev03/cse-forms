@@ -1,0 +1,33 @@
+@page "/admin/comptes"
+@model CseForms.Api.Pages.Admin.Accounts.IndexModel
+@{
+    ViewData["Title"] = "Comptes des élus";
+}
+
+<h1>Comptes des élus</h1>
+
+<p><a href="/admin/comptes/nouveau">Créer un compte</a></p>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Nom</th><th scope="col">Adresse email</th><th scope="col">Rôle</th>
+                <th scope="col">Formulaires</th><th scope="col">2FA</th><th scope="col">État</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var account in Model.Accounts)
+            {
+                <tr>
+                    <td><a href="/admin/comptes/@account.Id">@account.DisplayName</a></td>
+                    <td>@account.Email</td>
+                    <td>@AdminPageModel.RoleLabel(account.Role)</td>
+                    <td>@(account.Role == AppRoles.Admin ? "Tous" : account.FormSlugs.Count == 0 ? "Aucun" : string.Join(", ", account.FormSlugs))</td>
+                    <td>@(account.TwoFactorEnabled ? "Activée" : "Non")</td>
+                    <td>@(account.Disabled ? "Désactivé" : account.MustChangePassword ? "Mot de passe provisoire" : "Actif")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

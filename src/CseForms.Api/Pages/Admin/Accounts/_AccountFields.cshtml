@@ -1,0 +1,31 @@
+@using CseForms.Infrastructure.Identity
+@model CseForms.Api.Pages.Admin.Accounts.AccountFieldsModel
+
+<div class="field">
+    <label for="DisplayName">Nom affiché</label>
+    <input id="DisplayName" name="DisplayName" value="@Model.DisplayName" maxlength="@AppUser.DisplayNameMaxLength" autocomplete="off" required>
+</div>
+<div class="field">
+    <label for="Role">Rôle</label>
+    <select id="Role" name="Role">
+        @foreach (var role in AppRoles.All)
+        {
+            <option value="@role" selected="@(role == Model.Role)">@AdminPageModel.RoleLabel(role)</option>
+        }
+    </select>
+    <p class="help">Administrateur : tous les formulaires et la gestion des comptes. Éditeur : formulaires cochés, avec statuts, export et diffusion. Lecteur : formulaires cochés, en lecture.</p>
+</div>
+<fieldset class="field">
+    <legend>Formulaires attribués (éditeur et lecteur)</legend>
+    @if (Model.Forms.Count == 0)
+    {
+        <p class="help">Aucun formulaire publié pour l'instant.</p>
+    }
+    @foreach (var form in Model.Forms)
+    {
+        <div class="field checkbox">
+            <input type="checkbox" id="form-@form.Id" name="FormIds" value="@form.Id" checked="@Model.FormIds.Contains(form.Id)">
+            <label for="form-@form.Id">@form.Title (@form.Slug)</label>
+        </div>
+    }
+</fieldset>

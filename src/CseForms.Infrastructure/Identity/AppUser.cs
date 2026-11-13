@@ -10,6 +10,12 @@ public sealed class AppUser : IdentityUser<Guid>
     public string DisplayName { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Mot de passe provisoire (compte créé ou réinitialisé par un administrateur) : à changer à la connexion.</summary>
+    public bool MustChangePassword { get; set; }
+
+    /// <summary>Compte désactivé par un administrateur : connexion refusée, session coupée.</summary>
+    public DateTimeOffset? DisabledAt { get; set; }
 }
 
 public sealed class AppRole : IdentityRole<Guid>
