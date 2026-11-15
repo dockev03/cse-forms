@@ -224,3 +224,73 @@ test('les opérations conservent les propriétés inconnues du fichier', () => {
   assert.deepEqual(doc.futureProperty, { kept: true });
   assert.equal(JSON.parse(JSON.stringify(doc)).futureProperty.kept, true);
 });
+
+function jumpSample() {
+  return {
+    sections: [
+      { id: 'a', title: 'Éligibilité', fields: [{ id: 'x', type: 'choice', label: 'Salarié', options: ['oui', 'non'] }, { id: 'note', type: 'info', text: 'Info' }] },
+      { id: 'b', title: 'Inscription', fields: [{ id: 'y', type: 'text', label: 'Nom' }] },
+      { id: 'c', title: 'Fin', fields: [{ id: 'z', type: 'text', label: 'Commentaire' }] },
+    ],
+  };
+}
+
+test('les destinations d\'un saut sont les sections situées plus loin puis les pages de fin', () => {
+  const doc = jumpSample();
+  const ending = M.createEnding(doc);
+  assert.deepEqual(doc.endings, [{ id: 'fin1', title: 'Page de fin 1' }]);
+  assert.deepEqual(M.jumpDestinations(doc, doc.sections[0]).map((d) => d.value), ['goTo:b', 'goTo:c', `end:${ending.id}`]);
+  assert.deepEqual(M.jumpDestinations(doc, doc.sections[2]).map((d) => d.value), ['end:fin1']);
+});
+
+test('un saut ne peut citer que des champs de la section ou des sections précédentes', () => {
+  const doc = jumpSample();
+  assert.deepEqual(M.jumpConditionTargets(doc, doc.sections[0]).map((f) => f.id), ['x']);
+  assert.deepEqual(M.jumpConditionTargets(doc, doc.sections[1]).map((f) => f.id), ['x', 'y']);
+});
+
+test('ajouter un saut le place avant un saut sans condition, qui reste le dernier', () => {
+  const doc = jumpSample();
+  const section = doc.sections[0];
+  section.jumps = [{ goTo: 'c' }];
+  const jump = M.addJump(doc, section);
+  assert.deepEqual(section.jumps, [jump, { goTo: 'c' }]);
+  assert.deepEqual(jump, { if: { field: 'x', op: 'equals', value: 'oui' }, goTo: 'b' });
+
+  M.setJumpDestination(jump, 'end:fin1');
+  assert.deepEqual(jump, { if: { field: 'x', op: 'equals', value: 'oui' }, end: 'fin1' });
+  assert.equal(M.jumpDestination(jump), 'end:fin1');
+
+  M.removeJump(section, jump);
+  M.removeJump(section, section.jumps[0]);
+  assert.equal('jumps' in section, false);
+});
+
+test('renommer ou supprimer une page de fin suit les sauts qui y mènent', () => {
+  const doc = jumpSample();
+  const ending = M.createEnding(doc);
+  doc.sections[0].jumps = [{ if: { field: 'x', op: 'equals', value: 'non' }, end: ending.id }];
+  M.renameEnding(doc, ending, 'nonEligible');
+  assert.equal(doc.sections[0].jumps[0].end, 'nonEligible');
+  assert.deepEqual(M.jumpSources(doc, 'end', 'nonEligible'), [doc.sections[0]]);
+  assert.equal(M.describeJump(doc, doc.sections[0].jumps[0]), 'si Salarié est égal à « non » : fin « Page de fin 1 »');
+
+  assert.ok(M.removeEnding(doc, ending));
+  assert.equal('endings' in doc, false);
+});
+
+test('les identifiants des pages de fin ne reprennent pas ceux des sections et des champs', () => {
+  const doc = jumpSample();
+  doc.sections[0].id = 'fin1';
+  assert.equal(M.createEnding(doc).id, 'fin12');
+  assert.equal(M.uniqueId(doc, 'fin12'), 'fin122');
+});
+
+test('une erreur sur une page de fin désigne cette page', () => {
+  const doc = jumpSample();
+  const ending = M.createEnding(doc);
+  assert.equal(M.resolvePath(doc, '$.endings[0].title'), ending);
+  assert.equal(M.resolvePath(doc, '$.endings[3]'), 'form');
+  assert.equal(M.resolvePath(doc, '$.sections[1].jumps[0].goTo'), doc.sections[1]);
+  assert.equal(M.nodeTitle(ending), 'Page de fin 1');
+});

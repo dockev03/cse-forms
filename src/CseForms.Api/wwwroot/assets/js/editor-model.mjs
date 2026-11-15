@@ -106,10 +106,11 @@ export function idFromLabel(label) {
 }
 
 function usedIds(doc) {
-  return new Set([...(doc.sections ?? []).map((s) => s?.id), ...allFields(doc).map((f) => f?.id)].filter(Boolean));
+  return new Set([...(doc.sections ?? []).map((s) => s?.id), ...allFields(doc).map((f) => f?.id), ...endings(doc).map((e) => e?.id)]
+    .filter(Boolean));
 }
 
-/** Identifiant libre dans tout le formulaire (sections et champs), à partir de <paramref name="base"/>. */
+/** Identifiant libre dans tout le formulaire (sections, champs et pages de fin), à partir de <paramref name="base"/>. */
 export function uniqueId(doc, base, except = null) {
   const used = usedIds(doc);
   if (except) used.delete(except);
@@ -295,6 +296,125 @@ export function renameField(doc, field, newId) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Sauts et pages de fin
+
+/** Pages de fin du formulaire (liste vide si aucune). */
+export function endings(doc) {
+  return Array.isArray(doc?.endings) ? doc.endings : [];
+}
+
+/** Sauts de la section (liste vide si aucun). */
+export function jumpsOf(section) {
+  return Array.isArray(section?.jumps) ? section.jumps : [];
+}
+
+/** Nouvelle page de fin, ajoutée à la fin de la liste. */
+export function createEnding(doc) {
+  const number = endings(doc).length + 1;
+  const ending = { id: uniqueId(doc, `fin${number}`), title: `Page de fin ${number}` };
+  if (!Array.isArray(doc.endings)) doc.endings = [];
+  doc.endings.push(ending);
+  return ending;
+}
+
+/** Retire une page de fin ; la liste vide disparaît du fichier. */
+export function removeEnding(doc, ending) {
+  const list = endings(doc);
+  const index = list.indexOf(ending);
+  if (index < 0) return false;
+  list.splice(index, 1);
+  if (list.length === 0) delete doc.endings;
+  return true;
+}
+
+/** Renomme une page de fin et met à jour les sauts qui y mènent. */
+export function renameEnding(doc, ending, newId) {
+  const oldId = ending.id;
+  ending.id = newId;
+  if (!oldId || oldId === newId) return;
+  for (const section of doc.sections ?? []) {
+    for (const jump of jumpsOf(section)) {
+      if (jump?.end === oldId) jump.end = newId;
+    }
+  }
+}
+
+/** Sections dont un saut mène à la section ou à la page de fin indiquée (<c>goTo</c> ou <c>end</c>). */
+export function jumpSources(doc, kind, id) {
+  return (doc.sections ?? []).filter((s) => jumpsOf(s).some((j) => j?.[kind] === id));
+}
+
+/** Champs qu'un saut de la section peut citer : ceux de la section et des sections précédentes. */
+export function jumpConditionTargets(doc, section) {
+  const index = (doc.sections ?? []).indexOf(section);
+  return (doc.sections ?? []).slice(0, index + 1)
+    .flatMap((s) => (Array.isArray(s?.fields) ? s.fields : []))
+    .filter((f) => f?.id && f.type !== 'info' && f.type !== 'repeat');
+}
+
+/**
+ * Destinations possibles d'un saut de la section : sections situées plus loin (<c>goTo:id</c>)
+ * puis pages de fin (<c>end:id</c>).
+ */
+export function jumpDestinations(doc, section) {
+  const sections = doc.sections ?? [];
+  const later = sections.slice(sections.indexOf(section) + 1).filter((s) => s?.id);
+  return [
+    ...later.map((s) => ({ value: `goTo:${s.id}`, label: `Aller à la section « ${nodeTitle(s)} »` })),
+    ...endings(doc).filter((e) => e?.id).map((e) => ({ value: `end:${e.id}`, label: `Terminer : page « ${nodeTitle(e)} »` })),
+  ];
+}
+
+/** Destination d'un saut sous la forme utilisée par <see cref="jumpDestinations"/>. */
+export function jumpDestination(jump) {
+  if (typeof jump?.goTo === 'string') return `goTo:${jump.goTo}`;
+  if (typeof jump?.end === 'string') return `end:${jump.end}`;
+  return '';
+}
+
+/** Fixe la destination d'un saut à partir d'une valeur de <see cref="jumpDestinations"/>. */
+export function setJumpDestination(jump, value) {
+  delete jump.goTo;
+  delete jump.end;
+  const [kind, ...rest] = String(value).split(':');
+  if ((kind === 'goTo' || kind === 'end') && rest.length > 0) jump[kind] = rest.join(':');
+}
+
+/**
+ * Nouveau saut : vers la première destination, sous une condition sur le premier champ disponible.
+ * Il est inséré avant un éventuel saut sans condition, qui doit rester le dernier.
+ */
+export function addJump(doc, section) {
+  const jump = { if: defaultComparison(jumpConditionTargets(doc, section).at(-1)) };
+  setJumpDestination(jump, jumpDestinations(doc, section)[0]?.value ?? '');
+  if (!Array.isArray(section.jumps)) section.jumps = [];
+  const unconditional = section.jumps.findIndex((j) => j && j.if === undefined);
+  section.jumps.splice(unconditional < 0 ? section.jumps.length : unconditional, 0, jump);
+  return jump;
+}
+
+/** Retire un saut ; la liste vide disparaît du fichier. */
+export function removeJump(section, jump) {
+  const list = jumpsOf(section);
+  const index = list.indexOf(jump);
+  if (index < 0) return false;
+  list.splice(index, 1);
+  if (list.length === 0) delete section.jumps;
+  return true;
+}
+
+/** Résumé lisible d'un saut, pour la liste des sections. */
+export function describeJump(doc, jump) {
+  const target = typeof jump?.goTo === 'string'
+    ? `section « ${nodeTitle((doc.sections ?? []).find((s) => s?.id === jump.goTo)) || jump.goTo} »`
+    : typeof jump?.end === 'string'
+      ? `fin « ${nodeTitle(endings(doc).find((e) => e?.id === jump.end)) || jump.end} »`
+      : '?';
+  const condition = jump?.if === undefined ? 'sinon' : describeCondition(doc, jump.if);
+  return `${condition} : ${target}`;
+}
+
 /** Renomme une section et met à jour les sauts qui y mènent. */
 export function renameSection(doc, section, newId) {
   const oldId = section.id;
@@ -392,11 +512,13 @@ export function describeCondition(doc, condition) {
 const PATH_STEP = /^\.(sections|fields)\[(\d+)\]/;
 
 /**
- * Élément visé par un chemin d'erreur du contrôle (<c>$.sections[0].fields[2].label</c>) : section ou
- * champ le plus précis, sinon <c>'form'</c> pour les réglages du formulaire.
+ * Élément visé par un chemin d'erreur du contrôle (<c>$.sections[0].fields[2].label</c>) : section, champ
+ * ou page de fin le plus précis, sinon <c>'form'</c> pour les réglages du formulaire.
  */
 export function resolvePath(doc, path) {
   if (typeof path !== 'string' || !path.startsWith('$')) return 'form';
+  const ending = /^\$\.endings\[(\d+)\]/.exec(path);
+  if (ending) return endings(doc)[Number(ending[1])] ?? 'form';
   let rest = path.slice(1);
   let node = null;
   let list = null;
@@ -417,5 +539,6 @@ export function resolvePath(doc, path) {
 export function nodeTitle(node) {
   if (!node || typeof node !== 'object') return '';
   if (Array.isArray(node.fields) && !node.type) return node.title || node.id || 'Section sans titre';
+  if (!node.type && 'title' in node) return node.title || node.id || 'Page de fin sans titre';
   return node.label || node.text?.slice(0, 60) || node.id || 'Champ sans libellé';
 }
