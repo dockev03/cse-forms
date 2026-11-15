@@ -201,6 +201,12 @@ li[draggable="true"].dragging { opacity: 0.5; }
 fieldset.condition { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 0.75rem; margin: 0 0 1rem; }
 fieldset.condition legend { font-weight: 600; padding: 0 0.25rem; }
 .condition-row { border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.5rem; }
+fieldset.jump { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 0.75rem; margin: 0.75rem 0 0; min-width: 0; }
+fieldset.jump legend { font-weight: 600; padding: 0 0.25rem; }
+fieldset.jump .jump-condition { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
+.tree-heading { font-size: 1rem; margin: 1.25rem 0 0.25rem; }
+.tree-endings { list-style: none; margin: 0; padding: 0; }
+.tree-endings > li { margin-top: 0.5rem; border: 1px dashed var(--border); border-radius: var(--radius); padding: 0.35rem 0.5rem; background: #f8f9fb; }
 .choice-list .field { margin-bottom: 0.25rem; }
 .editor-panel .field.checkbox { flex-wrap: wrap; }
 .editor-panel .field.checkbox .help { flex-basis: 100%; margin-left: 1.5rem; }

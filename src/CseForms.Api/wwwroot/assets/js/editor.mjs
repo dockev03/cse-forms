@@ -187,6 +187,7 @@ function badges(node) {
   if (node.type) parts.push(h('span', { class: 'badge' }, M.typeLabel(node.type)));
   if (node.required) parts.push(h('span', { class: 'badge' }, 'obligatoire'));
   if (node.visibleIf) parts.push(h('span', { class: 'badge condition' }, 'conditionnel'));
+  if (M.jumpsOf(node).length > 0) parts.push(h('span', { class: 'badge condition' }, M.jumpsOf(node).length > 1 ? `${M.jumpsOf(node).length} sauts` : 'saut'));
   if (node.persist === false) parts.push(h('span', { class: 'badge' }, 'non enregistré'));
   if (errors.has(node)) parts.push(h('span', { class: 'badge error' }, 'à corriger'));
   return parts;
@@ -229,6 +230,8 @@ function removeWithConfirm(node) {
   const refs = fields.reduce((n, f) => n + (f?.id ? M.countReferences(doc, f.id) : 0), 0);
   let message = isSection ? `Supprimer la section « ${title} » et ses ${fields.length} champ(s) ?` : `Supprimer « ${title} » ?`;
   if (refs > 0) message += ` ${refs} condition(s), règle(s) ou accusé de réception y font référence et seront à corriger.`;
+  const jumps = isSection ? M.jumpSources(doc, 'goTo', node.id).length : 0;
+  if (jumps > 0) message += ` ${jumps} section(s) y mènent par un saut, à corriger.`;
   if (!window.confirm(message)) return;
   M.removeNode(doc, node);
   selected = 'form';
@@ -305,6 +308,12 @@ function renderTree() {
     if (Array.isArray(section.fields)) li.append(fieldList(section.fields), addControl(section.fields, false, `à la section « ${title} »`));
     sections.append(li);
   }
+  const endingItems = M.endings(doc).filter((e) => e && typeof e === 'object').map((ending) => {
+    const li = h('li', { class: `tree-ending${selected === ending ? ' selected' : ''}${errors.has(ending) ? ' has-error' : ''}` },
+      h('div', { class: 'tree-row' }, selectButton(ending, M.nodeTitle(ending))));
+    nodeOf.set(li, ending);
+    return li;
+  });
   tree.append(
     h('ul', { class: 'tree-root' }, formItem),
     sections,
@@ -315,6 +324,18 @@ function renderTree() {
       changed();
       renderPanel();
       announce(`Section « ${section.title} » ajoutée.`);
+      focusSelected();
+    })),
+    h('h3', { class: 'tree-heading' }, 'Pages de fin'),
+    endingItems.length > 0
+      ? h('ul', { class: 'tree-endings' }, ...endingItems)
+      : h('p', { class: 'help' }, 'Aucune : la confirmation standard s\'affiche après l\'envoi.'),
+    h('p', {}, button('Ajouter une page de fin', () => {
+      const ending = M.createEnding(doc);
+      selected = ending;
+      changed();
+      renderPanel();
+      announce(`Page de fin « ${ending.title} » ajoutée.`);
       focusSelected();
     })),
   );
@@ -472,8 +493,7 @@ function valueControl(comparison, target, kind, id) {
   return control;
 }
 
-function comparisonRow(holder, node, comparison, items, index, redraw) {
-  const targets = M.conditionTargets(doc, node);
+function comparisonRow(targets, comparison, items, index, redraw) {
   const fieldId = nextId('c');
   const fieldChoices = targets.map((f) => ({ value: f.id, label: `${M.nodeTitle(f)} (${f.id})` }));
   if (fieldChoices.length === 0) fieldChoices.push({ value: '', label: 'Aucun champ disponible' });
@@ -512,21 +532,37 @@ function comparisonRow(holder, node, comparison, items, index, redraw) {
   );
 }
 
+/** Condition d'affichage (<c>visibleIf</c>) d'une section ou d'un champ. */
 function conditionEditor(holder, node, what) {
-  const box = h('fieldset', { class: 'condition' });
+  const shown = what === 'Section' ? 'Affichée' : 'Affiché';
+  return conditionBox(holder, 'visibleIf', {
+    legend: 'Affichage conditionnel',
+    help: "Un champ masqué n'est ni contrôlé ni enregistré. Un champ masqué compte comme vide dans les conditions qui le citent.",
+    modeLabel: 'Affichage',
+    modes: {
+      none: `${what} toujours affiché${what === 'Section' ? 'e' : ''}`,
+      single: `${shown} si la condition est remplie`,
+      all: `${shown} si toutes les conditions sont remplies (et)`,
+      any: `${shown} si au moins une condition est remplie (ou)`,
+    },
+    targets: () => M.conditionTargets(doc, node),
+  });
+}
+
+/**
+ * Éditeur d'une condition stockée dans <c>holder[key]</c> : aucune, une comparaison, plusieurs combinées
+ * par « et » ou « ou », ou une condition avancée modifiable en JSON.
+ */
+function conditionBox(holder, key, { legend, help, modeLabel, modes: labels, targets, onModeChange }) {
+  const box = legend ? h('fieldset', { class: 'condition' }) : h('div', { class: 'jump-condition' });
 
   const draw = (focusKey) => {
-    const read = M.readCondition(holder.visibleIf);
+    const read = M.readCondition(holder[key]);
     let mode = read.mode;
     const items = read.items;
-    const store = () => setOrDelete(holder, 'visibleIf', M.writeCondition(mode, items));
+    const store = () => setOrDelete(holder, key, M.writeCondition(mode, items));
     const modeId = nextId('c');
-    const modes = [
-      { value: 'none', label: `${what} toujours affiché${what === 'Section' ? 'e' : ''}` },
-      { value: 'single', label: 'Affiché si la condition est remplie' },
-      { value: 'all', label: 'Affiché si toutes les conditions sont remplies (et)' },
-      { value: 'any', label: 'Affiché si au moins une condition est remplie (ou)' },
-    ];
+    const modes = ['none', 'single', 'all', 'any'].map((value) => ({ value, label: labels[value] }));
     if (mode === 'advanced') modes.push({ value: 'advanced', label: 'Condition avancée (JSON)' });
     const modeSelect = select(modeId, modes, mode, 'mode');
     modeSelect.addEventListener('change', () => {
@@ -536,28 +572,29 @@ function conditionEditor(holder, node, what) {
       }
       const next = modeSelect.value;
       if (next === 'none') items.length = 0;
-      if (next !== 'none' && items.length === 0) items.push(M.defaultComparison(M.conditionTargets(doc, node)[0]));
+      if (next !== 'none' && items.length === 0) items.push(M.defaultComparison(targets()[0]));
       if (next === 'single') items.length = 1;
       mode = next;
       store();
       changed();
+      if (onModeChange?.(next)) return;
       draw('mode');
     });
 
     const children = [
-      h('legend', {}, 'Affichage conditionnel'),
-      h('p', { class: 'help' }, `Un champ masqué n'est ni contrôlé ni enregistré. Un champ masqué compte comme vide dans les conditions qui le citent.`),
-      h('div', { class: 'field' }, h('label', { for: modeId }, 'Affichage'), modeSelect),
+      legend ? h('legend', {}, legend) : null,
+      help ? h('p', { class: 'help' }, help) : null,
+      h('div', { class: 'field' }, h('label', { for: modeId }, modeLabel), modeSelect),
     ];
 
     if (mode === 'advanced') {
       const jsonId = nextId('c');
       const area = h('textarea', { id: jsonId, rows: '8', class: 'code', spellcheck: 'false' });
-      area.value = JSON.stringify(holder.visibleIf, null, 2);
+      area.value = JSON.stringify(holder[key], null, 2);
       const problem = h('p', { class: 'error-text', role: 'alert' });
       area.addEventListener('change', () => {
         try {
-          holder.visibleIf = JSON.parse(area.value);
+          holder[key] = JSON.parse(area.value);
           problem.textContent = '';
           changed();
         } catch {
@@ -566,11 +603,12 @@ function conditionEditor(holder, node, what) {
       });
       children.push(fieldWrap(jsonId, 'Condition (JSON)', area, 'Combinaisons imbriquées : voir le format de définition.'), problem);
     } else if (mode !== 'none') {
-      const redraw = (key) => { store(); draw(key); };
-      items.forEach((comparison, index) => children.push(comparisonRow(holder, node, comparison, items, index, redraw)));
+      const redraw = (focus) => { store(); draw(focus); };
+      const available = targets();
+      items.forEach((comparison, index) => children.push(comparisonRow(available, comparison, items, index, redraw)));
       if (mode !== 'single') {
         children.push(button('Ajouter une condition', () => {
-          items.push(M.defaultComparison(M.conditionTargets(doc, node)[0]));
+          items.push(M.defaultComparison(available[0]));
           store();
           changed();
           draw();
@@ -578,6 +616,99 @@ function conditionEditor(holder, node, what) {
       }
     }
 
+    box.replaceChildren(...children.filter(Boolean));
+    if (focusKey) box.querySelector(`[data-focus="${focusKey}"]`)?.focus();
+  };
+
+  draw();
+  return box;
+}
+
+// ---------------------------------------------------------------------------
+// Sauts d'une section
+
+function jumpsEditor(section) {
+  const box = h('fieldset', { class: 'condition' });
+
+  const draw = (focusKey) => {
+    const jumps = M.jumpsOf(section);
+    const destinations = M.jumpDestinations(doc, section);
+    const children = [
+      h('legend', {}, 'Après cette section'),
+      h('p', { class: 'help' }, "Par défaut, le formulaire continue à la section suivante. Le premier saut dont la condition est remplie s'applique : il mène à une section située plus loin ou termine le formulaire sur une page de fin. Les sections sautées ne sont ni affichées, ni contrôlées, ni enregistrées."),
+    ];
+
+    jumps.forEach((jump, index) => {
+      const number = index + 1;
+      const destId = nextId('j');
+      const choices = destinations.length > 0 ? [...destinations] : [{ value: '', label: 'Aucune destination : ajoutez une section ou une page de fin' }];
+      const current = M.jumpDestination(jump);
+      if (current && !choices.some((c) => c.value === current)) {
+        choices.push({ value: current, label: `${current.replace(/^goTo:|^end:/, '')} (introuvable ou située avant)` });
+      }
+      const destSelect = select(destId, choices, current, `jump-dest-${index}`);
+      destSelect.addEventListener('change', () => {
+        M.setJumpDestination(jump, destSelect.value);
+        changed();
+      });
+
+      const isLast = index === jumps.length - 1;
+      const condition = conditionBox(jump, 'if', {
+        modeLabel: `Condition du saut ${number}`,
+        modes: {
+          none: isLast ? 'Toujours (sinon)' : 'Toujours (doit être le dernier saut)',
+          single: 'Si la condition est remplie',
+          all: 'Si toutes les conditions sont remplies (et)',
+          any: 'Si au moins une condition est remplie (ou)',
+        },
+        targets: () => M.jumpConditionTargets(doc, section),
+        onModeChange: (mode) => {
+          if (mode !== 'none' || isLast) return false;
+          // Un saut sans condition passe en dernier : les suivants ne seraient jamais appliqués.
+          jumps.splice(index, 1);
+          jumps.push(jump);
+          announce(`Saut sans condition placé en dernier (saut ${jumps.length}).`);
+          draw(`jump-dest-${jumps.length - 1}`);
+          return true;
+        },
+      });
+
+      const move = (delta) => {
+        const to = index + delta;
+        if (to < 0 || to >= jumps.length) return;
+        jumps.splice(index, 1);
+        jumps.splice(to, 0, jump);
+        changed();
+        draw(`jump-${delta < 0 ? 'up' : 'down'}-${to}`);
+        announce(`Saut déplacé en position ${to + 1} sur ${jumps.length}.`);
+      };
+      const up = button('↑', () => move(-1), { cls: 'icon', aria: `Monter le saut ${number}`, disabled: index === 0 });
+      const down = button('↓', () => move(1), { cls: 'icon', aria: `Descendre le saut ${number}`, disabled: isLast });
+      up.dataset.focus = `jump-up-${index}`;
+      down.dataset.focus = `jump-down-${index}`;
+
+      children.push(h('fieldset', { class: 'condition-row jump' },
+        h('legend', {}, `Saut ${number}`),
+        condition,
+        h('div', { class: 'field' }, h('label', { for: destId }, `Destination du saut ${number}`), destSelect),
+        h('div', { class: 'actions' }, up, down, button('Retirer ce saut', () => {
+          M.removeJump(section, jump);
+          changed();
+          draw();
+          announce(`Saut ${number} retiré.`);
+        }, { cls: 'link', aria: `Retirer le saut ${number}` }))));
+    });
+
+    const add = button('Ajouter un saut', () => {
+      const jump = M.addJump(doc, section);
+      changed();
+      draw(`jump-dest-${M.jumpsOf(section).indexOf(jump)}`);
+      announce('Saut ajouté.');
+    });
+    children.push(h('p', {}, add));
+    if (destinations.length === 0) {
+      children.push(h('p', { class: 'help' }, 'Aucune destination possible : cette section est la dernière et le formulaire n\'a pas de page de fin.'));
+    }
     box.replaceChildren(...children);
     if (focusKey) box.querySelector(`[data-focus="${focusKey}"]`)?.focus();
   };
@@ -739,7 +870,35 @@ function sectionPanel(section) {
     idProp(section),
     checkProp(section, 'collapsed', 'Repliée par défaut'),
     conditionEditor(section, section, 'Section'),
+    jumpsEditor(section),
     h('div', { class: 'actions' }, button('Supprimer la section', () => removeWithConfirm(section), { cls: 'danger' })),
+  ];
+}
+
+function endingPanel(ending) {
+  const sources = M.jumpSources(doc, 'end', ending.id);
+  const title = M.nodeTitle(ending);
+  return [
+    h('h2', { tabindex: '-1' }, `Page de fin : ${title}`),
+    errorList(ending),
+    h('p', { class: 'help' }, "Affichée après l'envoi à la place de la confirmation standard, quand un saut y mène. La réponse est enregistrée et le numéro de dossier affiché. Texte fixe : n'y mettez aucune donnée personnelle."),
+    textProp(ending, 'title', 'Titre', { maxLength: 200 }),
+    textProp(ending, 'text', 'Texte (facultatif)', { multiline: true, rows: 5, maxLength: 2000 }),
+    idProp(ending),
+    sources.length > 0
+      ? h('p', { class: 'help' }, `Atteinte depuis : ${sources.map((s) => `« ${M.nodeTitle(s)} »`).join(', ')}.`)
+      : h('p', { class: 'help' }, "Aucun saut n'y mène encore : ajoutez-en un depuis une section (« Après cette section »)."),
+    h('div', { class: 'actions' }, button('Supprimer la page de fin', () => {
+      let message = `Supprimer la page de fin « ${title} » ?`;
+      if (sources.length > 0) message += ` ${sources.length} section(s) y mènent par un saut, à corriger.`;
+      if (!window.confirm(message)) return;
+      M.removeEnding(doc, ending);
+      selected = 'form';
+      changed();
+      renderPanel();
+      announce(`Page de fin « ${title} » supprimée.`);
+      tree.querySelector('.tree-form .tree-select')?.focus();
+    }, { cls: 'danger' })),
   ];
 }
 
@@ -758,13 +917,14 @@ function idProp(node) {
     }
     autoIds.delete(node);
     if (isField) M.renameField(doc, node, value);
-    else M.renameSection(doc, node, value);
+    else if (doc.sections.includes(node)) M.renameSection(doc, node, value);
+    else M.renameEnding(doc, node, value);
     changed();
   });
   node[idInput] = control;
   return fieldWrap(id, 'Identifiant', control, (isField
     ? 'Lettres, chiffres et _, commence par une lettre. Utilisé dans les exports, le modèle PDF et les conditions (mises à jour automatiquement).'
-    : 'Lettres, chiffres et _, commence par une lettre.')
+    : 'Lettres, chiffres et _, commence par une lettre. Les sauts qui y mènent sont mis à jour automatiquement.')
     + (published ? ' Ce champ existe dans la version en ligne : le renommer sépare les nouvelles réponses des anciennes.' : ''));
 }
 
@@ -891,7 +1051,8 @@ function fieldPanel(field) {
 function renderPanel(focusKey) {
   const content = selected === 'form' ? formPanel()
     : doc.sections.includes(selected) ? sectionPanel(selected)
-      : fieldPanel(selected);
+      : M.endings(doc).includes(selected) ? endingPanel(selected)
+        : fieldPanel(selected);
   panel.replaceChildren(...content.filter(Boolean));
   if (focusKey) panel.querySelector(`[data-focus="${focusKey}"]`)?.focus();
 }
