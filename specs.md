@@ -50,7 +50,7 @@ Le formulaire d'inscription ne doit pas être codé en dur : c'est le premier fo
 3. Le salarié scanne le QR code et arrive sur une page mobile, sans création de compte.
 4. Il saisit, au besoin, un code d'accès imprimé sur le flyer (protection contre les soumissions extérieures).
 5. Il remplit le formulaire, lit la mention d'information RGPD et coche la case d'attestation d'exactitude.
-6. À la soumission, le serveur valide les données, enregistre la réponse et affiche une page de confirmation avec un numéro de dossier.
+6. À la soumission, le serveur valide les données, enregistre la réponse et affiche une page de confirmation avec un numéro de dossier (ou la page de fin prévue par le parcours, voir 3.2).
 7. Un traitement en arrière-plan génère le PDF à partir d'un modèle fidèle à la fiche papier.
 8. Une notification sans donnée personnelle part vers la boîte CSE, avec un lien vers la réponse et son PDF, accessibles uniquement après authentification d'un élu habilité. Le salarié reçoit un accusé de réception sans PDF ni donnée saisie.
 9. Dans le back-office, l'éditeur saisit l'inscription dans le logiciel CSE puis passe son statut à « Saisie ».
@@ -95,7 +95,8 @@ Le socle repose sur une définition de formulaire en JSON versionnée : l'affich
 - Normalisation à l'enregistrement : nom en majuscules, espaces superflus supprimés, email en minuscules.
 - Formulaire en plusieurs étapes optionnel, avec barre de progression.
 - Champs cachés préremplis par paramètre d'URL (ex. un QR code par site qui préremplit le lieu de travail), avec liste blanche des valeurs acceptées.
-- V1.1 : saut vers une section ou une page de fin, plusieurs pages de fin.
+- Sauts et pages de fin (V1.1) : à la fin d'une section affichée, le premier saut dont la condition est remplie mène à une section située plus loin (jamais en arrière : le parcours ne boucle pas) ou termine le formulaire sur une page de fin. Une condition de saut ne cite que des champs de la section ou des sections précédentes. Une section sautée est traitée comme une section masquée : ses champs ne sont ni affichés, ni validés, ni enregistrés. Plusieurs pages de fin possibles (titre et texte fixes, sans donnée saisie) ; la réponse est toujours enregistrée et le numéro de dossier affiché ; sans saut vers une page de fin, la confirmation standard s'affiche. Le serveur calcule le parcours et la page de fin, avec les mêmes règles que le client. En mode plusieurs étapes, les étapes suivent le parcours. Sauts et pages de fin se créent dans l'éditeur visuel. Format : `docs/format-definition.md`.
+- À décider plus tard : une page de fin qui n'enregistre pas la réponse (cas « non éligible », minimisation) ; conserver la page de fin atteinte avec la réponse pour l'afficher dans le back-office.
 - V2 : variables calculées (total, score, nombre de places) et rappel d'une réponse dans un libellé (`Merci {prénom}`).
 
 ### 3.3 Diffusion
@@ -339,7 +340,7 @@ Une réponse pointe toujours vers la version du formulaire remplie : modifier un
 3. **Lot 2, inscription** : définition JSON du formulaire, modèle PDF fidèle à la fiche, notifications, QR code et flyer.
 4. **Lot 3, sécurisation** : 2FA optionnelle, audit, anti-robot, purge automatique, sauvegardes, recette RGPD.
 5. **Lot 4, mise en service** : test avec quelques salariés volontaires, impression des flyers, communication.
-6. **Lot 5, éditeur visuel** : création de formulaires sans écrire de JSON, duplication, modèles, aperçu.
+6. **Lot 5, éditeur visuel** : création de formulaires sans écrire de JSON (conditions, sauts et pages de fin compris), duplication, modèles, aperçu.
 7. **Lot 6, V2** : sondages anonymes et statistiques, quotas, liens à usage unique, exports avancés, webhooks.
 
 ## 7. Catalogue fonctionnel complet
