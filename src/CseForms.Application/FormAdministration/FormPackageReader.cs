@@ -9,7 +9,7 @@ namespace CseForms.Application.FormAdministration;
 
 /// <summary>
 /// Lit un fichier de formulaire (par exemple <c>forms/inscription.json</c>) : réglages du formulaire
-/// (slug, titre, préfixe, conservation, accès), présentation (<c>ui</c>) et définition (<c>sections</c>...).
+/// (slug, titre, préfixe, conservation, accès), présentation (<c>ui</c>) et définition (<c>sections</c>, <c>endings</c>...).
 /// Les réglages du formulaire ne sont pas recopiés dans la définition versionnée. Le modèle PDF
 /// (<c>pdfTemplate</c>) est un fichier HTML voisin, versionné avec la définition et contrôlé contre elle.
 /// </summary>
@@ -17,7 +17,7 @@ public static partial class FormPackageReader
 {
     private static readonly HashSet<string> FormSettingKeys = ["slug", "caseNumberPrefix", "retentionDays", "access", "ui", "pdfTemplate"];
 
-    private static readonly HashSet<string> DefinitionKeys = ["title", "sections", "receipt"];
+    private static readonly HashSet<string> DefinitionKeys = ["title", "sections", "endings", "receipt"];
 
     private static readonly HashSet<string> UiKeys = ["multiStep", "confirmationText"];
 

@@ -1,0 +1,53 @@
+{
+  "slug": "parcours",
+  "title": "Sortie fictive",
+  "caseNumberPrefix": "PAR",
+  "access": { "mode": "public" },
+  "ui": { "multiStep": true, "confirmationText": "Texte de confirmation fictif." },
+  "sections": [
+    {
+      "id": "eligibilite",
+      "title": "Éligibilité",
+      "fields": [
+        { "id": "salarie", "type": "choice", "label": "Êtes-vous salarié de l'entreprise ?", "required": true, "options": ["Oui", "Non"] }
+      ],
+      "jumps": [ { "if": { "field": "salarie", "op": "equals", "value": "Non" }, "end": "nonEligible" } ]
+    },
+    {
+      "id": "inscription",
+      "title": "Inscription",
+      "fields": [
+        { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper" },
+        { "id": "formule", "type": "choice", "label": "Formule", "required": true, "options": ["Journée", "Soirée"] }
+      ],
+      "jumps": [ { "if": { "field": "formule", "op": "equals", "value": "Soirée" }, "goTo": "soiree" } ]
+    },
+    {
+      "id": "journee",
+      "title": "Journée",
+      "fields": [
+        { "id": "repas", "type": "choice", "label": "Repas sur place", "required": true, "options": ["Oui", "Non"] }
+      ],
+      "jumps": [ { "goTo": "fin" } ]
+    },
+    {
+      "id": "soiree",
+      "title": "Soirée",
+      "fields": [
+        { "id": "accompagnant", "type": "choice", "label": "Venez-vous accompagné ?", "required": true, "options": ["Oui", "Non"] }
+      ],
+      "jumps": [ { "if": { "field": "accompagnant", "op": "equals", "value": "Oui" }, "end": "attente" } ]
+    },
+    {
+      "id": "fin",
+      "title": "Pour finir",
+      "fields": [
+        { "id": "commentaire", "type": "textarea", "label": "Commentaire" }
+      ]
+    }
+  ],
+  "endings": [
+    { "id": "nonEligible", "title": "Inscription réservée aux salariés", "text": "Cette sortie fictive est réservée aux salariés de l'entreprise." },
+    { "id": "attente", "title": "Vous êtes sur liste d'attente", "text": "Les places avec accompagnant sont attribuées après le 1er décembre." }
+  ]
+}

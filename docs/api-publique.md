@@ -72,7 +72,7 @@ Preuve de travail auto-hébergée au format ALTCHA (protocole implémenté dans 
 
 | Statut | Code | Cas |
 | --- | --- | --- |
-| 201 | | Enregistrée : `{ "caseNumber": "INS-2026-0042" }` |
+| 201 | | Enregistrée : `{ "caseNumber": "INS-2026-0042" }`, avec `"ending": "attente"` si un saut a mené à une [page de fin](format-definition.md#sauts-et-pages-de-fin) |
 | 400 | `badRequest` | Corps illisible ou incomplet |
 | 403 | `proofInvalid` | Preuve anti-robot absente, fausse, expirée ou déjà utilisée : le navigateur réessaie une fois avec un nouveau défi |
 | 403 | `accessDenied` | Code d'accès absent ou incorrect |

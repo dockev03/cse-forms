@@ -249,7 +249,7 @@ export function changeType(doc, field, type) {
 }
 
 // ---------------------------------------------------------------------------
-// Références entre champs (conditions, règles, accusé de réception)
+// Références entre champs (conditions, sauts, règles, accusé de réception)
 
 function forEachConditionRef(condition, visit) {
   if (!condition || typeof condition !== 'object') return;
@@ -263,6 +263,7 @@ function forEachConditionRef(condition, visit) {
 export function forEachReference(doc, visit) {
   for (const section of doc.sections ?? []) {
     forEachConditionRef(section?.visibleIf, visit);
+    for (const jump of Array.isArray(section?.jumps) ? section.jumps : []) forEachConditionRef(jump?.if, visit);
     for (const field of section?.fields ?? []) {
       for (const f of [field, ...(field?.type === 'repeat' && Array.isArray(field.fields) ? field.fields : [])]) {
         forEachConditionRef(f?.visibleIf, visit);
@@ -275,7 +276,7 @@ export function forEachReference(doc, visit) {
   if (doc.receipt && typeof doc.receipt.emailField === 'string') visit(doc.receipt, 'emailField');
 }
 
-/** Nombre de conditions, règles et accusés qui citent l'identifiant. */
+/** Nombre de conditions, sauts, règles et accusés qui citent l'identifiant. */
 export function countReferences(doc, id) {
   let count = 0;
   forEachReference(doc, (holder, key) => {
@@ -284,7 +285,7 @@ export function countReferences(doc, id) {
   return count;
 }
 
-/** Renomme un champ et met à jour les conditions, les règles et l'accusé de réception qui le citent. */
+/** Renomme un champ et met à jour les conditions, les sauts, les règles et l'accusé de réception qui le citent. */
 export function renameField(doc, field, newId) {
   const oldId = field.id;
   field.id = newId;
@@ -292,6 +293,18 @@ export function renameField(doc, field, newId) {
   forEachReference(doc, (holder, key) => {
     if (holder[key] === oldId) holder[key] = newId;
   });
+}
+
+/** Renomme une section et met à jour les sauts qui y mènent. */
+export function renameSection(doc, section, newId) {
+  const oldId = section.id;
+  section.id = newId;
+  if (!oldId || oldId === newId) return;
+  for (const s of doc.sections ?? []) {
+    for (const jump of Array.isArray(s?.jumps) ? s.jumps : []) {
+      if (jump?.goTo === oldId) jump.goTo = newId;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

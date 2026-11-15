@@ -30,6 +30,11 @@ for (const file of files) {
       if (testCase.data) {
         assert.deepEqual(result.data, testCase.data);
       }
+
+      // « ending » : page de fin attendue (null pour la confirmation standard) ; non vérifiée si absente.
+      if ('ending' in testCase) {
+        assert.equal(result.ending, testCase.ending);
+      }
     });
   }
 }
@@ -83,4 +88,20 @@ test('la visibilité suit les conditions, y compris dans les lignes', () => {
 
   assert.equal(computeVisibility(definition, { contrat: 'CDD' }).field('dateFin'), true);
   assert.equal(computeVisibility(definition, null).field('dateFin'), true);
+});
+
+test('le rendu suit le parcours : sections sautées masquées et page de fin atteinte', () => {
+  const fixture = JSON.parse(readFileSync(new URL('sauts-et-pages-de-fin.json', fixtureDirectory), 'utf8'));
+  const { definition } = fixture;
+  const shown = (input) => {
+    const visibility = computeVisibility(definition, input);
+    return { sections: definition.sections.filter((s) => visibility.section(s)).map((s) => s.id), ending: visibility.ending };
+  };
+
+  assert.deepEqual(shown({}), { sections: ['eligibilite', 'inscription', 'journee', 'fin'], ending: null });
+  assert.deepEqual(shown({ salarie: 'non' }), { sections: ['eligibilite'], ending: 'nonEligible' });
+  assert.deepEqual(shown({ salarie: 'oui', formule: 'soiree' }), { sections: ['eligibilite', 'inscription', 'soiree', 'fin'], ending: null });
+  assert.deepEqual(
+    shown({ salarie: 'oui', formule: 'soiree', accompagnant: 'oui' }),
+    { sections: ['eligibilite', 'inscription', 'soiree', 'accompagnement'], ending: 'attente' });
 });

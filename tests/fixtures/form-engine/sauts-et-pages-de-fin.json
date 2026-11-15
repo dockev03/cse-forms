@@ -1,0 +1,108 @@
+{
+  "description": "Sauts vers une section ou une page de fin, sections hors parcours, sauts d'une section masquée ignorés",
+  "today": "2026-11-15",
+  "sites": ["Riom"],
+  "definition": {
+    "sections": [
+      {
+        "id": "eligibilite",
+        "fields": [
+          { "id": "salarie", "type": "choice", "label": "Êtes-vous salarié de l'entreprise ?", "required": true, "options": ["oui", "non"] }
+        ],
+        "jumps": [ { "if": { "field": "salarie", "op": "equals", "value": "non" }, "end": "nonEligible" } ]
+      },
+      {
+        "id": "inscription",
+        "fields": [
+          { "id": "nom", "type": "text", "label": "Nom", "required": true, "transform": "upper" },
+          { "id": "formule", "type": "choice", "label": "Formule", "required": true, "options": ["journee", "soiree"] }
+        ],
+        "jumps": [ { "if": { "field": "formule", "op": "equals", "value": "soiree" }, "goTo": "soiree" } ]
+      },
+      {
+        "id": "journee",
+        "fields": [
+          { "id": "repas", "type": "choice", "label": "Repas sur place", "required": true, "options": ["oui", "non"] }
+        ],
+        "jumps": [ { "goTo": "fin" } ]
+      },
+      {
+        "id": "soiree",
+        "fields": [
+          { "id": "accompagnant", "type": "choice", "label": "Venez-vous accompagné ?", "required": true, "options": ["oui", "non"] }
+        ]
+      },
+      {
+        "id": "accompagnement",
+        "visibleIf": { "field": "accompagnant", "op": "equals", "value": "oui" },
+        "fields": [
+          { "id": "nomAccompagnant", "type": "text", "label": "Nom de l'accompagnant", "required": true, "transform": "upper" }
+        ],
+        "jumps": [ { "end": "attente" } ]
+      },
+      {
+        "id": "fin",
+        "fields": [
+          { "id": "commentaire", "type": "textarea", "label": "Commentaire" }
+        ]
+      }
+    ],
+    "endings": [
+      { "id": "nonEligible", "title": "Inscription réservée aux salariés", "text": "Cette sortie est réservée aux salariés de l'entreprise." },
+      { "id": "attente", "title": "Vous êtes sur liste d'attente", "text": "Les places avec accompagnant sont attribuées après le 1er décembre." }
+    ]
+  },
+  "cases": [
+    {
+      "name": "non salarié : fin immédiate, rien d'autre n'est demandé ni enregistré",
+      "input": { "salarie": "non", "nom": "Martin", "commentaire": "ignoré" },
+      "errors": [],
+      "data": { "salarie": "non" },
+      "ending": "nonEligible"
+    },
+    {
+      "name": "journée : la section soirée est sautée, confirmation standard",
+      "input": { "salarie": "oui", "nom": "Martin", "formule": "journee", "repas": "oui", "accompagnant": "oui", "nomAccompagnant": "Petit", "commentaire": "Merci" },
+      "errors": [],
+      "data": { "salarie": "oui", "nom": "MARTIN", "formule": "journee", "repas": "oui", "commentaire": "Merci" },
+      "ending": null
+    },
+    {
+      "name": "journée : seuls les champs du parcours sont obligatoires",
+      "input": { "salarie": "oui", "nom": "Martin", "formule": "journee" },
+      "errors": [ { "path": "repas", "code": "required" } ],
+      "ending": null
+    },
+    {
+      "name": "soirée sans accompagnant : la section masquée n'applique pas son saut",
+      "input": { "salarie": "oui", "nom": "Martin", "formule": "soiree", "repas": "oui", "accompagnant": "non", "commentaire": "À bientôt" },
+      "errors": [],
+      "data": { "salarie": "oui", "nom": "MARTIN", "formule": "soiree", "accompagnant": "non", "commentaire": "À bientôt" },
+      "ending": null
+    },
+    {
+      "name": "soirée avec accompagnant : page de fin liste d'attente, la section fin est sautée",
+      "input": { "salarie": "oui", "nom": "Martin", "formule": "soiree", "accompagnant": "oui", "nomAccompagnant": "Petit", "commentaire": "ignoré" },
+      "errors": [],
+      "data": { "salarie": "oui", "nom": "MARTIN", "formule": "soiree", "accompagnant": "oui", "nomAccompagnant": "PETIT" },
+      "ending": "attente"
+    },
+    {
+      "name": "soirée avec accompagnant : le nom de l'accompagnant est obligatoire",
+      "input": { "salarie": "oui", "nom": "Martin", "formule": "soiree", "accompagnant": "oui" },
+      "errors": [ { "path": "nomAccompagnant", "code": "required" } ],
+      "ending": "attente"
+    },
+    {
+      "name": "saisie vide : aucun saut ne s'applique, le parcours par défaut est contrôlé",
+      "input": {},
+      "errors": [
+        { "path": "salarie", "code": "required" },
+        { "path": "nom", "code": "required" },
+        { "path": "formule", "code": "required" },
+        { "path": "repas", "code": "required" }
+      ],
+      "ending": null
+    }
+  ]
+}

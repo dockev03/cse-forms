@@ -218,6 +218,52 @@ function evaluate(condition, scope) {
   }
 }
 
+/**
+ * Parcours des sections : une section est affichée si elle est sur le parcours et que sa condition est vraie.
+ * À la fin d'une section affichée, le premier saut applicable mène plus loin ou termine le formulaire ;
+ * les sections sautées sont hors du parcours. Calcul progressif, comme FormPath côté serveur.
+ */
+class FormPath {
+  constructor(definition, scope) {
+    this.sections = definition.sections;
+    this.scope = scope;
+    this.shown = new Map();
+    this.next = 0;
+    this.target = 0;
+    this.endingId = null;
+  }
+
+  get ending() {
+    this.advance(this.sections.length);
+    return this.endingId;
+  }
+
+  isSectionShown(section) {
+    this.advance(this.sections.indexOf(section) + 1);
+    return this.shown.get(section);
+  }
+
+  advance(count) {
+    while (this.next < count) {
+      const index = this.next++;
+      const section = this.sections[index];
+      const onPath = this.endingId === null && index >= this.target;
+
+      // Marquée avant l'évaluation : ses propres champs peuvent être consultés par sa condition ou ses sauts.
+      this.shown.set(section, onPath);
+      if (!onPath) continue;
+
+      const shown = !section.visibleIf || evaluate(section.visibleIf, this.scope);
+      this.shown.set(section, shown);
+      if (!shown) continue;
+
+      const jump = (section.jumps ?? []).find((j) => !j.if || evaluate(j.if, this.scope));
+      if (jump?.end != null) this.endingId = jump.end;
+      else if (jump?.goTo != null) this.target = this.sections.findIndex((s) => s.id === jump.goTo);
+    }
+  }
+}
+
 function topLevelScope(definition, input) {
   const sectionOf = new Map();
   const definitions = new Map();
@@ -228,14 +274,9 @@ function topLevelScope(definition, input) {
     }
   }
 
-  const sectionVisibility = new Map();
   const scope = new Scope(definitions, input, null);
-  scope.isSectionVisible = (section) => {
-    if (!sectionVisibility.has(section)) {
-      sectionVisibility.set(section, !section.visibleIf || evaluate(section.visibleIf, scope));
-    }
-    return sectionVisibility.get(section);
-  };
+  scope.path = new FormPath(definition, scope);
+  scope.isSectionVisible = (section) => scope.path.isSectionShown(section);
   scope.visibilityRule = (field) =>
     scope.isSectionVisible(sectionOf.get(field.id)) && (!field.visibleIf || evaluate(field.visibleIf, scope));
   return scope;
@@ -249,7 +290,8 @@ function rowScope(repeatField, row, parent) {
 }
 
 /**
- * Visibilité courante, pour le rendu : sections, champs de premier niveau, champs des lignes.
+ * Visibilité courante, pour le rendu : sections (hors parcours ou masquées), champs de premier niveau,
+ * champs des lignes, et page de fin atteinte (identifiant, ou null pour la confirmation standard).
  * Mêmes règles que la validation (un champ masqué compte comme vide).
  */
 export function computeVisibility(definition, input) {
@@ -260,6 +302,7 @@ export function computeVisibility(definition, input) {
   return {
     section: (section) => top.isSectionVisible(section),
     field: (id) => top.isVisible(id),
+    get ending() { return top.path.ending; },
     rowField(repeatField, index, subId) {
       const key = `${repeatField.id}[${index}]`;
       if (!rows.has(key)) {
@@ -293,7 +336,7 @@ class Run {
     for (const { scope, field, path } of this.pendingRules) {
       this.applyRules(field, scope, path);
     }
-    return { errors: this.errors, data: this.errors.length === 0 ? output : null };
+    return { errors: this.errors, data: this.errors.length === 0 ? output : null, ending: this.top.path.ending };
   }
 
   processField(field, scope, path, output) {
@@ -596,11 +639,11 @@ class Run {
  * @param {{sections: object[]}} definition définition publiée
  * @param {unknown} input saisie brute
  * @param {{today: string, sites: string[]}} context date du jour (AAAA-MM-JJ, Europe/Paris) et sites actifs
- * @returns {{errors: {path: string, code: string, message: string}[], data: object | null}}
+ * @returns {{errors: {path: string, code: string, message: string}[], data: object | null, ending: string | null}}
  */
 export function validate(definition, input, context) {
   if (!isObject(input)) {
-    return { errors: [{ path: '', code: 'invalidType', message: 'Réponse illisible.' }], data: null };
+    return { errors: [{ path: '', code: 'invalidType', message: 'Réponse illisible.' }], data: null, ending: null };
   }
   return new Run(definition, input, context).execute();
 }

@@ -36,6 +36,7 @@ public static partial class SubmissionValidator
         private readonly List<ValidationError> _errors = [];
         private readonly List<(Scope Scope, FieldDefinition Field, string Path)> _pendingRules = [];
         private readonly FormDefinition _definition;
+        private readonly FormPath _path;
 
         public Run(FormDefinition definition, JsonElement input, ValidationContext context)
         {
@@ -51,22 +52,13 @@ public static partial class SubmissionValidator
                 }
             }
 
-            var sectionVisibility = new Dictionary<SectionDefinition, bool>();
             _top = new Scope(
                 definition.AllTopLevelFields.ToDictionary(f => f.Id, StringComparer.Ordinal),
                 input,
                 parent: null);
+            _path = new FormPath(definition, _top);
             _top.VisibilityRule = field =>
-            {
-                var section = sectionOf[field.Id];
-                if (!sectionVisibility.TryGetValue(section, out var sectionVisible))
-                {
-                    sectionVisible = section.VisibleIf is null || Evaluate(section.VisibleIf, _top);
-                    sectionVisibility[section] = sectionVisible;
-                }
-
-                return sectionVisible && (field.VisibleIf is null || Evaluate(field.VisibleIf, _top));
-            };
+                _path.IsSectionShown(sectionOf[field.Id]) && (field.VisibleIf is null || Evaluate(field.VisibleIf, _top));
         }
 
         public SubmissionValidationResult Execute()
@@ -83,7 +75,7 @@ public static partial class SubmissionValidator
                 ApplyRules(field, scope, path);
             }
 
-            return new SubmissionValidationResult(_errors, _errors.Count == 0 ? output : null);
+            return new SubmissionValidationResult(_errors, _errors.Count == 0 ? output : null, _path.Ending);
         }
 
         private void ProcessField(FieldDefinition field, Scope scope, string path, JsonObject output)
@@ -516,7 +508,7 @@ public static partial class SubmissionValidator
             }
         }
 
-        private static bool Evaluate(Condition condition, Scope scope)
+        internal static bool Evaluate(Condition condition, Scope scope)
         {
             if (condition.All is not null)
             {
@@ -579,6 +571,82 @@ public static partial class SubmissionValidator
 
         private void Error(string path, string code, string label, string? detail = null) =>
             _errors.Add(new ValidationError(path, code, ValidationMessages.For(code, label, detail)));
+    }
+
+    /// <summary>
+    /// Parcours des sections : une section est affichée si elle est sur le parcours et que sa condition est vraie.
+    /// À la fin d'une section affichée, le premier saut applicable mène plus loin ou termine le formulaire ;
+    /// les sections sautées sont hors du parcours. Calcul progressif : un saut ne dépend que de champs
+    /// des sections déjà parcourues (contrôlé à la publication, avec les cycles).
+    /// </summary>
+    private sealed class FormPath(FormDefinition definition, Scope scope)
+    {
+        private readonly Dictionary<SectionDefinition, bool> _shown = [];
+        private int _next;
+        private int _target;
+        private string? _ending;
+
+        public string? Ending
+        {
+            get
+            {
+                Advance(definition.Sections.Count);
+                return _ending;
+            }
+        }
+
+        public bool IsSectionShown(SectionDefinition section)
+        {
+            Advance(IndexOf(section) + 1);
+            return _shown[section];
+        }
+
+        private int IndexOf(SectionDefinition section)
+        {
+            for (var i = 0; i < definition.Sections.Count; i++)
+            {
+                if (ReferenceEquals(definition.Sections[i], section))
+                {
+                    return i;
+                }
+            }
+
+            throw new InvalidOperationException("Section inconnue.");
+        }
+
+        private void Advance(int count)
+        {
+            while (_next < count)
+            {
+                var index = _next++;
+                var section = definition.Sections[index];
+                var onPath = _ending is null && index >= _target;
+
+                // Marquée avant l'évaluation : ses propres champs peuvent être consultés par sa condition ou ses sauts.
+                _shown[section] = onPath;
+                if (!onPath)
+                {
+                    continue;
+                }
+
+                var shown = section.VisibleIf is null || Run.Evaluate(section.VisibleIf, scope);
+                _shown[section] = shown;
+                if (!shown)
+                {
+                    continue;
+                }
+
+                var jump = section.Jumps?.FirstOrDefault(j => j.If is null || Run.Evaluate(j.If, scope));
+                if (jump?.End is not null)
+                {
+                    _ending = jump.End;
+                }
+                else if (jump?.GoTo is not null)
+                {
+                    _target = definition.Sections.ToList().FindIndex(s => s.Id == jump.GoTo);
+                }
+            }
+        }
     }
 
     private sealed class Scope(Dictionary<string, FieldDefinition> definitions, JsonElement raw, Scope? parent)

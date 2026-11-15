@@ -11,12 +11,13 @@ Format :
   "sites": ["..."],
   "definition": { "sections": [] },
   "cases": [
-    { "name": "...", "input": {}, "errors": [{ "path": "...", "code": "..." }], "data": {} }
+    { "name": "...", "input": {}, "errors": [{ "path": "...", "code": "..." }], "data": {}, "ending": "..." }
   ]
 }
 ```
 
 - `errors` : liste attendue (chemin et code), sans ordre imposé. Vide si la saisie est valide.
 - `data` : données normalisées attendues, uniquement si la saisie est valide.
+- `ending` : page de fin atteinte par un saut, `null` pour la confirmation standard ; facultatif (non vérifié s'il est absent).
 
 Données exclusivement fictives.

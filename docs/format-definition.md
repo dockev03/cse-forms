@@ -12,15 +12,17 @@ Référence du JSON stocké dans `form_version.schema_json`. Il pilote le rendu 
       "title": "Informations professionnelles",
       "collapsed": false,
       "visibleIf": { "field": "...", "op": "...", "value": "..." },
-      "fields": [ { "id": "contrat", "type": "choice", "label": "Type de contrat", "required": true, "options": ["CDI", "CDD"] } ]
+      "fields": [ { "id": "contrat", "type": "choice", "label": "Type de contrat", "required": true, "options": ["CDI", "CDD"] } ],
+      "jumps": [ { "if": { "field": "contrat", "op": "equals", "value": "CDI" }, "goTo": "famille" } ]
     }
-  ]
+  ],
+  "endings": [ { "id": "attente", "title": "Vous êtes sur liste d'attente", "text": "..." } ]
 }
 ```
 
 Les autres propriétés de premier niveau (`slug`, `receipt`...) sont ignorées par le moteur et traitées par d'autres composants (voir [accusé de réception](#accusé-de-réception)). Dans une section, un champ ou une règle, toute propriété inconnue est refusée à la publication.
 
-Les identifiants (`id`) commencent par une lettre et ne contiennent que lettres, chiffres et `_` (64 caractères maximum). Ils sont uniques dans tout le formulaire, et uniques dans chaque groupe répétable.
+Les identifiants (`id`) commencent par une lettre et ne contiennent que lettres, chiffres et `_` (64 caractères maximum). Ils sont uniques dans tout le formulaire, et uniques dans chaque groupe répétable. Les sections et les pages de fin ont chacune leurs identifiants uniques.
 
 ## Types de champs
 
@@ -59,6 +61,38 @@ Avant validation : suppression des caractères de contrôle, des espaces en têt
 Opérateurs : `equals`, `notEquals`, `in`, `notIn`, `empty`, `notEmpty`. Pour un choix multiple, `equals` signifie « contient ». Un champ masqué compte comme vide dans les conditions qui le citent. Dans un groupe répétable, un nom de champ désigne d'abord un champ de la même ligne, puis un champ du formulaire. Les conditions circulaires sont refusées.
 
 Un champ masqué, ou dans une section masquée, n'est ni validé ni enregistré.
+
+## Sauts et pages de fin
+
+Par défaut, les sections se suivent dans l'ordre. Une section peut déclarer des sauts (`jumps`), évalués quand elle est affichée, dans l'ordre : le premier dont la condition `if` est vraie s'applique (un saut sans `if` s'applique toujours et doit être le dernier).
+
+```json
+"jumps": [
+  { "if": { "field": "salarie", "op": "equals", "value": "non" }, "end": "nonEligible" },
+  { "if": { "field": "formule", "op": "equals", "value": "soiree" }, "goTo": "soiree" },
+  { "goTo": "fin" }
+]
+```
+
+| Propriété | Effet |
+| --- | --- |
+| `goTo` | Continue à la section indiquée, obligatoirement située plus loin : le parcours ne peut pas boucler |
+| `end` | Termine le formulaire : les sections suivantes sont ignorées et, après l'envoi, la page de fin indiquée remplace la confirmation standard |
+| `if` | Condition, même syntaxe que l'[affichage conditionnel](#affichage-conditionnel) ; elle ne peut citer que des champs de la section ou des sections précédentes |
+
+Une section sautée est hors du parcours : comme une section masquée, ses champs ne sont ni affichés, ni validés, ni enregistrés, et comptent comme vides dans les conditions. Les sauts d'une section masquée ne s'appliquent pas. Les conditions d'affichage et de saut qui dépendent les unes des autres en boucle sont refusées.
+
+Pages de fin (`endings`, au premier niveau) :
+
+| Propriété | Rôle |
+| --- | --- |
+| `id` | Identifiant cité par `end` (obligatoire) |
+| `title` | Titre de la page, 200 caractères au plus (obligatoire) |
+| `text` | Texte affiché sous le numéro de dossier, 2000 caractères au plus (facultatif) |
+
+La réponse est enregistrée quelle que soit la page de fin, et le numéro de dossier affiché. Sans saut vers une page de fin, la confirmation standard s'affiche, avec `confirmationText` (voir [présentation](#présentation-ui_json)). Une page de fin est un texte fixe : elle ne reprend jamais une donnée saisie. Les pages de fin font partie de la définition versionnée.
+
+En mode `multiStep`, les étapes sont les sections du parcours : leur nombre suit les réponses (« Étape 2 sur 4 » peut devenir « Étape 2 sur 2 »), et « Envoyer » apparaît dès la dernière section du parcours.
 
 ## Règles
 
@@ -103,7 +137,7 @@ Un formulaire se publie depuis un fichier JSON (exemple : [`forms/inscription.js
 | `access` | `{ "mode": "public" }` ou `{ "mode": "pin" }` (obligatoire) | non |
 | `ui` | Présentation, stockée dans `ui_json` | oui |
 | `pdfTemplate` | Nom du fichier HTML du [modèle PDF](#modèle-pdf), placé dans le même dossier ; absent : modèle générique | oui (`pdf_template_html`) |
-| `sections`, `receipt` | Définition, stockée dans `schema_json` | oui |
+| `sections`, `endings`, `receipt` | Définition, stockée dans `schema_json` | oui |
 
 Toute autre propriété est refusée, y compris `notifications` : les destinataires se règlent en base. Réimporter un fichier dont la définition, la présentation et le modèle PDF n'ont pas changé ne crée pas de version ; sinon une nouvelle version est publiée, sans rouvrir un formulaire fermé. En mode `pin`, le formulaire n'est jamais publié sans code d'accès (4 à 12 chiffres, stocké haché) : il est demandé au premier import.
 
