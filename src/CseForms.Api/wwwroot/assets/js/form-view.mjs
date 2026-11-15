@@ -564,7 +564,8 @@ export class FormView {
 
   handleResult({ status, body }) {
     if (status === 201 && body?.caseNumber) {
-      this.showConfirmation(body.caseNumber);
+      // Le serveur fait foi pour la page de fin ; absente, c'est la confirmation standard.
+      this.showConfirmation(body.caseNumber, this.endingById(body.ending));
       return;
     }
 
@@ -589,8 +590,21 @@ export class FormView {
     }
   }
 
+  /** Page de fin déclarée dans la définition, ou null (confirmation standard). */
+  endingById(id) {
+    if (typeof id !== 'string') return null;
+    return (this.definition.endings ?? []).find((e) => e.id === id) ?? null;
+  }
+
+  /** Texte d'une page de fin, ou texte de confirmation standard (ui.confirmationText). */
+  endingContent(ending) {
+    if (ending) return ending.text ? el('p', { class: 'info', text: ending.text }) : null;
+    return this.ui.confirmationText ? el('p', { class: 'info', text: this.ui.confirmationText }) : null;
+  }
+
   /** Aperçu du brouillon : la saisie est valide, mais rien n'a été envoyé. */
   showPreviewDone() {
+    const ending = this.endingById(computeVisibility(this.definition, this.values).ending);
     const heading = el('h1', { tabindex: '-1', text: 'Aperçu : la saisie est valide' });
     const restart = el('button', { type: 'button', class: 'primary', text: 'Recommencer la saisie' });
     restart.addEventListener('click', () => window.location.reload());
@@ -598,20 +612,21 @@ export class FormView {
       heading,
       el('div', { class: 'card confirmation', role: 'status' },
         el('p', { text: 'Rien n\'a été envoyé ni enregistré. Sur le formulaire publié, le répondant verrait ici son numéro de dossier.' }),
-        this.ui.confirmationText ? el('p', { class: 'info', text: this.ui.confirmationText }) : null),
+        el('p', { text: ending ? `Page de fin : « ${ending.title} »` : 'Page de fin : confirmation standard' }),
+        this.endingContent(ending)),
       el('div', { class: 'actions' }, restart));
     heading.focus();
   }
 
-  showConfirmation(caseNumber) {
-    const heading = el('h1', { tabindex: '-1', text: 'Merci, votre réponse est enregistrée' });
+  showConfirmation(caseNumber, ending = null) {
+    const heading = el('h1', { tabindex: '-1', text: ending?.title ?? 'Merci, votre réponse est enregistrée' });
     this.root.replaceChildren(
       heading,
       el('div', { class: 'card confirmation', role: 'status' },
         el('p', { text: 'Votre numéro de dossier :' }),
         el('p', { class: 'case-number', text: caseNumber }),
         el('p', { text: 'Conservez ce numéro : il vous sera demandé pour toute question sur votre dossier.' }),
-        this.ui.confirmationText ? el('p', { class: 'info', text: this.ui.confirmationText }) : null));
+        this.endingContent(ending)));
     heading.focus();
   }
 }

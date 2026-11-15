@@ -29,6 +29,9 @@ public sealed class E2EEnvironment : IAsyncLifetime
 
     public const string FormSlug = "inscription";
 
+    /// <summary>Formulaire public avec sauts et pages de fin (<c>Forms/parcours.json</c>).</summary>
+    public const string JumpFormSlug = "parcours";
+
     public static readonly string[] Sites = ["Abrest", "Riom"];
 
     /// <summary>Destinataire des notifications du formulaire d'inscription.</summary>
@@ -170,6 +173,9 @@ public sealed class E2EEnvironment : IAsyncLifetime
 
         var definition = Path.Combine(AppProcess.SolutionRoot, "forms", "inscription.json");
         await AppProcess.RunAsync(cli, environment, AccessCode, "forms", "import", "--file", definition);
+
+        var jumpForm = Path.Combine(AppProcess.SolutionRoot, "tests", "CseForms.E2E.Tests", "Forms", "parcours.json");
+        await AppProcess.RunAsync(cli, environment, string.Empty, "forms", "import", "--file", jumpForm);
 
         foreach (var account in new[] { Admin, Reader, Outsider, TwoFactorUser })
         {

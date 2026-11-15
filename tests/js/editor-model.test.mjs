@@ -120,6 +120,25 @@ test('renommer un champ met à jour conditions, règles et accusé de réception
   assert.equal(M.countReferences(doc, 'contrat'), 0);
 });
 
+test('renommer un champ ou une section met à jour les sauts', () => {
+  const doc = {
+    sections: [
+      { id: 'a', fields: [{ id: 'x', type: 'choice', label: 'X', options: ['1', '2'] }],
+        jumps: [{ if: { field: 'x', op: 'equals', value: '1' }, goTo: 'c' }, { if: { any: [{ field: 'x', op: 'empty' }] }, end: 'fin' }] },
+      { id: 'b', fields: [{ id: 'y', type: 'text', label: 'Y' }] },
+      { id: 'c', fields: [{ id: 'z', type: 'text', label: 'Z' }] },
+    ],
+    endings: [{ id: 'fin', title: 'Fin' }],
+  };
+  M.renameField(doc, doc.sections[0].fields[0], 'choix');
+  M.renameSection(doc, doc.sections[2], 'derniere');
+  assert.equal(doc.sections[0].jumps[0].if.field, 'choix');
+  assert.equal(doc.sections[0].jumps[1].if.any[0].field, 'choix');
+  assert.equal(doc.sections[0].jumps[0].goTo, 'derniere');
+  assert.equal(doc.sections[2].id, 'derniere');
+  assert.equal(M.countReferences(doc, 'choix'), 2);
+});
+
 test('dupliquer un groupe donne de nouveaux identifiants et garde ses conditions internes', () => {
   const doc = sample();
   const enfants = doc.sections[1].fields[1];

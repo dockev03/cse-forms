@@ -97,7 +97,7 @@ public sealed partial class PublicFormService(
         {
             case SaveSubmissionOutcome.Created created:
                 LogSubmissionCreated(created.SubmissionId, created.CaseNumber, form.Id);
-                return new SubmitOutcome.Created(created.CaseNumber);
+                return new SubmitOutcome.Created(created.CaseNumber, validation.Ending);
             case SaveSubmissionOutcome.VersionChanged:
                 return new SubmitOutcome.VersionChanged();
             default:
@@ -152,7 +152,8 @@ public sealed record SubmitCommand(int VersionNumber, string? AccessCode, JsonEl
 
 public abstract record SubmitOutcome
 {
-    public sealed record Created(string CaseNumber) : SubmitOutcome;
+    /// <summary>Réponse enregistrée ; <paramref name="Ending"/> est la page de fin atteinte, null pour la confirmation standard.</summary>
+    public sealed record Created(string CaseNumber, string? Ending = null) : SubmitOutcome;
 
     public sealed record NotFound : SubmitOutcome;
 

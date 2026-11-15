@@ -13,7 +13,36 @@ public sealed record FormDefinition
 {
     public required IReadOnlyList<SectionDefinition> Sections { get; init; }
 
+    /// <summary>Pages de fin atteintes par un saut (<see cref="SectionJump.End"/>). Sans saut, la confirmation standard s'affiche.</summary>
+    public IReadOnlyList<EndingDefinition>? Endings { get; init; }
+
     public IEnumerable<FieldDefinition> AllTopLevelFields => Sections.SelectMany(s => s.Fields);
+}
+
+/// <summary>Page de fin : titre et texte affichés après l'envoi, à la place de la confirmation standard.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record EndingDefinition
+{
+    public required string Id { get; init; }
+
+    public string? Title { get; init; }
+
+    public string? Text { get; init; }
+}
+
+/// <summary>
+/// Saut évalué à la fin d'une section affichée : le premier dont la condition est vraie (ou qui n'en a pas)
+/// mène à une section plus loin (<see cref="GoTo"/>) ou termine le formulaire sur une page de fin (<see cref="End"/>).
+/// Les sections sautées sont hors du parcours : leurs champs sont traités comme masqués.
+/// </summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record SectionJump
+{
+    public Condition? If { get; init; }
+
+    public string? GoTo { get; init; }
+
+    public string? End { get; init; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -31,6 +60,8 @@ public sealed record SectionDefinition
     public Condition? VisibleIf { get; init; }
 
     public required IReadOnlyList<FieldDefinition> Fields { get; init; }
+
+    public IReadOnlyList<SectionJump>? Jumps { get; init; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

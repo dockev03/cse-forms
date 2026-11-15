@@ -60,5 +60,11 @@ public class SharedFixtureTests
                 JsonNode.DeepEquals(expectedData, result.Data),
                 $"Attendu : {expectedData.ToJsonString()}{Environment.NewLine}Obtenu : {result.Data?.ToJsonString()}");
         }
+
+        // « ending » : page de fin attendue (null pour la confirmation standard) ; non vérifiée si absente.
+        if (testCase.AsObject().TryGetPropertyValue("ending", out var expectedEnding))
+        {
+            Assert.Equal(expectedEnding?.GetValue<string>(), result.Ending);
+        }
     }
 }

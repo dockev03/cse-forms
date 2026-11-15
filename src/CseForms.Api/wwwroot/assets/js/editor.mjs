@@ -758,7 +758,7 @@ function idProp(node) {
     }
     autoIds.delete(node);
     if (isField) M.renameField(doc, node, value);
-    else node.id = value;
+    else M.renameSection(doc, node, value);
     changed();
   });
   node[idInput] = control;

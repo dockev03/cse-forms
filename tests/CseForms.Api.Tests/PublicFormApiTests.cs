@@ -119,6 +119,36 @@ public class PublicFormApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(expected, await check.Jobs.AnyAsync(j => j.SubmissionId == submission.Id && j.Type == JobType.Receipt));
     }
 
+    [Theory]
+    [InlineData("non", "nonEligible")]
+    [InlineData("oui", null)]
+    public async Task Submission_returns_the_ending_reached_by_a_jump(string answer, string? expected)
+    {
+        var slug = $"api-fin-{answer}";
+        await using (var db = factory.Database.CreateContext())
+        {
+            await TestData.AddPublishedFormAsync(db, slug, """
+                {"sections":[
+                  {"id":"a","fields":[{"id":"salarie","type":"choice","label":"Salarié","required":true,"options":["oui","non"]}],
+                   "jumps":[{"if":{"field":"salarie","op":"equals","value":"non"},"end":"nonEligible"}]},
+                  {"id":"b","fields":[{"id":"commentaire","type":"text","label":"Commentaire"}]}],
+                 "endings":[{"id":"nonEligible","title":"Inscription réservée aux salariés"}]}
+                """);
+        }
+
+        var response = await SubmitAsync(slug, new { version = 1, data = new { salarie = answer, commentaire = "Texte fictif" } });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var json = await ReadJsonAsync(response);
+        Assert.Equal(expected, json["ending"]?.GetValue<string>());
+        Assert.Equal(expected is not null, json.AsObject().ContainsKey("ending"));
+
+        // La section sautée n'est pas enregistrée.
+        await using var check = factory.Database.CreateContext();
+        var caseNumber = json["caseNumber"]!.GetValue<string>();
+        var stored = JsonNode.Parse((await check.Submissions.SingleAsync(s => s.CaseNumber == caseNumber)).DataJson)!.AsObject();
+        Assert.Equal(expected is null, stored.ContainsKey("commentaire"));
+    }
+
     [Fact]
     public async Task Invalid_submission_returns_field_errors_without_values()
     {

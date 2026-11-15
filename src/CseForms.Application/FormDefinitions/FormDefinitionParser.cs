@@ -9,6 +9,8 @@ namespace CseForms.Application.FormDefinitions;
 public static partial class FormDefinitionParser
 {
     public const int MaxRepeatRows = 100;
+    public const int EndingTitleMaxLength = 200;
+    public const int EndingTextMaxLength = 2000;
     public static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -50,6 +52,9 @@ public static partial class FormDefinitionParser
     private sealed class Checker(FormDefinition definition, List<DefinitionError> errors)
     {
         private readonly Dictionary<string, FieldDefinition> _topLevel = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _sectionIndexOfField = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _sectionIndex = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _endingIds = new(StringComparer.Ordinal);
 
         public void Run()
         {
@@ -60,8 +65,8 @@ public static partial class FormDefinitionParser
             }
 
             CollectTopLevelFields();
+            CheckEndings();
 
-            var sectionIds = new HashSet<string>(StringComparer.Ordinal);
             for (var s = 0; s < definition.Sections.Count; s++)
             {
                 var section = definition.Sections[s];
@@ -73,7 +78,7 @@ public static partial class FormDefinitionParser
                 }
 
                 CheckId(section.Id, $"{path}.id");
-                if (!sectionIds.Add(section.Id ?? string.Empty))
+                if (!_sectionIndex.TryAdd(section.Id ?? string.Empty, s))
                 {
                     Error($"{path}.id", "Identifiant de section en double.");
                 }
@@ -95,7 +100,109 @@ public static partial class FormDefinitionParser
                 }
             }
 
+            // Après le parcours : un saut peut viser une section déclarée plus loin.
+            for (var s = 0; s < definition.Sections.Count; s++)
+            {
+                if (definition.Sections[s]?.Jumps is { } jumps)
+                {
+                    CheckJumps(jumps, s, $"$.sections[{s}].jumps");
+                }
+            }
+
             CheckConditionCycles();
+        }
+
+        private void CheckEndings()
+        {
+            if (definition.Endings is not { } endings)
+            {
+                return;
+            }
+
+            for (var e = 0; e < endings.Count; e++)
+            {
+                var ending = endings[e];
+                var path = $"$.endings[{e}]";
+                if (ending is null)
+                {
+                    Error(path, "Page de fin vide.");
+                    continue;
+                }
+
+                CheckId(ending.Id, $"{path}.id");
+                if (ending.Id is not null && !_endingIds.Add(ending.Id))
+                {
+                    Error($"{path}.id", "Identifiant de page de fin en double.");
+                }
+
+                if (string.IsNullOrWhiteSpace(ending.Title))
+                {
+                    Error($"{path}.title", "Le titre de la page de fin est obligatoire.");
+                }
+                else if (ending.Title.Length > EndingTitleMaxLength)
+                {
+                    Error($"{path}.title", $"Titre limité à {EndingTitleMaxLength} caractères.");
+                }
+
+                if (ending.Text?.Length > EndingTextMaxLength)
+                {
+                    Error($"{path}.text", $"Texte limité à {EndingTextMaxLength} caractères.");
+                }
+            }
+        }
+
+        private void CheckJumps(IReadOnlyList<SectionJump> jumps, int sectionIndex, string path)
+        {
+            for (var j = 0; j < jumps.Count; j++)
+            {
+                var jump = jumps[j];
+                var jumpPath = $"{path}[{j}]";
+                if (jump is null)
+                {
+                    Error(jumpPath, "Saut vide.");
+                    continue;
+                }
+
+                if ((jump.GoTo is null) == (jump.End is null))
+                {
+                    Error(jumpPath, "Un saut mène soit à une section (goTo), soit à une page de fin (end).");
+                }
+                else if (jump.GoTo is not null)
+                {
+                    if (!_sectionIndex.TryGetValue(jump.GoTo, out var target))
+                    {
+                        Error($"{jumpPath}.goTo", "Section cible inconnue.");
+                    }
+                    else if (target <= sectionIndex)
+                    {
+                        // Sauts vers l'avant uniquement : le parcours ne peut pas boucler.
+                        Error($"{jumpPath}.goTo", "Un saut ne peut mener qu'à une section située plus loin.");
+                    }
+                }
+                else if (!_endingIds.Contains(jump.End!))
+                {
+                    Error($"{jumpPath}.end", "Page de fin inconnue.");
+                }
+
+                if (jump.If is null)
+                {
+                    if (j < jumps.Count - 1)
+                    {
+                        Error(jumpPath, "Un saut sans condition doit être le dernier de la section : les suivants ne seraient jamais appliqués.");
+                    }
+
+                    continue;
+                }
+
+                CheckCondition(jump.If, $"{jumpPath}.if", rowScope: null);
+                foreach (var reference in References(jump.If))
+                {
+                    if (_sectionIndexOfField.TryGetValue(reference, out var owner) && owner > sectionIndex)
+                    {
+                        Error($"{jumpPath}.if", $"Le champ '{reference}' se trouve dans une section suivante : un saut ne peut dépendre que des réponses déjà données.");
+                    }
+                }
+            }
         }
 
         private void CollectTopLevelFields()
@@ -114,6 +221,10 @@ public static partial class FormDefinitionParser
                     if (!_topLevel.TryAdd(field.Id, field))
                     {
                         Error($"$.sections[{s}].fields[{f}].id", "Identifiant de champ en double dans le formulaire.");
+                    }
+                    else
+                    {
+                        _sectionIndexOfField[field.Id] = s;
                     }
                 }
             }
@@ -443,12 +554,14 @@ public static partial class FormDefinitionParser
 
         private void CheckConditionCycles()
         {
-            // Graphe des dépendances d'affichage entre champs de premier niveau
-            // (la condition d'une section s'applique à chacun de ses champs).
+            // Graphe des dépendances d'affichage entre champs de premier niveau : la condition d'une section
+            // s'applique à chacun de ses champs, et la présence d'une section dans le parcours dépend des
+            // sections précédentes (leur condition d'affichage et leurs sauts).
             var dependencies = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            var pathRefs = new HashSet<string>(StringComparer.Ordinal);
             foreach (var section in definition.Sections.OfType<SectionDefinition>())
             {
-                var sectionRefs = References(section.VisibleIf);
+                var sectionRefs = References(section.VisibleIf).ToList();
                 foreach (var field in section.Fields ?? [])
                 {
                     if (field?.Id is null)
@@ -458,7 +571,14 @@ public static partial class FormDefinitionParser
 
                     var refs = new HashSet<string>(sectionRefs, StringComparer.Ordinal);
                     refs.UnionWith(References(field.VisibleIf));
+                    refs.UnionWith(pathRefs);
                     dependencies[field.Id] = refs;
+                }
+
+                pathRefs.UnionWith(sectionRefs);
+                foreach (var jump in section.Jumps ?? [])
+                {
+                    pathRefs.UnionWith(References(jump?.If));
                 }
             }
 
@@ -467,7 +587,7 @@ public static partial class FormDefinitionParser
             {
                 if (HasCycle(id, dependencies, state))
                 {
-                    Error("$.sections", $"Conditions d'affichage circulaires autour du champ '{id}'.");
+                    Error("$.sections", $"Conditions d'affichage ou de saut circulaires autour du champ '{id}'.");
                     return;
                 }
             }

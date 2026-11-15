@@ -1,6 +1,7 @@
 using CseForms.Application.Notifications;
 using CseForms.Application.Settings;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CseForms.Api.Hosting;
 using CseForms.Application.ProofOfWork;
 using CseForms.Application.PublicForms;
@@ -80,7 +81,7 @@ internal static class PublicFormEndpoints
 
         return outcome switch
         {
-            SubmitOutcome.Created created => Results.Created((string?)null, new SubmitResponse(created.CaseNumber)),
+            SubmitOutcome.Created created => Results.Created((string?)null, new SubmitResponse(created.CaseNumber, created.Ending)),
             SubmitOutcome.NotFound => ApiErrors.NotFound(),
             SubmitOutcome.NotAccepting => ApiErrors.Conflict("notAccepting", "Ce formulaire n'accepte plus de réponse."),
             SubmitOutcome.VersionChanged => ApiErrors.Conflict("versionChanged", "Le formulaire a été modifié. Rechargez la page pour continuer."),
@@ -115,5 +116,7 @@ internal static class PublicFormEndpoints
 
     internal sealed record SubmitRequest(int Version, string? AccessCode, JsonElement Data, ProofOfWorkSolution? Proof);
 
-    internal sealed record SubmitResponse(string CaseNumber);
+    internal sealed record SubmitResponse(
+        string CaseNumber,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Ending);
 }
