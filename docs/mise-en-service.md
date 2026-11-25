@@ -49,9 +49,11 @@ Toutes les valeurs d'exemple (adresses, noms, domaines) sont fictives.
 | --- | --- | --- | --- |
 | `postgres` | `postgres:17-alpine` | Base de données (réponses, comptes, audit, file de tâches Hangfire) | `backend` (interne) |
 | `gotenberg` | `gotenberg/gotenberg:8.38.1` | Conversion HTML → PDF, sans accès aux ressources externes | `backend` |
-| `migrate` | `cse-forms-api` | `db migrate` : met le schéma à jour puis s'arrête | `backend` |
-| `api` | `cse-forms-api` (construite) | Formulaire public `/f/{slug}`, API `/api`, back-office `/admin`, commandes d'administration | `frontend` + `backend` |
-| `worker` | `cse-forms-worker` (construite) | Tâches de fond : PDF, emails, purge ; commande `mail test` | `backend` + `egress` |
+| `migrate` | `ghcr.io/dockev03/cse-forms-api` | `db migrate` : met le schéma à jour puis s'arrête | `backend` |
+| `api` | `ghcr.io/dockev03/cse-forms-api` | Formulaire public `/f/{slug}`, API `/api`, back-office `/admin`, commandes d'administration | `frontend` + `backend` |
+| `worker` | `ghcr.io/dockev03/cse-forms-worker` | Tâches de fond : PDF, emails, purge ; commande `mail test` | `backend` + `egress` |
+
+Les images de l'API et du Worker sont publiées sur GHCR (linux/amd64) par la CI à chaque version (tag `vX.Y.Z`), après les tests et l'analyse Trivy. La version déployée est fixée par `CSE_FORMS_VERSION` dans `.env` (§ 4.1).
 
 Seul le port HTTP de l'API est publié. Le réseau `backend` est `internal` : PostgreSQL et Gotenberg ne sortent pas et ne sont pas joignables depuis l'extérieur. Seul le Worker sort (réseau `egress`), vers le serveur SMTP.
 
@@ -74,7 +76,8 @@ Seul le port HTTP de l'API est publié. Le réseau `backend` est `internal` : Po
 | --- | --- | --- |
 | Entrant | Reverse proxy → hôte Docker | `API_PORT` (8080 par défaut), TCP |
 | Sortant | Worker → serveur SMTP | 587 (STARTTLS) ou 465 (SSL) |
-| Sortant (construction) | Hôte → `mcr.microsoft.com`, `api.nuget.org`, Docker Hub, miroirs Debian | 443 |
+| Sortant (images) | Hôte → `ghcr.io`, `pkg-containers.githubusercontent.com`, Docker Hub | 443 |
+| Sortant (construction locale seulement) | Hôte → `mcr.microsoft.com`, `api.nuget.org`, miroirs Debian | 443 |
 | Administration | Poste d'admin → hôte | SSH |
 
 ### À obtenir avant de commencer
@@ -113,8 +116,10 @@ sudo mkdir -p /opt/cse-forms && sudo chown "$USER" /opt/cse-forms
 git clone https://github.com/dockev03/cse-forms.git /opt/cse-forms
 ```
 
+Se placer sur le tag de la version à déployer (liste : `git tag --list 'v*' --sort=-v:refname`), pour que `docker-compose.yml` corresponde aux images :
+
 ```bash
-cd /opt/cse-forms && git checkout main
+cd /opt/cse-forms && git checkout v1.0.0
 ```
 
 Le nom du dossier (`cse-forms`) sert de nom de projet Compose : les volumes s'appelleront `cse-forms_postgres-data`, `cse-forms_files` et `cse-forms_keys`. Le garder stable.
@@ -148,6 +153,14 @@ cd /opt/cse-forms && cp .env.production.example .env && chmod 600 .env
 ```
 
 Le fichier `.env` est exclu du dépôt (`.gitignore`) et du contexte de construction Docker (`.dockerignore`). Il ne doit jamais être versionné, copié dans un ticket ou envoyé par email.
+
+`CSE_FORMS_VERSION` reçoit la version du tag sans le « v » (tag `v1.0.0` → `1.0.0`). Toujours une version précise, jamais `latest` : les migrations ne se défont pas.
+
+Accès aux images : si les paquets GHCR `cse-forms-api` et `cse-forms-worker` sont publics, aucune authentification n'est nécessaire. S'ils sont privés, se connecter une fois sur le serveur avec un jeton GitHub (classic) limité à `read:packages`, saisi au terminal :
+
+```bash
+docker login ghcr.io -u <compte-github>
+```
 
 ### 4.2 Secrets à générer
 
@@ -219,10 +232,20 @@ grep -n "a-remplacer" .env || echo "Aucune valeur à remplacer"
 ## 5. Premier démarrage
 
 ```bash
-docker compose up -d --build
+docker compose pull
 ```
 
-Ordre de démarrage : `postgres` (attend d'être prêt) → `migrate` (crée le schéma puis s'arrête avec le code 0) → `api` et `worker`. La première construction prend plusieurs minutes.
+```bash
+docker compose up -d
+```
+
+Ordre de démarrage : `postgres` (attend d'être prêt) → `migrate` (crée le schéma puis s'arrête avec le code 0) → `api` et `worker`.
+
+Sans accès à GHCR, ou pour recetter une branche non publiée, les images se construisent sur le serveur (plusieurs minutes) :
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 Contrôles :
 
@@ -602,29 +625,38 @@ Le `.env` restauré doit porter la **même** `Storage__EncryptionKey` que lors d
 cd /opt/cse-forms && /opt/cse-forms-backup/sauvegarde.sh
 ```
 
+Lister les versions publiées et lire les changements depuis la version en place :
+
 ```bash
-git fetch && git log --oneline HEAD..origin/main
+git fetch --tags && git tag --list 'v*' --sort=-v:refname | head
 ```
 
 ```bash
-git pull --ff-only
+git log --oneline "v$(grep -oP '^CSE_FORMS_VERSION=\K.*' .env)"..v1.1.0
+```
+
+Passer sur le nouveau tag, puis reporter la version dans `.env` (`CSE_FORMS_VERSION=1.1.0`) :
+
+```bash
+git checkout v1.1.0
 ```
 
 ```bash
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
 
 ```bash
 docker compose logs migrate && docker compose ps -a
 ```
 
-- Les migrations s'appliquent automatiquement (service `migrate`). Elles ne se défont pas automatiquement : en cas de problème, revenir au commit précédent **et** restaurer la sauvegarde faite juste avant (§ 9.3).
+- Les migrations s'appliquent automatiquement (service `migrate`). Elles ne se défont pas automatiquement : en cas de problème, revenir au tag précédent (`git checkout` et `CSE_FORMS_VERSION`) **et** restaurer la sauvegarde faite juste avant (§ 9.3).
+- Numérotation : `X.Y.Z` = correctifs seuls (sans risque), `X.Y.0` = nouvelles fonctionnalités compatibles, `X.0.0` = action de l'exploitant nécessaire (lire les notes de version). `-rc.N` = préversion pour la recette, à ne pas mettre en production.
 - Comparer `.env.production.example` avec `.env` après chaque mise à jour : une nouvelle variable obligatoire bloque le démarrage avec un message `... absent`.
 - Images tierces : `postgres:17-alpine` suit les correctifs mineurs à chaque `docker compose pull`. Ne jamais changer la version majeure de PostgreSQL sans procédure de migration (`pg_dump` / `pg_restore`). Gotenberg est épinglé ; sa version se change dans `docker-compose.yml`.
-- Mettre à jour régulièrement l'hôte (`apt upgrade`) et Docker. Reconstruire les images (`--build --pull`) pour récupérer les correctifs de sécurité des images .NET :
+- Mettre à jour régulièrement l'hôte (`apt upgrade`) et Docker. Les correctifs de sécurité des images .NET arrivent avec une nouvelle version publiée (correctif `X.Y.Z`). En construction locale, reconstruire avec `--pull` :
 
 ```bash
-docker compose build --pull && docker compose up -d
+docker compose -f docker-compose.yml -f docker-compose.build.yml build --pull && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d
 ```
 
 - Nettoyer les anciennes images de temps en temps : `docker image prune`.
@@ -692,6 +724,8 @@ docker compose down
 | Symptôme | Cause probable |
 | --- | --- |
 | `required variable ... absent` | Variable obligatoire manquante dans `.env` (§ 4) |
+| `pull access denied` / `denied` sur `ghcr.io` | Paquet GHCR privé : `docker login ghcr.io` (§ 4.1) |
+| `manifest unknown` sur `ghcr.io` | `CSE_FORMS_VERSION` ne correspond à aucune version publiée (sans « v », publication terminée dans GitHub Actions) |
 | `migrate` en `Exited (1)` | Base injoignable ou mot de passe faux : `docker compose logs migrate postgres` |
 | Mot de passe PostgreSQL changé dans `.env` après le premier démarrage | PostgreSQL garde l'ancien : le changer dans la base (`ALTER USER`) ou revenir à l'ancien |
 | `api` redémarre en boucle | `docker compose logs api` : clé base64 invalide (`Storage__EncryptionKey`, `ProofOfWork__HmacKey`), réseau `ReverseProxy__KnownNetworks` mal écrit |
@@ -748,6 +782,8 @@ Horloge de l'hôte décalée : `timedatectl` doit indiquer `System clock synchro
 
 | Variable | Service | Défaut | Rôle |
 | --- | --- | --- | --- |
+| `CSE_FORMS_VERSION` | migrate, api, worker | — (obligatoire) | Version des images GHCR (`1.0.0`, sans « v ») |
+| `CSE_FORMS_REGISTRY` | migrate, api, worker | `ghcr.io/dockev03` | Registre des images (miroir interne éventuel) |
 | `POSTGRES_DB` | postgres, api, worker | — (obligatoire) | Nom de la base |
 | `POSTGRES_USER` | postgres, api, worker | — (obligatoire) | Rôle PostgreSQL |
 | `POSTGRES_PASSWORD` | postgres, api, worker | — (obligatoire) | Mot de passe, sans `;` ni guillemet |
@@ -835,7 +871,8 @@ Fixées par l'image, à ne pas modifier : `Storage__Path=/var/lib/cse-forms/file
 - [ ] `.env` créé, `chmod 600`, aucun `a-remplacer`
 - [ ] `Storage__EncryptionKey` et `.env` sauvegardés dans le coffre-fort, hors serveur
 - [ ] `ReverseProxy__KnownNetworks` = IP exacte du proxy en `/32`
-- [ ] `docker compose up -d --build` ; `migrate` en `Exited (0)` ; `/health/ready` OK
+- [ ] Dépôt sur le tag de la version, `CSE_FORMS_VERSION` identique (sans « v »)
+- [ ] `docker compose pull` puis `docker compose up -d` ; `migrate` en `Exited (0)` ; `/health/ready` OK
 
 **Proxy**
 

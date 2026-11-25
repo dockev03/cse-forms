@@ -42,12 +42,42 @@ Guide complet (installation, configuration, reverse proxy, sauvegarde, mises à 
 
 `docker-compose.yml` lance PostgreSQL, Gotenberg, l'API et le Worker. Il n'y a pas de proxy dans le projet : le reverse proxy existant termine le TLS et transmet les requêtes au port HTTP de l'API, seul port publié.
 
+L'API et le Worker ne se construisent pas sur le serveur : leurs images sont publiées sur GHCR par la CI à chaque version ([Versions et images](#versions-et-images-docker)).
+
+| Image | Contenu |
+| --- | --- |
+| `ghcr.io/dockev03/cse-forms-api:<version>` | API, formulaire public, back-office, commandes d'administration, migrations |
+| `ghcr.io/dockev03/cse-forms-worker:<version>` | Worker : PDF, emails, purge |
+
+Installation, sur le tag de la version voulue (ici `v1.0.0`) pour que `docker-compose.yml` corresponde aux images :
+
 ```bash
-cp .env.production.example .env   # puis remplacer chaque « a-remplacer » ; chmod 600 .env
-docker compose up -d --build
+git clone https://github.com/dockev03/cse-forms.git /opt/cse-forms && cd /opt/cse-forms
 ```
 
-- **Démarrage** : le service `migrate` (`dotnet CseForms.Api.dll db migrate`) met le schéma à jour puis s'arrête ; l'API et le Worker ne démarrent qu'ensuite. Une mise à jour se fait par `git pull` puis la même commande.
+```bash
+git checkout v1.0.0
+```
+
+```bash
+cp .env.production.example .env && chmod 600 .env   # puis remplacer chaque « a-remplacer » et régler CSE_FORMS_VERSION=1.0.0
+```
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Mise à jour vers une nouvelle version (sauvegarde d'abord, [§ 10 du guide](docs/mise-en-service.md#10-mises-à-jour)) : `git fetch --tags && git checkout v1.1.0`, reporter `CSE_FORMS_VERSION=1.1.0` dans `.env`, puis `docker compose pull && docker compose up -d`. Retour arrière : tag et version précédents, **et** restauration de la sauvegarde si une migration a tourné.
+
+Construction locale à la place des images publiées (recette d'une branche, serveur sans accès à `ghcr.io`) : images `cse-forms-api:local` et `cse-forms-worker:local`, version `0.0.0-dev`.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+- **Version** : `CSE_FORMS_VERSION` (obligatoire) fixe la version des trois services `migrate`, `api` et `worker`. Toujours une version précise, jamais `latest`. `CSE_FORMS_REGISTRY` (facultatif) pointe vers un miroir interne.
+- **Accès à GHCR** : paquets publics, aucune authentification ; paquets privés, `docker login ghcr.io` une fois sur le serveur avec un jeton GitHub (classic) limité à `read:packages`.
+- **Démarrage** : le service `migrate` (`dotnet CseForms.Api.dll db migrate`) met le schéma à jour puis s'arrête ; l'API et le Worker ne démarrent qu'ensuite.
 - **Reverse proxy** : il cible `http://<hôte>:${API_PORT}` et transmet `X-Forwarded-For` et `X-Forwarded-Proto: https`. Son adresse, vue par l'API, va dans `ReverseProxy__KnownNetworks` ; sans elle, le back-office refuse les connexions (cookies `Secure`). Points de santé : `/health/live`, `/health/ready`.
 - **Exposition** : seul le reverse proxy doit joindre le port de l'API (`API_BIND` ou pare-feu). PostgreSQL et Gotenberg sont sur un réseau interne sans accès extérieur ; seul le Worker sort, vers le serveur SMTP.
 - **Conteneurs** : API et Worker tournent sans root, système de fichiers en lecture seule, sans privilège. Journaux Docker limités à 5 × 10 Mo par service.
@@ -180,7 +210,7 @@ Un scénario en échec laisse une trace Playwright (à ouvrir avec `pwsh tests/C
 
 ## Intégration continue
 
-Chaque push sur GitHub lance `.github/workflows/ci.yml` ; le résultat s'affiche sur le commit et sur la PR qui le porte :
+Chaque push de branche sur GitHub lance `.github/workflows/ci.yml` ; le résultat s'affiche sur le commit et sur la PR qui le porte :
 
 - compilation et tests xUnit, avec un PostgreSQL jetable propre au job (aucun secret réel) ;
 - tests du moteur client sous Node 22 ;
@@ -188,6 +218,41 @@ Chaque push sur GitHub lance `.github/workflows/ci.yml` ; le résultat s'affiche
 - analyse Trivy des dépendances NuGet (directes et transitives) et des secrets : la CI échoue sur une vulnérabilité `HIGH` ou `CRITICAL` corrigeable.
 
 Les actions sont épinglées sur un SHA de commit et le workflow n'a que le droit de lecture sur le dépôt.
+
+## Versions et images Docker
+
+Les versions suivent [SemVer](https://semver.org/lang/fr/) et se matérialisent par un tag Git annoté `vX.Y.Z` posé sur un commit de `main`. Pousser ce tag lance `.github/workflows/release.yml` :
+
+1. contrôle du tag (format `vX.Y.Z` ou `vX.Y.Z-rc.N`, commit appartenant à `main`) ;
+2. CI complète (`ci.yml` : compilation, tests xUnit, Node, bout en bout, Trivy) ;
+3. construction des images `api` et `worker` en **linux/amd64** seulement, version injectée dans les assemblies (`-p:Version`) ;
+4. analyse Trivy de chaque image : aucune publication en cas de vulnérabilité `HIGH` ou `CRITICAL` corrigeable ;
+5. publication sur `ghcr.io/dockev03/cse-forms-api` et `ghcr.io/dockev03/cse-forms-worker`, avec provenance et SBOM.
+
+| Tag Git | Tags d'image publiés |
+| --- | --- |
+| `v1.4.2` | `1.4.2`, `1.4`, `1`, `latest` |
+| `v1.5.0-rc.1` (préversion, recette) | `1.5.0-rc.1` seulement |
+| `v0.9.0` | `0.9.0`, `0.9`, `latest` (pas de `0`) |
+
+| Incrément | Quand |
+| --- | --- |
+| `Z` (correctif) | Correction de bug ou de sécurité, mise à jour de dépendance ; aucun changement de comportement attendu |
+| `Y` (mineure) | Nouvelle fonctionnalité compatible ; migrations qui ne font qu'ajouter ; nouvelle variable facultative |
+| `X` (majeure) | Action de l'exploitant nécessaire : nouvelle variable obligatoire, migration destructive, commande ou API retirée, changement de `docker-compose.yml` à reporter |
+| `-rc.N` | Préversion à recetter avant la version définitive |
+
+Créer une version, une fois la PR fusionnée et la CI de `main` verte :
+
+```bash
+git fetch origin && git tag -a v1.0.0 -m "Version 1.0.0" origin/main
+```
+
+```bash
+git push origin v1.0.0
+```
+
+Un tag publié n'est jamais déplacé ni supprimé : une erreur se corrige par la version suivante. À la première publication, les paquets GHCR sont privés : les rendre publics (paquet, « Package settings », « Change visibility » ; irréversible, les images ne contiennent aucun secret) ou authentifier les serveurs (`docker login ghcr.io`).
 
 ## Nouvelle migration
 

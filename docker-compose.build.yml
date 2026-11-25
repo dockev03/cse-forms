@@ -1,0 +1,24 @@
+# Surcharge de docker-compose.yml : construit l'API et le Worker depuis les sources au lieu de
+# télécharger les images publiées sur GHCR (recette d'une branche, poste sans accès à GHCR).
+# Usage :
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# Les images construites portent le nom local cse-forms-api:local / cse-forms-worker:local,
+# et la version 0.0.0-dev, pour ne jamais être confondues avec une version publiée.
+services:
+  migrate:
+    image: cse-forms-api:local
+    build:
+      context: .
+      target: api
+
+  api:
+    image: cse-forms-api:local
+    build:
+      context: .
+      target: api
+
+  worker:
+    image: cse-forms-worker:local
+    build:
+      context: .
+      target: worker

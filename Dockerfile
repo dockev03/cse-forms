@@ -1,7 +1,8 @@
 # Images de production de l'API et du Worker, construites depuis la racine du dépôt :
 #   docker build --target api -t cse-forms-api .
 #   docker build --target worker -t cse-forms-worker .
-# docker-compose.yml s'en charge. Exécution sans root (utilisateur « app » des images .NET).
+# Les versions publiées sont construites par .github/workflows/release.yml et poussées sur GHCR ;
+# docker-compose.build.yml construit localement. Exécution sans root (utilisateur « app » des images .NET).
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
@@ -17,8 +18,10 @@ RUN dotnet restore src/CseForms.Api/CseForms.Api.csproj \
  && dotnet restore src/CseForms.Worker/CseForms.Worker.csproj
 
 COPY src/ src/
-RUN dotnet publish src/CseForms.Api/CseForms.Api.csproj --no-restore -c Release -o /out/api \
- && dotnet publish src/CseForms.Worker/CseForms.Worker.csproj --no-restore -c Release -o /out/worker
+# Version publiée (tag vX.Y.Z sans le « v »), fournie par la CI de publication ; 0.0.0-dev en local.
+ARG VERSION=0.0.0-dev
+RUN dotnet publish src/CseForms.Api/CseForms.Api.csproj --no-restore -c Release -o /out/api -p:Version="$VERSION" \
+ && dotnet publish src/CseForms.Worker/CseForms.Worker.csproj --no-restore -c Release -o /out/worker -p:Version="$VERSION"
 
 # Socle commun : dossiers des volumes créés ici pour appartenir à « app » dès leur premier montage.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

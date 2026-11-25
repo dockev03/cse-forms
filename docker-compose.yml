@@ -1,7 +1,10 @@
 # Production : API, Worker, PostgreSQL et Gotenberg. Aucun proxy ici : le reverse proxy existant
 # (hors projet) termine le TLS et transmet les requêtes au port HTTP de l'API, seul port publié.
+# Images de l'API et du Worker publiées sur GHCR (linux/amd64), version fixée par CSE_FORMS_VERSION.
 # Usage : cp .env.production.example .env, renseigner les valeurs, puis
-#   docker compose up -d --build
+#   docker compose pull && docker compose up -d
+# Construction locale à la place des images publiées (recette d'une branche, poste sans accès à GHCR) :
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 #
 # Réseaux :
 #   - backend (interne, sans accès extérieur) : PostgreSQL, Gotenberg, API, Worker ;
@@ -25,6 +28,10 @@ x-dotnet: &dotnet
   security_opt:
     - no-new-privileges:true
   logging: *logging
+
+# Images publiées : même version pour l'API, le Worker et les migrations.
+x-api-image: &api-image ${CSE_FORMS_REGISTRY:-ghcr.io/dockev03}/cse-forms-api:${CSE_FORMS_VERSION:?CSE_FORMS_VERSION absent}
+x-worker-image: &worker-image ${CSE_FORMS_REGISTRY:-ghcr.io/dockev03}/cse-forms-worker:${CSE_FORMS_VERSION:?CSE_FORMS_VERSION absent}
 
 x-database: &database
   ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:?POSTGRES_DB absent};Username=${POSTGRES_USER:?POSTGRES_USER absent};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent}
@@ -82,10 +89,7 @@ services:
   # Mise à jour du schéma à chaque démarrage, avant l'API et le Worker ; sans effet si la base est à jour.
   migrate:
     <<: *dotnet
-    image: cse-forms-api
-    build:
-      context: .
-      target: api
+    image: *api-image
     restart: "no"
     command: ["db", "migrate"]
     environment: *api-environment
@@ -97,10 +101,7 @@ services:
 
   api:
     <<: *dotnet
-    image: cse-forms-api
-    build:
-      context: .
-      target: api
+    image: *api-image
     environment: *api-environment
     volumes:
       - keys:/var/lib/cse-forms/keys
@@ -119,10 +120,7 @@ services:
 
   worker:
     <<: *dotnet
-    image: cse-forms-worker
-    build:
-      context: .
-      target: worker
+    image: *worker-image
     environment:
       <<: *database
       Gotenberg__Url: http://gotenberg:3000

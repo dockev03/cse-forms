@@ -2,9 +2,13 @@
 # Aucun secret réel : PostgreSQL est un conteneur jetable propre au job.
 name: CI
 
-# Chaque push lance la CI ; le résultat s'affiche aussi sur la PR qui porte le commit.
+# Chaque push de branche lance la CI ; le résultat s'affiche aussi sur la PR qui porte le commit.
+# Les tags de version passent par release.yml, qui appelle ce workflow avant de publier les images.
 on:
   push:
+    branches:
+      - "**"
+  workflow_call:
   workflow_dispatch:
 
 permissions:

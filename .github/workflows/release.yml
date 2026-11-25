@@ -1,0 +1,167 @@
+# Publication des images de production sur GHCR (linux/amd64) à chaque tag de version vX.Y.Z poussé.
+# Le tag doit désigner un commit de main ; la CI complète (ci.yml) doit passer avant toute publication.
+# Images : ghcr.io/<propriétaire>/cse-forms-api et ghcr.io/<propriétaire>/cse-forms-worker.
+name: Publication
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+
+permissions:
+  contents: read
+
+# Jamais d'annulation : une publication commencée va à son terme.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Vérifier le tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Récupérer le code et l'historique
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # SemVer strict : vMAJEUR.MINEUR.CORRECTIF, éventuellement suivi de -rc.N (préversion).
+      - name: Contrôler le format du tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$ ]]; then
+            echo "::error::Tag « $TAG » invalide : attendu vX.Y.Z ou vX.Y.Z-rc.N"
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Contrôler que le commit appartient à main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Le tag ${{ github.ref_name }} ne désigne pas un commit de main : publication refusée"
+            exit 1
+          fi
+
+  ci:
+    name: CI
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Images (construction, Trivy, publication)
+    needs: [verify, ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        target: [api, worker]
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # GHCR exige un nom en minuscules.
+      - name: Nommer l'image
+        id: image
+        env:
+          OWNER: ${{ github.repository_owner }}
+          TARGET: ${{ matrix.target }}
+        run: echo "name=ghcr.io/${OWNER,,}/cse-forms-${TARGET}" >> "$GITHUB_OUTPUT"
+
+      # X.Y.Z, X.Y, X et latest ; une préversion (-rc.N) ne reçoit que son propre tag.
+      - name: Calculer les tags et les labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.image.outputs.name }}
+          flavor: |
+            latest=auto
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
+          labels: |
+            org.opencontainers.image.title=cse-forms-${{ matrix.target }}
+            org.opencontainers.image.description=Outil de formulaires du CSE (${{ matrix.target }})
+
+      - name: Préparer Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Construction locale d'abord : l'image n'est publiée que si Trivy ne trouve rien.
+      - name: Construire l'image (amd64)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          build-args: |
+            VERSION=${{ needs.verify.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: cse-forms-${{ matrix.target }}:scan
+          load: true
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+
+      - name: Analyser l'image (Trivy)
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro
+          aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c image
+          --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+          cse-forms-${{ matrix.target }}:scan
+
+      - name: Se connecter à GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Mêmes couches que l'image analysée (cache) ; provenance et SBOM joints à l'image.
+      - name: Publier l'image (amd64)
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          build-args: |
+            VERSION=${{ needs.verify.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.target }}
+
+      - name: Résumé
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          {
+            echo "### cse-forms-${{ matrix.target }}"
+            echo
+            echo "Empreinte : \`$DIGEST\`"
+            echo
+            echo '```'
+            echo "$TAGS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
