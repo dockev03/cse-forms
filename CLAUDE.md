@@ -8,6 +8,13 @@ Outil de formulaires du CSE (.NET 10, PostgreSQL, Hangfire, Gotenberg). Référe
 - Aucun commit ni push sans ma validation explicite.
 - Commits en français, à l'impératif, courts. Aucun identifiant de modèle d'IA dans le dépôt, les commits ou les PR.
 
+## Versions (tags)
+
+- Tag annoté `vX.Y.Z` (SemVer) sur un commit de `main` ; son push publie les images sur GHCR (`release.yml`). Jamais créé, déplacé ni supprimé sans ma validation.
+- Proposer un tag (nom + justification + commits inclus depuis le dernier tag) quand une PR vient d'être fusionnée sur `main`, CI verte, et qu'elle clôt un ensemble livrable : lot de `specs.md` 6.4, fonctionnalité complète, correctif à déployer. Pas de tag pour la doc seule ou du travail intermédiaire.
+- Incrément : `Z` correctif sans changement de comportement ; `Y` fonctionnalité compatible, migration additive, variable facultative ; `X` action de l'exploitant requise (variable obligatoire, migration destructive, compose modifié, commande retirée). Préversion `-rc.N` avant une recette.
+- Signaler dans la proposition toute migration ou nouvelle variable `.env`.
+
 ## Règles non négociables
 
 - Formulaires = définitions JSON versionnées, jamais codés en dur.
